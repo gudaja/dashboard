@@ -46,16 +46,16 @@ class _DashboardPageState extends State<DashboardPage> {
   DashboardItemController<ColoredDashboardItem> get itemController =>
       _itemController;
 
-  int? slot;
+  int? slot = 24;
 
   setSlot() {
     var w = MediaQuery.of(context).size.width;
     setState(() {
-      slot = w > 600
-          ? w > 900
-              ? 10
-              : 6
-          : 4;
+      // slot = w > 600
+      //     ? w > 900
+      //         ? 10
+      //         : 6
+      //     : 4;
     });
   }
 
@@ -64,11 +64,11 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     var w = MediaQuery.of(context).size.width;
-    slot = w > 600
-        ? w > 900
-            ? 10
-            : 6
-        : 4;
+    // slot = w > 600
+    //     ? w > 900
+    //         ? 10
+    //         : 6
+    //     : 4;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4285F4),
