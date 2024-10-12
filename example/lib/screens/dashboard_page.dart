@@ -53,7 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() {
       slot = w > 600
           ? w > 900
-              ? 8
+              ? 10
               : 6
           : 4;
     });
@@ -66,7 +66,7 @@ class _DashboardPageState extends State<DashboardPage> {
     var w = MediaQuery.of(context).size.width;
     slot = w > 600
         ? w > 900
-            ? 8
+            ? 10
             : 6
         : 4;
     return Scaffold(
@@ -146,7 +146,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     elevation: 5,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15))),
-                physics: const RangeMaintainingScrollPhysics(),
+                physics: const RangeMaintainingScrollPhysics()
+                    .applyTo(ClampingScrollPhysics()),
                 editModeSettings: EditModeSettings(
                     draggableOutside: false,
                     paintBackgroundLines: false,

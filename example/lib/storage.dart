@@ -44,7 +44,7 @@ class ColoredDashboardItem extends DashboardItem {
 class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   late SharedPreferences _preferences;
 
-  final List<int> _slotCounts = [4, 6, 8];
+  final List<int> _slotCounts = [4, 6, 8, 10];
 
   final Map<int, List<ColoredDashboardItem>> _default = {
     4: <ColoredDashboardItem>[
@@ -230,6 +230,97 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
           height: 1, width: 2, identifier: "12", data: "linkedin")
     ],
     8: <ColoredDashboardItem>[
+      ColoredDashboardItem(
+        height: 2,
+        width: 3,
+        startX: 0,
+        startY: 0,
+        minHeight: 2,
+        identifier: "1",
+        data: "description",
+      ),
+      ColoredDashboardItem(
+          startX: 3,
+          startY: 0,
+          minHeight: 2,
+          height: 2,
+          width: 2,
+          identifier: "2",
+          data: "resize"),
+      ColoredDashboardItem(
+          startX: 2,
+          startY: 2,
+          width: 4,
+          height: 1,
+          identifier: "3",
+          minWidth: 3,
+          data: "welcome"),
+      ColoredDashboardItem(
+          startX: 5,
+          startY: 0,
+          minWidth: 2,
+          minHeight: 2,
+          height: 2,
+          width: 2,
+          identifier: "4",
+          data: "transform"),
+      ColoredDashboardItem(
+          startX: 7,
+          startY: 0,
+          minHeight: 2,
+          height: 2,
+          width: 1,
+          identifier: "5",
+          data: "add"),
+      ColoredDashboardItem(
+          minWidth: 2,
+          maxWidth: 2,
+          maxHeight: 1,
+          height: 1,
+          width: 2,
+          startX: 2,
+          startY: 4,
+          identifier: "6",
+          data: "buy_mee"),
+      ColoredDashboardItem(
+          minWidth: 2,
+          height: 1,
+          width: 2,
+          startX: 0,
+          startY: 2,
+          identifier: "7",
+          data: "delete"),
+      ColoredDashboardItem(
+          minWidth: 2,
+          height: 1,
+          width: 2,
+          startX: 6,
+          startY: 2,
+          identifier: "8",
+          data: "refresh"),
+      ColoredDashboardItem(
+          minWidth: 3,
+          height: 1,
+          width: 4,
+          startX: 0,
+          startY: 3,
+          identifier: "9",
+          data: "info"),
+      ColoredDashboardItem(
+          startX: 6,
+          startY: 3,
+          height: 2,
+          width: 2,
+          identifier: "13",
+          data: "pub"),
+      ColoredDashboardItem(
+          height: 1, width: 2, identifier: "10", data: "github"),
+      ColoredDashboardItem(
+          height: 1, width: 2, identifier: "11", data: "twitter"),
+      ColoredDashboardItem(
+          height: 1, width: 2, identifier: "12", data: "linkedin")
+    ],
+    10: <ColoredDashboardItem>[
       ColoredDashboardItem(
         height: 2,
         width: 3,
