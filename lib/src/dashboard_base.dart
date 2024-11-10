@@ -26,6 +26,8 @@ part 'models/item_current_layout.dart';
 
 part 'models/item_layout_data.dart';
 
+part 'models/grid_dimensions.dart';
+
 part 'edit_mode/edit_mode_background_style.dart';
 
 part 'edit_mode/edit_mode_painter.dart';

@@ -50,7 +50,8 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
       this.animateEverytime = true,
       this.itemStyle = const ItemStyle(),
       this.scrollToAdded = true,
-      this.slotBackgroundBuilder})
+      this.slotBackgroundBuilder,
+      this.onGridDimensionsChanged})
       : assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
         editModeSettings = editModeSettings ?? EditModeSettings();
@@ -201,6 +202,9 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
   ///
   /// Look [Material] documentation for more.
   final ItemStyle itemStyle;
+
+  /// Callback to notify when grid dimensions change
+  final void Function(GridDimensions dimensions)? onGridDimensionsChanged;
 
   @override
   State<Dashboard<T>> createState() => _DashboardState<T>();
@@ -355,6 +359,25 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     // if (_maxExtend > 0) {
     offset.applyContentDimensions(0, _maxExtend.clamp(0, double.maxFinite));
     // }
+
+    // Oblicz wymiary grida
+    final gridDimensions = GridDimensions(
+      slotWidth:
+          _layoutController._viewportDelegate.resolvedConstrains.maxWidth /
+              widget.slotCount,
+      slotHeight: h,
+      columns: widget.slotCount,
+      totalWidth:
+          _layoutController._viewportDelegate.resolvedConstrains.maxWidth,
+      totalHeight:
+          _layoutController._viewportDelegate.resolvedConstrains.maxHeight,
+      padding: widget.padding.resolve(widget.textDirection),
+      horizontalSpace: widget.horizontalSpace,
+      verticalSpace: widget.verticalSpace,
+    );
+
+    // Wywołaj callback
+    widget.onGridDimensionsChanged?.call(gridDimensions);
   }
 
   ///

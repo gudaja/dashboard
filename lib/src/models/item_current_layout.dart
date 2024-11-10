@@ -765,8 +765,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var holdX = ((on.dx / _slotEdge).floor() + origin.startX)
         .clamp(0, _layoutController.slotCount - 1);
 
-    var holdY =
-        ((on.dy / _verticalSlotEdge).floor() + origin.startY).clamp(0, 4294967296);
+    var holdY = ((on.dy / _verticalSlotEdge).floor() + origin.startY)
+        .clamp(0, 4294967296);
 
     var newStartX = ((newTransform.dx / _slotEdge).floor() + origin.startX)
         .clamp(0, _layoutController.slotCount - 1);
