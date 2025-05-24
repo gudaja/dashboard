@@ -211,16 +211,20 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   @override
   void initState() {
     _layoutController = _DashboardLayoutController<T>();
-    _layoutController.addListener(() {
-      setState(() {});
-    });
-
+    
     // Initialize responsive properties with widget defaults
     _currentSlotCount = widget.slotCount;
     _currentVerticalSpace = widget.verticalSpace;
     _currentHorizontalSpace = widget.horizontalSpace;
     _currentPadding = widget.padding;
     _initialSlotCountLoaded = _currentSlotCount; // Track for initial load
+
+    // Explicitly set slotCount in the controller
+    _layoutController.slotCount = _currentSlotCount; 
+
+    _layoutController.addListener(() {
+      setState(() {});
+    });
 
     widget.dashboardItemController._attach(_layoutController);
     if (_withDelegate) {
