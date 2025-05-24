@@ -220,7 +220,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   late _ViewportDelegate _viewportDelegate;
 
   ///
-  int slotCount = 8; // Default value to prevent LateInitializationError
+  late int slotCount;
 
   ///
   late bool shrinkToPlace;

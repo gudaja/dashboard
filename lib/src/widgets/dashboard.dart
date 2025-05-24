@@ -210,36 +210,51 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   ///
   @override
   void initState() {
-    _layoutController = _DashboardLayoutController<T>();
-    
     // Initialize responsive properties with widget defaults
+    // _layoutController will be initialized in the first build pass with constraints
     _currentSlotCount = widget.slotCount;
     _currentVerticalSpace = widget.verticalSpace;
     _currentHorizontalSpace = widget.horizontalSpace;
     _currentPadding = widget.padding;
-    _initialSlotCountLoaded = _currentSlotCount; // Track for initial load
+    _initialSlotCountLoaded = _currentSlotCount; // Track for initial load based on widget.slotCount
 
-    // Explicitly set slotCount in the controller
-    _layoutController.slotCount = _currentSlotCount; 
+    // Initial item load if not layoutsBySlotCount.
+    // If layoutsBySlotCount is true, loading is deferred to the build method.
+    if (_withDelegate && !widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount) {
+       widget.dashboardItemController._loadItems(_currentSlotCount);
+    }
+    // No explicit _loadItems call here if !_withDelegate, as items are expected
+    // to be in the controller directly or handled by build if delegate is used.
 
-    _layoutController.addListener(() {
-      setState(() {});
-    });
-
-    widget.dashboardItemController._attach(_layoutController);
+    // Listener for asyncSnap if using a delegate.
+    // This listener should also be managed (added/removed) if _asyncSnap itself can change
+    // or if the controller is re-attached, but for now, it's added once.
     if (_withDelegate) {
-      // widget.dashboardItemController._asyncSnap =
-      //     ValueNotifier(const AsyncSnapshot.waiting());
-      widget.dashboardItemController._loadItems(_currentSlotCount); // Use initial _currentSlotCount
-      widget.dashboardItemController._asyncSnap!.addListener(() {
-        if (mounted) {
-          if (!_building) {
-            setState(() {});
-          }
-        }
-      });
+       widget.dashboardItemController._asyncSnap?.addListener(_onAsyncSnapChanged);
     }
     super.initState();
+  }
+
+  void _onAsyncSnapChanged() {
+    if (mounted && !_building) {
+      setState(() {});
+    }
+  }
+  
+  void _onLayoutControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _layoutController?.removeListener(_onLayoutControllerChanged);
+    _layoutController?.dispose();
+    if (_withDelegate) {
+      widget.dashboardItemController._asyncSnap?.removeListener(_onAsyncSnapChanged);
+    }
+    super.dispose();
   }
 
   GlobalKey myWidgetKey = GlobalKey();
@@ -259,7 +274,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       widget.dashboardItemController.itemStorageDelegate != null;
 
   ///
-  late _DashboardLayoutController<T> _layoutController;
+  _DashboardLayoutController<T>? _layoutController; // Now nullable
 
   ///
   ViewportOffset? _offset;
@@ -289,23 +304,31 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
   ///
   _setNewOffset(ViewportOffset o, BoxConstraints constraints, [bool i = true]) {
+    if (_layoutController == null) {
+      // _layoutController is initialized in the build method's LayoutBuilder.
+      // This method is called from viewportBuilder, which is inside dashboardWidget.
+      // dashboardWidget is only called if _layoutController is not null.
+      // However, as a safeguard:
+      return;
+    }
+
     /// check slot count
     /// check new constrains equal exists
-    _layoutController.absorbPointer = widget.absorbPointer;
+    _layoutController!.absorbPointer = widget.absorbPointer;
     // Use _current* responsive values
-    _layoutController._viewportDelegate = _ViewportDelegate(
+    _layoutController!._viewportDelegate = _ViewportDelegate(
         constraints: constraints,
         padding: _currentPadding.resolve(widget.textDirection),
         mainAxisSpace: _currentHorizontalSpace,
         crossAxisSpace: _currentVerticalSpace);
 
     // Use _currentSlotCount for attaching and checking
-    if (_layoutController._isAttached &&
-        (_layoutController.slotCount != _currentSlotCount ||
-            _layoutController.slideToTop != widget.slideToTop ||
-            _layoutController.shrinkToPlace != widget.shrinkToPlace) &&
+    if (_layoutController!._isAttached &&
+        (_layoutController!.slotCount != _currentSlotCount ||
+            _layoutController!.slideToTop != widget.slideToTop ||
+            _layoutController!.shrinkToPlace != widget.shrinkToPlace) &&
         !_reloading) {
-      _layoutController.attach(
+      _layoutController!.attach(
           viewportOffset: o,
           shrinkOnMove: widget.editModeSettings.shrinkOnMove,
           animateEverytime: widget.animateEverytime,
@@ -318,8 +341,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       _setOnNextFrame();
     }
 
-    if (!_layoutController._isAttached) {
-      _layoutController.attach(
+    if (!_layoutController!._isAttached) {
+      _layoutController!.attach(
           viewportOffset: o,
           shrinkOnMove: widget.editModeSettings.shrinkOnMove,
           animateEverytime: widget.animateEverytime,
@@ -338,22 +361,22 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     if (widget.slotHeight != null) {
       h = widget.slotHeight!;
     } else if (widget.slotAspectRatio != null) {
-      h = _layoutController._viewportDelegate.resolvedConstrains.maxWidth /
+      h = _layoutController!._viewportDelegate.resolvedConstrains.maxWidth /
           _currentSlotCount /
           widget.slotAspectRatio!;
     } else {
-      h = _layoutController._viewportDelegate.resolvedConstrains.maxWidth /
+      h = _layoutController!._viewportDelegate.resolvedConstrains.maxWidth /
           _currentSlotCount;
     }
 
-    _layoutController._setSizes(
-        _layoutController._viewportDelegate.resolvedConstrains, h);
+    _layoutController!._setSizes(
+        _layoutController!._viewportDelegate.resolvedConstrains, h);
 
     _offset = o;
 
     if (i) {
       offset.applyViewportDimension(
-          _layoutController._viewportDelegate.constraints.maxHeight);
+          _layoutController!._viewportDelegate.constraints.maxHeight);
     }
 
     if (!i) {
@@ -361,11 +384,11 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       return;
     }
 
-    var maxIndex = (_layoutController._endsTree.lastKey() ?? 0);
+    var maxIndex = (_layoutController!._endsTree.lastKey() ?? 0);
 
-    var maxCoordinate = (_layoutController.getIndexCoordinate(maxIndex));
+    var maxCoordinate = (_layoutController!.getIndexCoordinate(maxIndex));
 
-    _maxExtend = ((maxCoordinate[1] + 1) * _layoutController.verticalSlotEdge);
+    _maxExtend = ((maxCoordinate[1] + 1) * _layoutController!.verticalSlotEdge);
 
     _maxExtend -= constraints.maxHeight;
 
@@ -400,10 +423,10 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   Widget build(BuildContext context) {
     _building = true;
 
-    return LayoutBuilder(builder: (context, constrains) {
-      Unbounded.check(Axis.vertical, constrains);
+    return LayoutBuilder(builder: (context, constraints) {
+      Unbounded.check(Axis.vertical, constraints);
 
-      final screenWidth = constrains.maxWidth;
+      final screenWidth = constraints.maxWidth;
       
       // Determine responsive values
       int newResponsiveSlotCount = widget.slotCount;
@@ -426,87 +449,68 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
         }
         newResponsiveSlotCount = 6;
       }
-      // For large screens (> 900), defaults from widget are used (already set as initial values for newResponsive*)
 
-      // If slot count changed due to responsiveness, schedule a setState to rebuild and trigger item reload if necessary.
-      // Also update if other responsive values changed to ensure the UI reflects them.
-      if (_currentSlotCount != newResponsiveSlotCount ||
-          _currentVerticalSpace != newResponsiveVerticalSpace ||
-          _currentHorizontalSpace != newResponsiveHorizontalSpace ||
-          _currentPadding != newResponsivePadding) {
-        
-        // Check if this is the very first build pass after initState where _initialSlotCountLoaded was set.
-        // If newResponsiveSlotCount is different from what was loaded in initState, we need to reload items.
-        bool needsImmediateReloadForInitial = (_initialSlotCountLoaded != newResponsiveSlotCount && 
-                                             _layoutController.slotCount == _initialSlotCountLoaded &&
-                                             widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount);
+      bool responsiveValuesChanged = _currentSlotCount != newResponsiveSlotCount ||
+                                   _currentVerticalSpace != newResponsiveVerticalSpace ||
+                                   _currentHorizontalSpace != newResponsiveHorizontalSpace ||
+                                   _currentPadding != newResponsivePadding;
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              // Update all current responsive values
-              _currentSlotCount = newResponsiveSlotCount;
-              _currentVerticalSpace = newResponsiveVerticalSpace;
-              _currentHorizontalSpace = newResponsiveHorizontalSpace;
-              _currentPadding = newResponsivePadding;
-              if (needsImmediateReloadForInitial) {
-                _reloading = true; // Force reload state for the next build
-                _reloadFor = _currentSlotCount;
-              }
-            });
-          }
-        });
-      }
-      
-      // For the current build cycle, ensure we are using the new responsive values for layout.
-      // This is important because _setNewOffset will be called within this build cycle.
+      // Update state variables for the current build pass
       _currentSlotCount = newResponsiveSlotCount;
       _currentVerticalSpace = newResponsiveVerticalSpace;
       _currentHorizontalSpace = newResponsiveHorizontalSpace;
       _currentPadding = newResponsivePadding;
 
-      // Item reload logic based on _currentSlotCount
-      // This handles reloads if _currentSlotCount changes (e.g. after the setState via postFrameCallback,
-      // or if needsImmediateReloadForInitial was true and setState also set _reloading=true)
-      bool slotCountActuallyChanged = _layoutController.slotCount != _currentSlotCount;
-      if (_layoutController._isAttached &&
-          (!_reloading || (_reloading && _reloadFor != _currentSlotCount)) && // if reloading, ensure it's for the new slot count
-          slotCountActuallyChanged &&
-          _withDelegate &&
-          widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount) {
-        _reloading = true;
-        _reloadFor = _currentSlotCount;
-        widget.dashboardItemController._items.clear();
-        _layoutController._startsTree.clear();
-        _layoutController._indexesTree.clear();
-        _layoutController._endsTree.clear();
-        // _loadItems will use the _currentSlotCount passed to attach.
-        // No, _loadItems needs to be called explicitly here.
-         var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
-        if (loader is Future) {
-          loader.then((value) {
-            if (_reloadFor == _currentSlotCount && mounted) {
-               _reloading = false;
-              // Re-attach with new slot count to finalize layout
-              // This might be redundant if _setNewOffset handles it, but good for explicit reload.
-               _layoutController.attach(
-                  viewportOffset: offset, // offset might be null initially if not set.
-                  shrinkOnMove: widget.editModeSettings.shrinkOnMove,
-                  animateEverytime: widget.animateEverytime,
-                  slideToTop: widget.slideToTop,
-                  shrinkToPlace: widget.shrinkToPlace,
-                  axis: Axis.vertical,
-                  itemController: widget.dashboardItemController,
-                  slotCount: _currentSlotCount,
-                  scrollToAdded: widget.scrollToAdded);
-              if(mounted) setState(() {}); // Ensure UI updates after async load + attach
-            }
-          });
-        } else { // Loader is not a future
-           if (_reloadFor == _currentSlotCount && mounted) {
+      if (_layoutController == null) {
+        // First time build with constraints, or after _layoutController was reset.
+        _layoutController = _DashboardLayoutController<T>();
+        _layoutController!.slotCount = _currentSlotCount;
+        widget.dashboardItemController._attach(_layoutController!);
+        _layoutController!.addListener(() {
+          if (mounted) {
+            setState(() {});
+          }
+        });
+
+        // If layouts depend on slot count and the calculated _currentSlotCount is different
+        // from what might have been loaded in initState (or if no load happened yet).
+        if (_withDelegate && widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount &&
+            (_initialSlotCountLoaded != _currentSlotCount || widget.dashboardItemController._items.isEmpty )) { // also check if items are empty
+          _reloading = true;
+          _reloadFor = _currentSlotCount;
+          var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
+          if (loader is Future) {
+            loader.then((_) {
+              if (mounted && _reloadFor == _currentSlotCount) {
+                _initialSlotCountLoaded = _currentSlotCount; 
+                // Ensure controller is attached with new items and correct slot count
+                if (_offset != null) { // Check if _offset is available
+                  _layoutController!.attach(
+                      viewportOffset: _offset!,
+                      shrinkOnMove: widget.editModeSettings.shrinkOnMove,
+                      animateEverytime: widget.animateEverytime,
+                      slideToTop: widget.slideToTop,
+                      shrinkToPlace: widget.shrinkToPlace,
+                      axis: Axis.vertical,
+                      itemController: widget.dashboardItemController,
+                      slotCount: _currentSlotCount,
+                      scrollToAdded: widget.scrollToAdded);
+                }
+                setState(() { _reloading = false; });
+              }
+            }).catchError((e,s){
+               if (mounted) {
+                // Potentially set error state for _snap here
+                setState(() { _reloading = false; });
+              }
+            });
+          } else { // Synchronous load
             _reloading = false;
-            _layoutController.attach(
-                  viewportOffset: offset,
+            _initialSlotCountLoaded = _currentSlotCount;
+            // Ensure controller is attached
+            if (_offset != null) {
+               _layoutController!.attach(
+                  viewportOffset: _offset!,
                   shrinkOnMove: widget.editModeSettings.shrinkOnMove,
                   animateEverytime: widget.animateEverytime,
                   slideToTop: widget.slideToTop,
@@ -515,42 +519,119 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
                   itemController: widget.dashboardItemController,
                   slotCount: _currentSlotCount,
                   scrollToAdded: widget.scrollToAdded);
-            // No setState needed here as it's synchronous
-           }
+            }
+             // No setState needed here for _reloading, but if attach changes layout, build will handle.
+          }
+        } else if (_withDelegate && widget.dashboardItemController._items.isEmpty && _snap?.connectionState != ConnectionState.waiting) {
+           widget.dashboardItemController._loadItems(_currentSlotCount);
         }
-      } else if (_reloading && _reloadFor == _currentSlotCount && slotCountActuallyChanged) {
-        // If we were reloading for the current slot count, but the controller's slot count is now aligned,
-        // then the reload process (including attach) should have completed.
-        // So, we can turn off reloading.
-        // This case might be hit if loadItems was synchronous.
-        _reloading = false;
+        
+        // Schedule a rebuild because _layoutController was just created or initial load might be happening.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) { setState(() {}); }
+        });
+      } else { // _layoutController != null
+        // _layoutController exists. Check if responsive values changed and require action.
+        
+        // Define actual change flags based on comparison with _layoutController's current state
+        // or previously used values if _layoutController doesn't store them all (e.g. padding).
+        // For slotCount, comparison with _layoutController.slotCount is direct.
+        // For others, responsiveValuesChanged (which compares _current* from prev build with newResponsive*) is a good proxy.
+        bool controllerSlotCountChanged = _layoutController!.slotCount != _currentSlotCount;
+
+        if (controllerSlotCountChanged) {
+            // If layouts depend on slot count, _loadItems is called.
+            // The attach() in its .then() block will update the controller's slotCount.
+            // If not layoutsBySlotCount, we don't update _layoutController.slotCount here.
+            // Instead, we let _setNewOffset detect the discrepancy and call attach().
+            if (_withDelegate && widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount) {
+              _reloading = true;
+              _reloadFor = _currentSlotCount;
+              // It's important that _layoutController.slotCount reflects the *new* count if we were to use it before attach.
+              // However, _loadItems should use _currentSlotCount, and attach will set it in the controller.
+              // So, removing the direct assignment: _layoutController!.slotCount = _currentSlotCount;
+              var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
+              if (loader is Future) {
+                loader.then((_) {
+                  if (mounted && _reloadFor == _currentSlotCount) {
+                    if (_offset != null) {
+                      _layoutController!.attach(
+                          viewportOffset: _offset!,
+                          shrinkOnMove: widget.editModeSettings.shrinkOnMove,
+                          animateEverytime: widget.animateEverytime,
+                          slideToTop: widget.slideToTop,
+                          shrinkToPlace: widget.shrinkToPlace,
+                          axis: Axis.vertical,
+                          itemController: widget.dashboardItemController,
+                          slotCount: _currentSlotCount,
+                          scrollToAdded: widget.scrollToAdded);
+                    }
+                    setState(() { _reloading = false; });
+                  }
+                }).catchError((e,s){
+                  if (mounted) { setState(() { _reloading = false; /* Handle error */ }); }
+                });
+              } else { // Synchronous load
+                _reloading = false;
+                 if (_offset != null) {
+                    _layoutController!.attach(
+                        viewportOffset: _offset!,
+                        shrinkOnMove: widget.editModeSettings.shrinkOnMove,
+                        animateEverytime: widget.animateEverytime,
+                        slideToTop: widget.slideToTop,
+                        shrinkToPlace: widget.shrinkToPlace,
+                        axis: Axis.vertical,
+                        itemController: widget.dashboardItemController,
+                        slotCount: _currentSlotCount,
+                        scrollToAdded: widget.scrollToAdded);
+                 }
+              }
+            } else { // controllerSlotCountChanged is true, but not layoutsBySlotCount
+              // _layoutController.slotCount still holds the old value.
+              // _currentSlotCount holds the new responsive value.
+              // _setNewOffset will see this difference and call attach(), which will update
+              // the controller's internal slotCount and re-evaluate layout.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) { setState(() {}); }
+              });
+            }
+        } else if (responsiveValuesChanged) { // responsiveValuesChanged is true, but controllerSlotCountChanged is false
+            // This means slot count is consistent between controller property and new responsive value,
+            // but other responsive values (padding, spacing) changed.
+            // Schedule a rebuild so _setNewOffset runs and uses new _currentPadding etc.
+            // This will update _viewportDelegate in _setNewOffset.
+            // _setNewOffset might also call attach if other properties (e.g. slideToTop) changed.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) { setState(() {}); }
+            });
+        }
       }
 
-
-      if (_withDelegate) {
-        if (_snap!.connectionState == ConnectionState.none) {
-          _building = false;
-          return widget.errorPlaceholder
-              ?.call(_snap!.error!, _snap!.stackTrace!) ??
-              const SizedBox();
-        } else if (_snap!.connectionState == ConnectionState.waiting || _reloading) { // Check _reloading here
-          _building = false;
-          return widget.loadingPlaceholder ??
-              const Center(
-                child: CircularProgressIndicator(),
-              );
-        }
+      // Show loading indicator if _layoutController is not yet initialized,
+      // or if items are loading/reloading, or if async snapshot is waiting.
+      if (_layoutController == null || _reloading || (_withDelegate && _snap?.connectionState == ConnectionState.waiting)) {
+        _building = false; // Set before returning placeholder
+        return widget.loadingPlaceholder ?? const Center(child: CircularProgressIndicator());
       }
-      // dashboardWidget now uses the _current* values that are set based on constrains
-      return dashboardWidget(constrains);
+      
+      if (_withDelegate && _snap?.connectionState == ConnectionState.none && _snap?.hasError == true) {
+        _building = false;
+        return widget.errorPlaceholder?.call(_snap!.error!, _snap!.stackTrace!) ?? const SizedBox();
+      }
+
+      _building = false; // Set before returning dashboardWidget
+      return dashboardWidget(constraints);
     });
   }
 
   bool _moving = false;
 
-  // This function now primarily builds the Scrollable and _DashboardStack,
-  // using the _current* properties that have been updated by the LayoutBuilder in build().
-  Widget dashboardWidget(BoxConstraints constrains) {
+  Widget dashboardWidget(BoxConstraints constraints) {
+    // Ensure _layoutController is not null here by design of the build method
+    if (_layoutController == null) {
+      // This should ideally not be reached if build logic is correct
+      return widget.loadingPlaceholder ?? const Center(child: CircularProgressIndicator());
+    }
     return Scrollable(
         physics:
         scrollable ? widget.physics : const NeverScrollableScrollPhysics(),
