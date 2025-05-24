@@ -463,8 +463,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
       if (_layoutController == null) {
         // First time build with constraints, or after _layoutController was reset.
-        _layoutController = _DashboardLayoutController<T>();
-        _layoutController!.slotCount = _currentSlotCount;
+        _layoutController = _DashboardLayoutController<T>(initialSlotCount: _currentSlotCount);
+        // _layoutController!.slotCount = _currentSlotCount; // This line is now redundant
         widget.dashboardItemController._attach(_layoutController!);
         _layoutController!.addListener(() {
           if (mounted) {

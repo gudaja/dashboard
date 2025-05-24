@@ -211,7 +211,9 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
 ///
 class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   ///
-  _DashboardLayoutController();
+  _DashboardLayoutController({required int initialSlotCount}) {
+    this.slotCount = initialSlotCount;
+  }
 
   ///
   late DashboardItemController<T> itemController;
