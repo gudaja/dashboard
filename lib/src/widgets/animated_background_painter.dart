@@ -42,70 +42,76 @@ class _AnimatedBackgroundPainterState extends State<_AnimatedBackgroundPainter>
     super.dispose();
   }
 
-  bool onAnimation = false;
-
-  Rect? _last;
-
-  DateTime? _start;
+  Rect? _currentAnimatingRect;
+  DateTime? _animationStartTime;
 
   @override
   Widget build(BuildContext context) {
+    offset = widget.offset.pixels; // Update offset once at the beginning
+
+    Rect? newTargetRect;
     if (widget.editModeSettings.fillEditingBackground &&
         widget.layoutController.editSession != null) {
       var pos = widget.layoutController.editSession?.editing._currentPosition(
           viewportDelegate: widget.layoutController._viewportDelegate,
           slotEdge: widget.layoutController.slotEdge,
           verticalSlotEdge: widget.layoutController.verticalSlotEdge);
-      var rect = Rect.fromLTWH(pos!.x - viewportDelegate.padding.left,
-          pos.y - offset - viewportDelegate.padding.top, pos.width, pos.height);
+      newTargetRect = Rect.fromLTWH(
+          pos!.x - viewportDelegate.padding.left,
+          pos.y - offset - viewportDelegate.padding.top,
+          pos.width,
+          pos.height);
 
-      if (fillRect != null && fillRect != rect) {
-        var begin = fillRect!;
+      if (fillRect != newTargetRect) {
+        var beginRect = fillRect ?? newTargetRect;
+        Duration animationDuration = widget.editModeSettings.duration;
 
-        if (onAnimation && _last != null && _start != null) {
-          begin = _last!;
-
-          _animationController.duration = (widget.editModeSettings.duration -
-                  DateTime.now().difference(_start!).abs())
-              .abs();
-        } else {
-          _start = DateTime.now();
-          _last = fillRect;
-          _animationController.duration = widget.editModeSettings.duration;
+        if (_animationController.isAnimating && _currentAnimatingRect != null) {
+          beginRect = _currentAnimatingRect!;
+          if (_animationStartTime != null) {
+            final elapsed = DateTime.now().difference(_animationStartTime!);
+            final remaining = widget.editModeSettings.duration - elapsed;
+            animationDuration = remaining > Duration.zero ? remaining : Duration.zero;
+          }
         }
-        _animationController.reset();
-        _animation = RectTween(begin: begin, end: rect).animate(CurvedAnimation(
+        
+        _animationController.duration = animationDuration;
+        _animation = RectTween(begin: beginRect, end: newTargetRect).animate(CurvedAnimation(
             parent: _animationController,
             curve: widget.editModeSettings.curve));
-        SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
-          onAnimation = true;
-          _animationController.forward().then((value) {
-            _animationController.duration = widget.editModeSettings.duration;
-            onAnimation = false;
-            _last = null;
-            _start = null;
-          });
+
+        _animationStartTime = DateTime.now();
+        // It's generally safer to stop and reset before starting a new animation,
+        // especially if the tween or duration changes.
+        _animationController.stop(); 
+        _animationController.reset(); 
+
+        _animationController.forward().then((_) {
+          if (mounted) {
+            _animationController.duration = widget.editModeSettings.duration; // Reset to default
+            _animationStartTime = null;
+            // _currentAnimatingRect is updated by AnimatedBuilder, no need to null here
+            // explicitly unless animation is fully done and null.
+          }
         });
       }
-      fillRect = rect;
-    }
-
-    if (widget.layoutController.editSession == null ||
-        !widget.editModeSettings.fillEditingBackground) {
+      fillRect = newTargetRect;
+    } else { // Not in edit mode or fill background is disabled
+      if (_animationController.isAnimating) {
+        _animationController.stop();
+      }
       fillRect = null;
       _animation = null;
-      onAnimation = false;
-      _last = null;
+      _currentAnimatingRect = null;
+      _animationStartTime = null;
       _animationController.duration = widget.editModeSettings.duration;
-      _start = null;
     }
 
-    if (_animation != null && offset == widget.offset.pixels) {
-      offset = widget.offset.pixels;
+    if (_animation != null) {
       return AnimatedBuilder(
           animation: _animation!,
           builder: (context, child) {
-            _last = _animation!.value;
+            _currentAnimatingRect = _animation!.value; // Keep track of current animated value
             return CustomPaint(
               painter: _EditModeBackgroundPainter(
                   verticalSlotEdge: widget.layoutController.verticalSlotEdge,
@@ -114,28 +120,25 @@ class _AnimatedBackgroundPainterState extends State<_AnimatedBackgroundPainter>
                   style: widget.editModeSettings.backgroundStyle,
                   slotEdge: widget.layoutController.slotEdge,
                   lines: widget.editModeSettings.paintBackgroundLines,
-                  offset: widget.offset.pixels,
+                  offset: offset, // Use the updated offset
                   viewportDelegate: widget.layoutController._viewportDelegate),
-              isComplex: true,
+              isComplex: true, // Keep isComplex true during active animation
             );
           });
     } else {
-      _last = null;
-      onAnimation = false;
-      _start = null;
-      _animationController.duration = widget.editModeSettings.duration;
-      offset = widget.offset.pixels;
+      // When not animating, or animation is null
       return CustomPaint(
         painter: _EditModeBackgroundPainter(
-            fillPosition: fillRect,
+            fillPosition: fillRect, // This will be the final target rect or null
             lines: widget.editModeSettings.paintBackgroundLines,
             verticalSlotEdge: widget.layoutController.verticalSlotEdge,
             slotCount: widget.layoutController.slotCount,
             style: widget.editModeSettings.backgroundStyle,
             slotEdge: widget.layoutController.slotEdge,
-            offset: widget.offset.pixels,
+            offset: offset, // Use the updated offset
             viewportDelegate: widget.layoutController._viewportDelegate),
-        isComplex: false,
+        // isComplex can be false if not animating, but true is safer if fillRect can change without _animation
+        isComplex: widget.editModeSettings.fillEditingBackground && widget.layoutController.editSession != null, 
       );
     }
   }
