@@ -293,6 +293,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   // To track if the slot count used for initial item load changes due to immediate responsive calculation
   late int _initialSlotCountLoaded;
 
+  bool _isControllerInitialized = false;
+
 
   void _setOnNextFrame() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -462,29 +464,78 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       _currentPadding = newResponsivePadding;
 
       if (_layoutController == null) {
-        // First time build with constraints, or after _layoutController was reset.
         _layoutController = _DashboardLayoutController<T>(initialSlotCount: _currentSlotCount);
-        // _layoutController!.slotCount = _currentSlotCount; // This line is now redundant
         widget.dashboardItemController._attach(_layoutController!);
-        _layoutController!.addListener(() {
-          if (mounted) {
-            setState(() {});
-          }
-        });
+        _layoutController!.addListener(_onLayoutControllerChanged);
 
-        // If layouts depend on slot count and the calculated _currentSlotCount is different
-        // from what might have been loaded in initState (or if no load happened yet).
-        if (_withDelegate && widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount &&
-            (_initialSlotCountLoaded != _currentSlotCount || widget.dashboardItemController._items.isEmpty )) { // also check if items are empty
+        bool initialItemsNeedLoading = _withDelegate &&
+            widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount &&
+            (_initialSlotCountLoaded != _currentSlotCount || widget.dashboardItemController._items.isEmpty);
+        
+        bool nonDelegateItemsNeedLoadingAndNotWaiting = _withDelegate && 
+                                          !widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount && 
+                                          widget.dashboardItemController._items.isEmpty && 
+                                          _snap?.connectionState != ConnectionState.waiting;
+
+        if (initialItemsNeedLoading || nonDelegateItemsNeedLoadingAndNotWaiting) {
+          _reloading = true;
+          _reloadFor = _currentSlotCount;
+          var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
+          
+          void handleLoadCompletion({bool success = true}) {
+            if (mounted) {
+              if (success && _reloadFor == _currentSlotCount) {
+                _initialSlotCountLoaded = _currentSlotCount;
+                if (_offset != null) {
+                  _layoutController!.attach(
+                      viewportOffset: _offset!,
+                      shrinkOnMove: widget.editModeSettings.shrinkOnMove,
+                      animateEverytime: widget.animateEverytime,
+                      slideToTop: widget.slideToTop,
+                      shrinkToPlace: widget.shrinkToPlace,
+                      axis: Axis.vertical,
+                      itemController: widget.dashboardItemController,
+                      slotCount: _currentSlotCount,
+                      scrollToAdded: widget.scrollToAdded);
+                }
+              }
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) { setState(() { _reloading = false; _isControllerInitialized = true; }); }
+              });
+            }
+          }
+
+          if (loader is Future) {
+            loader.then((_) => handleLoadCompletion(success: true))
+                  .catchError((e,s) => handleLoadCompletion(success: false));
+          } else { 
+            handleLoadCompletion(success: true); 
+          }
+        } else { 
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) { setState(() { _isControllerInitialized = true; }); }
+          });
+        }
+        _building = false;
+        return widget.loadingPlaceholder ?? const Center(child: CircularProgressIndicator());
+      }
+
+      if (!_isControllerInitialized) {
+        _building = false;
+        return widget.loadingPlaceholder ?? const Center(child: CircularProgressIndicator());
+      }
+
+      // _layoutController != null AND _isControllerInitialized == true
+      bool controllerSlotCountChanged = _layoutController!.slotCount != _currentSlotCount;
+      if (controllerSlotCountChanged) {
+        if (_withDelegate && widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount) {
           _reloading = true;
           _reloadFor = _currentSlotCount;
           var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
           if (loader is Future) {
             loader.then((_) {
               if (mounted && _reloadFor == _currentSlotCount) {
-                _initialSlotCountLoaded = _currentSlotCount; 
-                // Ensure controller is attached with new items and correct slot count
-                if (_offset != null) { // Check if _offset is available
+                if (_offset != null) {
                   _layoutController!.attach(
                       viewportOffset: _offset!,
                       shrinkOnMove: widget.editModeSettings.shrinkOnMove,
@@ -497,19 +548,16 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
                       scrollToAdded: widget.scrollToAdded);
                 }
                 setState(() { _reloading = false; });
+              } else if (mounted) {
+                 setState(() { _reloading = false; });
               }
             }).catchError((e,s){
-               if (mounted) {
-                // Potentially set error state for _snap here
-                setState(() { _reloading = false; });
-              }
+              if (mounted) { setState(() { _reloading = false; /* Handle error appropriately */ }); }
             });
-          } else { // Synchronous load
+          } else { 
             _reloading = false;
-            _initialSlotCountLoaded = _currentSlotCount;
-            // Ensure controller is attached
             if (_offset != null) {
-               _layoutController!.attach(
+              _layoutController!.attach(
                   viewportOffset: _offset!,
                   shrinkOnMove: widget.editModeSettings.shrinkOnMove,
                   animateEverytime: widget.animateEverytime,
@@ -520,97 +568,23 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
                   slotCount: _currentSlotCount,
                   scrollToAdded: widget.scrollToAdded);
             }
-             // No setState needed here for _reloading, but if attach changes layout, build will handle.
           }
-        } else if (_withDelegate && widget.dashboardItemController._items.isEmpty && _snap?.connectionState != ConnectionState.waiting) {
-           widget.dashboardItemController._loadItems(_currentSlotCount);
+        } else { 
+          _layoutController!.slotCount = _currentSlotCount; 
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) { setState(() {}); }
+          });
         }
-        
-        // Schedule a rebuild because _layoutController was just created or initial load might be happening.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) { setState(() {}); }
-        });
-      } else { // _layoutController != null
-        // _layoutController exists. Check if responsive values changed and require action.
-        
-        // Define actual change flags based on comparison with _layoutController's current state
-        // or previously used values if _layoutController doesn't store them all (e.g. padding).
-        // For slotCount, comparison with _layoutController.slotCount is direct.
-        // For others, responsiveValuesChanged (which compares _current* from prev build with newResponsive*) is a good proxy.
-        bool controllerSlotCountChanged = _layoutController!.slotCount != _currentSlotCount;
-
-        if (controllerSlotCountChanged) {
-            // If layouts depend on slot count, _loadItems is called.
-            // The attach() in its .then() block will update the controller's slotCount.
-            // If not layoutsBySlotCount, we don't update _layoutController.slotCount here.
-            // Instead, we let _setNewOffset detect the discrepancy and call attach().
-            if (_withDelegate && widget.dashboardItemController.itemStorageDelegate!.layoutsBySlotCount) {
-              _reloading = true;
-              _reloadFor = _currentSlotCount;
-              // It's important that _layoutController.slotCount reflects the *new* count if we were to use it before attach.
-              // However, _loadItems should use _currentSlotCount, and attach will set it in the controller.
-              // So, removing the direct assignment: _layoutController!.slotCount = _currentSlotCount;
-              var loader = widget.dashboardItemController._loadItems(_currentSlotCount);
-              if (loader is Future) {
-                loader.then((_) {
-                  if (mounted && _reloadFor == _currentSlotCount) {
-                    if (_offset != null) {
-                      _layoutController!.attach(
-                          viewportOffset: _offset!,
-                          shrinkOnMove: widget.editModeSettings.shrinkOnMove,
-                          animateEverytime: widget.animateEverytime,
-                          slideToTop: widget.slideToTop,
-                          shrinkToPlace: widget.shrinkToPlace,
-                          axis: Axis.vertical,
-                          itemController: widget.dashboardItemController,
-                          slotCount: _currentSlotCount,
-                          scrollToAdded: widget.scrollToAdded);
-                    }
-                    setState(() { _reloading = false; });
-                  }
-                }).catchError((e,s){
-                  if (mounted) { setState(() { _reloading = false; /* Handle error */ }); }
-                });
-              } else { // Synchronous load
-                _reloading = false;
-                 if (_offset != null) {
-                    _layoutController!.attach(
-                        viewportOffset: _offset!,
-                        shrinkOnMove: widget.editModeSettings.shrinkOnMove,
-                        animateEverytime: widget.animateEverytime,
-                        slideToTop: widget.slideToTop,
-                        shrinkToPlace: widget.shrinkToPlace,
-                        axis: Axis.vertical,
-                        itemController: widget.dashboardItemController,
-                        slotCount: _currentSlotCount,
-                        scrollToAdded: widget.scrollToAdded);
-                 }
-              }
-            } else { // controllerSlotCountChanged is true, but not layoutsBySlotCount
-              // _layoutController.slotCount still holds the old value.
-              // _currentSlotCount holds the new responsive value.
-              // _setNewOffset will see this difference and call attach(), which will update
-              // the controller's internal slotCount and re-evaluate layout.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) { setState(() {}); }
-              });
-            }
-        } else if (responsiveValuesChanged) { // responsiveValuesChanged is true, but controllerSlotCountChanged is false
-            // This means slot count is consistent between controller property and new responsive value,
-            // but other responsive values (padding, spacing) changed.
-            // Schedule a rebuild so _setNewOffset runs and uses new _currentPadding etc.
-            // This will update _viewportDelegate in _setNewOffset.
-            // _setNewOffset might also call attach if other properties (e.g. slideToTop) changed.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) { setState(() {}); }
-            });
-        }
+      } else if (responsiveValuesChanged) { 
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) { setState(() {}); }
+          });
       }
 
-      // Show loading indicator if _layoutController is not yet initialized,
-      // or if items are loading/reloading, or if async snapshot is waiting.
-      if (_layoutController == null || _reloading || (_withDelegate && _snap?.connectionState == ConnectionState.waiting)) {
-        _building = false; // Set before returning placeholder
+      // Final checks for loading/error states before building dashboardWidget
+      // _layoutController == null check is removed because it's handled by the _isControllerInitialized logic.
+      if (_reloading || (_withDelegate && _snap?.connectionState == ConnectionState.waiting)) {
+        _building = false;
         return widget.loadingPlaceholder ?? const Center(child: CircularProgressIndicator());
       }
       
@@ -619,7 +593,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
         return widget.errorPlaceholder?.call(_snap!.error!, _snap!.stackTrace!) ?? const SizedBox();
       }
 
-      _building = false; // Set before returning dashboardWidget
+      _building = false;
       return dashboardWidget(constraints);
     });
   }
