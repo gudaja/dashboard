@@ -179,7 +179,12 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
           // Then sort by X position (column) within the same row
           return a.layoutData.startX.compareTo(b.layoutData.startX);
         });
-
+        
+        print("📥 LOADING ${items.length} items from storage:");
+        for (var item in items) {
+          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
+        }
+        
         return items;
       });
     } on Exception {
@@ -198,6 +203,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
     var js = json
         .encode(_localItems!.map((key, value) => MapEntry(key, value.toMap())));
+
+    print("💾 SAVING ${items.length} updated items:");
+    for (var item in items) {
+      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
+    }
 
     await _preferences.setString("${id}_layout_data_", js);
   }

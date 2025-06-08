@@ -430,31 +430,43 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   }
 
   /// Find next available position that avoids virtual columns
+  /// Uses deterministic strategy: prefer minimal distance movement
   ItemLayout? findValidPosition(ItemLayout layout) {
     if (virtualColumnsConfig == null || canPlaceAt(layout)) {
       return layout;
     }
 
-    // Try to find a valid position by moving right
-    for (int startX = layout.startX;
-        startX + layout.width <= slotCount;
-        startX++) {
-      final testLayout =
-          layout.copyWithStarts(startX: startX, startY: layout.startY);
-      if (canPlaceAt(testLayout)) {
-        return testLayout;
+    print(
+        "🔍 FINDING VALID POSITION for (${layout.startX}, ${layout.startY}) - blocked by virtual columns");
+
+    // Find the closest valid position by expanding search distance
+    for (int distance = 1; distance < slotCount; distance++) {
+      // Try moving left first (consistent behavior)
+      int leftX = layout.startX - distance;
+      if (leftX >= 0) {
+        final testLayout =
+            layout.copyWithStarts(startX: leftX, startY: layout.startY);
+        if (canPlaceAt(testLayout)) {
+          print(
+              "🎯 FOUND VALID POSITION: ($leftX, ${layout.startY}) - moved LEFT by $distance");
+          return testLayout;
+        }
+      }
+
+      // Then try moving right
+      int rightX = layout.startX + distance;
+      if (rightX + layout.width <= slotCount) {
+        final testLayout =
+            layout.copyWithStarts(startX: rightX, startY: layout.startY);
+        if (canPlaceAt(testLayout)) {
+          print(
+              "🎯 FOUND VALID POSITION: ($rightX, ${layout.startY}) - moved RIGHT by $distance");
+          return testLayout;
+        }
       }
     }
 
-    // Try to find a valid position by moving left
-    for (int startX = layout.startX - 1; startX >= 0; startX--) {
-      final testLayout =
-          layout.copyWithStarts(startX: startX, startY: layout.startY);
-      if (canPlaceAt(testLayout)) {
-        return testLayout;
-      }
-    }
-
+    print("❌ NO VALID POSITION FOUND for (${layout.startX}, ${layout.startY})");
     return null; // No valid position found
   }
 
@@ -621,7 +633,13 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       } else {
         // Check virtual columns constraint
         if (!canPlaceAt(n)) {
-          return null;
+          // Try to find a valid position near the original
+          var validLayout = findValidPosition(n);
+          if (validLayout != null) {
+            n = validLayout;
+          } else {
+            return null; // No valid position found anywhere
+          }
         }
 
         // Fit viewport
@@ -721,8 +739,18 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
             getIndex([i.value.startX, i.value.startY]), i.value.origin);
 
         if (mount == null) {
+          print(
+              "❌ MOUNT FAILED: ${i.key} at (${i.value.startX}, ${i.value.startY}) - adding to mountToTop");
           not.add(i.key);
           continue layouts;
+        }
+
+        // Check if position changed during mounting
+        if (mount.startX != i.value.startX || mount.startY != i.value.startY) {
+          print(
+              "🔄 MOUNT ADJUSTED: ${i.key} from (${i.value.startX}, ${i.value.startY}) → (${mount.startX}, ${mount.startY})");
+        } else {
+          print("✅ MOUNT OK: ${i.key} at (${mount.startX}, ${mount.startY})");
         }
 
         _indexItem(mount, i.key);
@@ -762,12 +790,18 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       }
 
       for (var n in not) {
+        print("🔝 MOUNT TO TOP: $n - finding new position");
         mountToTop(n);
+        var layout = _layouts![n]!.origin;
+        print(
+            "🔝 MOUNT TO TOP RESULT: $n at (${layout.startX}, ${layout.startY})");
       }
 
       changes.addAll(not);
 
       if (changes.isNotEmpty) {
+        print(
+            "🔄 MOUNT PROCESS COMPLETED: ${changes.length} items changed positions");
         itemController.itemStorageDelegate?._onItemsUpdated(
             changes.map((e) => itemController._getItemWithLayout(e)).toList(),
             slotCount);
