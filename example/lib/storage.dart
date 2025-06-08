@@ -160,7 +160,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
           await _preferences.setString(
               "$id" + "_layout_data_",
-              json.encode(_default!.asMap().map(
+              json.encode(_default.asMap().map(
                   (key, value) => MapEntry(value.identifier, value.toMap()))));
 
           await _preferences.setBool("init", true);
