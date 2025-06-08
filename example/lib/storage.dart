@@ -247,6 +247,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     await _preferences.setBool("init", false);
   }
 
+  /// Resetuje cache żeby wymusić ponowne ładowanie z SharedPreferences
+  void resetCache() {
+    _localItems = null;
+  }
+
   void _setLocal() {
     _localItems = {for (var item in _default) item.identifier: item};
   }

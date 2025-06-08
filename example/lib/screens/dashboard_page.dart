@@ -138,6 +138,7 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           IconButton(
               onPressed: () async {
+                print("🔄 BUTTON PRESSED: Reset do domyślnych");
                 await storage.clear();
                 setState(() {
                   refreshing = true;
@@ -151,25 +152,44 @@ class _DashboardPageState extends State<DashboardPage> {
                   });
                 });
               },
-              icon: const Icon(Icons.refresh)),
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Reset do domyślnych'),
+          IconButton(
+              onPressed: () async {
+                print("📥 BUTTON PRESSED: Przeładuj z storage");
+                await reloadFromStorage();
+              },
+              icon: const Icon(Icons.download),
+              tooltip: 'Przeładuj z storage'),
           IconButton(
               onPressed: () {
+                print("🗑️ BUTTON PRESSED: Usuń wszystkie elementy");
                 itemController.clear();
               },
-              icon: const Icon(Icons.delete)),
+              icon: const Icon(Icons.delete),
+              tooltip: 'Usuń wszystkie elementy'),
           IconButton(
               onPressed: () {
+                print("➕ BUTTON PRESSED: Dodaj nowy element");
                 add(context);
               },
-              icon: const Icon(Icons.add)),
+              icon: const Icon(Icons.add),
+              tooltip: 'Dodaj nowy element'),
           IconButton(
               onPressed: () {
+                String action = !itemController.isEditing
+                    ? "Włącz tryb edycji"
+                    : "Zakończ edycję";
+                print("✏️ BUTTON PRESSED: $action");
                 itemController.isEditing = !itemController.isEditing;
                 setState(() {});
               },
               icon: !itemController.isEditing
                   ? const Icon(Icons.edit)
-                  : const Icon(Icons.check)),
+                  : const Icon(Icons.check),
+              tooltip: !itemController.isEditing
+                  ? 'Włącz tryb edycji'
+                  : 'Zakończ edycję'),
         ],
       ),
       body: SafeArea(
@@ -285,6 +305,29 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
       ),
     );
+  }
+
+  /// Przeładowuje konfigurację z storage bez czyszczenia
+  Future<void> reloadFromStorage() async {
+    setState(() {
+      refreshing = true;
+    });
+
+    // Odśwież cache storage żeby wymusić ponowne załadowanie
+    storage.resetCache();
+
+    // Stwórz nowy controller który załaduje elementy z storage
+    _itemController =
+        DashboardItemController.withDelegate(itemStorageDelegate: storage);
+
+    print(
+        "🔄 RELOAD FROM STORAGE - wymuszenie ponownego ładowania konfiguracji");
+
+    Future.delayed(const Duration(milliseconds: 150)).then((value) {
+      setState(() {
+        refreshing = false;
+      });
+    });
   }
 
   Future<void> add(BuildContext context) async {
