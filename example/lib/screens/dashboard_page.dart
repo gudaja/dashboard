@@ -171,10 +171,13 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.open_in_full,
-                          color: Colors.white,
-                          size: 16,
+                        child: Transform.rotate(
+                          angle: 3.14159 / 2, // 180 stopni
+                          child: Icon(
+                            Icons.open_in_full,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       );
                     },
