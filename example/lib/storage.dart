@@ -157,17 +157,37 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
   @override
   FutureOr<List<ColoredDashboardItem>> getAllItems(int slotCount) {
+    print("🔍 GET ALL ITEMS wywoływane dla slotCount: $slotCount");
+    
     try {
       if (_localItems != null) {
-        return _localItems!.values.toList();
+        print("💾 Zwracam elementy z cache (${_localItems!.length} items)");
+        final cachedItems = _localItems!.values.toList();
+        
+        // Wypisz pozycje z cache
+        cachedItems.sort((a, b) {
+          int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+          if (yCompare != 0) return yCompare;
+          return a.layoutData.startX.compareTo(b.layoutData.startX);
+        });
+        
+        print("💭 POZYCJE Z CACHE:");
+        for (var item in cachedItems) {
+          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+        }
+        
+        return cachedItems;
       }
 
       return Future.microtask(() async {
+        print("📱 ŁADUJĘ Z SHARED PREFERENCES...");
         _preferences = await SharedPreferences.getInstance();
 
         var init = _preferences.getBool("init") ?? false;
+        print("🔧 Init flag: $init");
 
         if (!init) {
+          print("🆕 PIERWSZY START - tworzę domyślny layout");
           _localItems = {for (var item in _default) item.identifier: item};
 
           await _preferences.setString(
@@ -176,6 +196,9 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
                   (key, value) => MapEntry(value.identifier, value.toMap()))));
 
           await _preferences.setBool("init", true);
+          print("✅ Zapisano domyślny layout do SharedPreferences");
+        } else {
+          print("♻️ ŁADUJĘ ISTNIEJĄCY LAYOUT z SharedPreferences");
         }
 
         var js = json.decode(_preferences.getString("${id}_layout_data_")!);
@@ -302,7 +325,19 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   void resetCache() {
     print("🔄 RESETTING CACHE - wymuszam ponowne ładowanie z SharedPreferences");
     if (_localItems != null) {
-      print("🗑️ Usuwam ${_localItems!.length} elementów z cache");
+      print("🗑️ Usuwam ${_localItems!.length} elementów z cache:");
+      
+      // Wypisz pozycje elementów przed usunięciem z cache
+      final sortedItems = _localItems!.values.toList();
+      sortedItems.sort((a, b) {
+        int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+        if (yCompare != 0) return yCompare;
+        return a.layoutData.startX.compareTo(b.layoutData.startX);
+      });
+      
+      for (var item in sortedItems) {
+        print("  💭 Cache miał: ${item.identifier} na (${item.layoutData.startX}, ${item.layoutData.startY})");
+      }
     } else {
       print("ℹ️ Cache już był pusty");
     }

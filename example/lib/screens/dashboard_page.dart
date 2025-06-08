@@ -342,21 +342,55 @@ class _DashboardPageState extends State<DashboardPage> {
       });
       
       print("🔄 RELOAD FROM STORAGE - COMPLETE");
-      print("🔍 SPRAWDZAM AKTUALNY STAN KONTROLERA...");
       
-      // Sprawdź czy kontroler ma elementy  
-      try {
-        final itemCount = _itemController.items.length;
-        print("📋 KONTROLER MA $itemCount elementów");
-      } catch (e) {
-        print("⚠️ NIE MOŻNA SPRAWDZIĆ KONTROLERA: $e");
-      }
+      // Wypisz pozycje odczytane z SharedPreferences
+      await _printPositionsAfterReload();
       
     } catch (e) {
       print("❌ RELOAD ERROR: $e");
       setState(() {
         refreshing = false;
       });
+    }
+  }
+
+  /// Wypisuje pozycje odczytane po przeładowaniu
+  Future<void> _printPositionsAfterReload() async {
+    print("📋 POZYCJE ODCZYTANE PO PRZEŁADOWANIU:");
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final layoutData = prefs.getString("${storage.id}_layout_data_");
+      
+      if (layoutData != null) {
+        try {
+          final decoded = json.decode(layoutData);
+          print("📍 ODCZYTANO ${decoded.length} elementów z pozycjami:");
+          
+          // Konwertuj i posortuj dla czytelności
+          final items = decoded.values
+              .map<ColoredDashboardItem>((value) => ColoredDashboardItem.fromMap(value))
+              .toList();
+          
+          items.sort((ColoredDashboardItem a, ColoredDashboardItem b) {
+            int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+            if (yCompare != 0) return yCompare;
+            return a.layoutData.startX.compareTo(b.layoutData.startX);
+          });
+          
+          for (var item in items) {
+            print("  📌 ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+          }
+          
+        } catch (e) {
+          print("  ❌ Error parsing reloaded data: $e");
+        }
+      } else {
+        print("  ❌ No data found after reload");
+      }
+      
+    } catch (e) {
+      print("❌ Error reading positions after reload: $e");
     }
   }
 
