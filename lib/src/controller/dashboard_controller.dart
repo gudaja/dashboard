@@ -859,19 +859,20 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   /// Get the column index from X coordinate considering virtual columns
   int getColumnFromPosition(double x) {
     if (virtualColumnsConfig == null) {
-      return (x / slotEdge).floor().clamp(0, slotCount - 1);
+      return (x / slotEdge).round().clamp(0, slotCount - 1);
     }
 
     final totalWidth = _axis == Axis.vertical
         ? _viewportDelegate.constraints.maxWidth
         : _viewportDelegate.constraints.maxHeight;
 
-    // Find which column contains this X position
+    // Find which column contains this X position using center-based logic for symmetry
     double currentPosition = 0.0;
     for (int column = 0; column < slotCount; column++) {
       double columnWidth =
           virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
-      if (x >= currentPosition && x < currentPosition + columnWidth) {
+      double columnCenter = currentPosition + columnWidth / 2;
+      if (x < columnCenter) {
         return column;
       }
       currentPosition += columnWidth;

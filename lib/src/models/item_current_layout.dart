@@ -832,16 +832,21 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
     var on = newTransform + holdOffset;
 
-    var holdX = ((on.dx / _slotEdge).floor() + origin.startX)
+    // Use getColumnFromPosition instead of fixed slotEdge division for proper virtual columns support
+    var holdX = _layoutController
+        .getColumnFromPosition(
+            on.dx + _layoutController.getColumnPosition(origin.startX))
         .clamp(0, _layoutController.slotCount - 1);
 
-    var holdY = ((on.dy / _verticalSlotEdge).floor() + origin.startY)
+    var holdY = ((on.dy / _verticalSlotEdge).round() + origin.startY)
         .clamp(0, 4294967296);
 
-    var newStartX = ((newTransform.dx / _slotEdge).floor() + origin.startX)
+    var newStartX = _layoutController
+        .getColumnFromPosition(newTransform.dx +
+            _layoutController.getColumnPosition(origin.startX))
         .clamp(0, _layoutController.slotCount - 1);
     var newStartY =
-        ((newTransform.dy / _verticalSlotEdge).floor() + origin.startY)
+        ((newTransform.dy / _verticalSlotEdge).round() + origin.startY)
             .clamp(0, 4294967296);
 
     var haveLeft = newStartX > 0;
