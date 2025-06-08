@@ -5,8 +5,9 @@ class VirtualColumnsConfig {
   /// List of disabled columns indices (0-based)
   final List<int> disabledColumns;
 
-  /// Width of disabled columns in logical pixels
+  /// Width of disabled columns as percentage of total grid width (0.0 - 1.0)
   /// If null, disabled columns have zero width (completely hidden)
+  /// Example: 0.05 means 5% of grid width per disabled column
   final double? disabledColumnWidth;
 
   /// Whether disabled columns should be visible but not interactable
@@ -16,7 +17,10 @@ class VirtualColumnsConfig {
     required this.disabledColumns,
     this.disabledColumnWidth,
     this.showDisabledColumns = true,
-  });
+  }) : assert(
+            disabledColumnWidth == null ||
+                (disabledColumnWidth >= 0.0 && disabledColumnWidth <= 1.0),
+            'disabledColumnWidth must be between 0.0 and 1.0 (percentage)');
 
   /// Create config with completely hidden disabled columns
   const VirtualColumnsConfig.hidden({
@@ -25,10 +29,15 @@ class VirtualColumnsConfig {
         showDisabledColumns = false;
 
   /// Create config with visible but disabled columns
+  /// [disabledColumnWidth] as percentage of grid width (default 5%)
   const VirtualColumnsConfig.visible({
     required this.disabledColumns,
-    this.disabledColumnWidth = 40.0,
-  }) : showDisabledColumns = true;
+    this.disabledColumnWidth = 0.05,
+  })  : showDisabledColumns = true,
+        assert(
+            disabledColumnWidth == null ||
+                (disabledColumnWidth >= 0.0 && disabledColumnWidth <= 1.0),
+            'disabledColumnWidth must be between 0.0 and 1.0 (percentage)');
 
   /// Check if column is disabled
   bool isColumnDisabled(int column) {
@@ -36,27 +45,32 @@ class VirtualColumnsConfig {
   }
 
   /// Get effective width for a column
-  double getColumnWidth(int column, double normalSlotWidth) {
+  double getColumnWidth(
+      int column, double normalSlotWidth, double totalGridWidth) {
     if (isColumnDisabled(column)) {
-      return disabledColumnWidth ?? 0.0;
+      return disabledColumnWidth != null
+          ? (disabledColumnWidth! * totalGridWidth)
+          : 0.0;
     }
     return normalSlotWidth;
   }
 
   /// Calculate total grid width including virtual columns
-  double calculateTotalWidth(int totalColumns, double normalSlotWidth) {
+  double calculateTotalWidth(
+      int totalColumns, double normalSlotWidth, double totalGridWidth) {
     double totalWidth = 0.0;
     for (int i = 0; i < totalColumns; i++) {
-      totalWidth += getColumnWidth(i, normalSlotWidth);
+      totalWidth += getColumnWidth(i, normalSlotWidth, totalGridWidth);
     }
     return totalWidth;
   }
 
   /// Get the X position for a column considering virtual columns
-  double getColumnPosition(int column, double normalSlotWidth) {
+  double getColumnPosition(
+      int column, double normalSlotWidth, double totalGridWidth) {
     double position = 0.0;
     for (int i = 0; i < column; i++) {
-      position += getColumnWidth(i, normalSlotWidth);
+      position += getColumnWidth(i, normalSlotWidth, totalGridWidth);
     }
     return position;
   }

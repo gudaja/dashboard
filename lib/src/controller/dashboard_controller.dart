@@ -826,35 +826,39 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       return column * slotEdge;
     }
 
-    double position = 0.0;
-    for (int i = 0; i < column; i++) {
-      if (virtualColumnsConfig!.isColumnDisabled(i)) {
-        position += virtualColumnsConfig!.disabledColumnWidth ?? 0.0;
-      } else {
-        position += slotEdge;
-      }
-    }
-    return position;
+    final totalWidth = _axis == Axis.vertical
+        ? _viewportDelegate.constraints.maxWidth
+        : _viewportDelegate.constraints.maxHeight;
+
+    return virtualColumnsConfig!
+        .getColumnPosition(column, slotEdge, totalWidth);
   }
 
   /// Get the width for a specific column
   double getColumnWidth(int column) {
-    if (virtualColumnsConfig?.isColumnDisabled(column) ?? false) {
-      return virtualColumnsConfig!.disabledColumnWidth ?? 0.0;
+    if (virtualColumnsConfig == null) {
+      return slotEdge;
     }
-    return slotEdge;
+
+    final totalWidth = _axis == Axis.vertical
+        ? _viewportDelegate.constraints.maxWidth
+        : _viewportDelegate.constraints.maxHeight;
+
+    return virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
   }
 
   void _setSizes(BoxConstraints constrains, double vertical) {
     verticalSlotEdge = vertical;
 
     if (virtualColumnsConfig != null) {
-      // Calculate normal slot width considering disabled columns
+      // Calculate normal slot width considering disabled columns with percentage
       final totalWidth =
           _axis == Axis.vertical ? constrains.maxWidth : constrains.maxHeight;
       final disabledColumnsWidth =
           virtualColumnsConfig!.disabledColumns.length *
-              (virtualColumnsConfig!.disabledColumnWidth ?? 0.0);
+              (virtualColumnsConfig!.disabledColumnWidth != null
+                  ? (virtualColumnsConfig!.disabledColumnWidth! * totalWidth)
+                  : 0.0);
       final enabledColumnsCount =
           slotCount - virtualColumnsConfig!.disabledColumns.length;
 
