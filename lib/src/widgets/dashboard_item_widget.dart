@@ -209,27 +209,6 @@ class _DashboardItemWidgetState<T extends DashboardItem>
         onExit: _exit,
         child: result,
       );
-
-      // Add custom resize handle if provided
-      if (widget.editModeSettings.resizeHandleBuilder != null) {
-        print(
-            'Adding resize handle to Stack for item: ${widget.item.identifier}');
-        result = Stack(
-          clipBehavior: Clip.none,
-          children: [
-            result,
-            Positioned(
-              bottom: -5,
-              right: -5,
-              child: widget.editModeSettings.resizeHandleBuilder!(
-                context,
-                widget.item,
-                true,
-              ),
-            ),
-          ],
-        );
-      }
     }
 
     var currentEdit = widget.layoutController.editSession?.editing.id ==
@@ -363,12 +342,33 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           }
         }
 
+        Widget finalChild = w!;
+
+        // Add resize handle at the positioned level if we're in edit mode
+        if (onEditMode && widget.editModeSettings.resizeHandleBuilder != null) {
+          finalChild = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              finalChild,
+              Positioned(
+                bottom: -10,
+                right: -10,
+                child: widget.editModeSettings.resizeHandleBuilder!(
+                  context,
+                  widget.item,
+                  true,
+                ),
+              ),
+            ],
+          );
+        }
+
         return Positioned(
             left: left,
             top: top - widget.offset.pixels,
             width: cp.width,
             height: cp.height,
-            child: w!);
+            child: finalChild);
       },
     );
   }

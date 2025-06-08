@@ -156,8 +156,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     curve: Curves.easeOut,
                     duration: const Duration(milliseconds: 300),
                     resizeHandleBuilder: (context, item, isEditing) {
-                      print(
-                          'Building resize handle for item: ${item.identifier}, isEditing: $isEditing');
                       return Container(
                         width: 30,
                         height: 30,
