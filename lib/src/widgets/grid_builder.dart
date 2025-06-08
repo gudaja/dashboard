@@ -21,6 +21,22 @@ abstract class SlotBackgroundBuilder<T extends DashboardItem> {
     return _WithVirtualColumnsSlotBackgroundBuilder<T>(builder);
   }
 
+  /// Create a builder with a function that has access to slot dimensions.
+  static SlotBackgroundBuilder<T>
+      withDimensionsFunction<T extends DashboardItem>(
+          Widget? Function(
+                  BuildContext context,
+                  T? item,
+                  int x,
+                  int y,
+                  bool editing,
+                  double slotWidth,
+                  double slotHeight,
+                  VirtualColumnsConfig? virtualConfig)
+              builder) {
+    return _WithDimensionsSlotBackgroundBuilder<T>(builder);
+  }
+
   DashboardItemController<T>? _itemController;
 
   Widget _build(BuildContext context, int x, int y) {
@@ -69,5 +85,32 @@ class _WithVirtualColumnsSlotBackgroundBuilder<T extends DashboardItem>
     final virtualConfig =
         _itemController!._layoutController!.virtualColumnsConfig;
     return builder(context, item, x, y, editing, virtualConfig);
+  }
+}
+
+class _WithDimensionsSlotBackgroundBuilder<T extends DashboardItem>
+    extends SlotBackgroundBuilder<T> {
+  final Widget? Function(
+      BuildContext context,
+      T? item,
+      int x,
+      int y,
+      bool editing,
+      double slotWidth,
+      double slotHeight,
+      VirtualColumnsConfig? virtualConfig) builder;
+
+  _WithDimensionsSlotBackgroundBuilder(this.builder);
+
+  @override
+  Widget? buildBackground(
+      BuildContext context, T? item, int x, int y, bool editing) {
+    final layoutController = _itemController!._layoutController!;
+    final virtualConfig = layoutController.virtualColumnsConfig;
+    final slotWidth = layoutController.getColumnWidth(x);
+    final slotHeight = layoutController.verticalSlotEdge;
+
+    return builder(
+        context, item, x, y, editing, slotWidth, slotHeight, virtualConfig);
   }
 }

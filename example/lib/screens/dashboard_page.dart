@@ -17,7 +17,7 @@ class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
         child: Container(
           decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(6)),
         ),
       );
     }
@@ -32,11 +32,13 @@ class ItemDisplayWidget extends StatelessWidget {
     required this.item,
     required this.isEditing,
     required this.onDelete,
+    this.borderRadius = 10.0,
   });
 
   final ColoredDashboardItem item;
   final bool isEditing;
   final VoidCallback onDelete;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +58,7 @@ class ItemDisplayWidget extends StatelessWidget {
     return PerformantDashboardItem(
       child: OptimizedDashboardContainer(
         color: item.color ?? Colors.grey,
+        borderRadius: borderRadius,
         child: Stack(
           children: [
             SizedBox(
@@ -124,11 +127,11 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     var w = MediaQuery.of(context).size.width;
-    // slot = w > 600
-    //     ? w > 900
-    //         ? 10
-    //         : 6
-    //     : 4;
+
+    // Calculate dynamic border radius for items based on slot size
+    final slotWidth = (w - 16) / slot!; // subtract padding
+    final itemBorderRadius = (slotWidth * 0.08).clamp(4.0, 15.0);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4285F4),
@@ -181,18 +184,22 @@ class _DashboardPageState extends State<DashboardPage> {
                 slideToTop: true,
                 absorbPointer: false,
                 slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withVirtualColumnsFunction(
-                        (context, item, x, y, editing, virtualConfig) {
+                    SlotBackgroundBuilder.withDimensionsFunction((context, item,
+                        x, y, editing, slotWidth, slotHeight, virtualConfig) {
                   // Show disabled columns in red using config
                   final isDisabled =
                       virtualConfig?.isColumnDisabled(x) ?? false;
+
+                  // Calculate dynamic border radius (5% of slot width, max 10px)
+                  final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
+
                   return isDisabled
                       ? null
                       : Container(
                           decoration: BoxDecoration(
                             border:
                                 Border.all(color: Colors.black12, width: 0.5),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(borderRadius),
                             color: null,
                           ),
                           child: null,
@@ -219,7 +226,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     clipBehavior: Clip.antiAliasWithSaveLayer,
                     elevation: 5,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15))),
+                        borderRadius: BorderRadius.circular(itemBorderRadius))),
                 physics: const RangeMaintainingScrollPhysics()
                     .applyTo(ClampingScrollPhysics()),
                 editModeSettings: EditModeSettings(
@@ -275,6 +282,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     onDelete: () {
                       itemController.delete(item.identifier);
                     },
+                    borderRadius: itemBorderRadius,
                   );
                 },
               ),
