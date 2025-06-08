@@ -51,7 +51,8 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
       this.itemStyle = const ItemStyle(),
       this.scrollToAdded = true,
       this.slotBackgroundBuilder,
-      this.onGridDimensionsChanged})
+      this.onGridDimensionsChanged,
+      this.virtualColumnsConfig})
       : assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
         editModeSettings = editModeSettings ?? EditModeSettings();
@@ -206,6 +207,18 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
   /// Callback to notify when grid dimensions change
   final void Function(GridDimensions dimensions)? onGridDimensionsChanged;
 
+  /// Virtual columns configuration for disabling specific columns.
+  /// When set, specified columns cannot have items placed on them.
+  ///
+  /// Example:
+  /// ```dart
+  /// VirtualColumnsConfig(
+  ///   disabledColumns: [7, 15], // columns 7 and 15 are disabled
+  ///   disabledColumnWidth: 40.0, // disabled columns are 40px wide
+  /// )
+  /// ```
+  final VirtualColumnsConfig? virtualColumnsConfig;
+
   @override
   State<Dashboard<T>> createState() => _DashboardState<T>();
 }
@@ -296,7 +309,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
           axis: Axis.vertical,
           itemController: widget.dashboardItemController,
           slotCount: widget.slotCount,
-          scrollToAdded: widget.scrollToAdded);
+          scrollToAdded: widget.scrollToAdded,
+          virtualColumnsConfig: widget.virtualColumnsConfig);
       _setOnNextFrame();
     }
 
@@ -310,7 +324,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
           axis: Axis.vertical,
           itemController: widget.dashboardItemController,
           slotCount: widget.slotCount,
-          scrollToAdded: widget.scrollToAdded);
+          scrollToAdded: widget.scrollToAdded,
+          virtualColumnsConfig: widget.virtualColumnsConfig);
       _setOnNextFrame();
     }
 
@@ -425,7 +440,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
                 axis: Axis.vertical,
                 itemController: widget.dashboardItemController,
                 slotCount: widget.slotCount,
-                scrollToAdded: widget.scrollToAdded);
+                scrollToAdded: widget.scrollToAdded,
+                virtualColumnsConfig: widget.virtualColumnsConfig);
           }
         });
       } else {
@@ -440,7 +456,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
               axis: Axis.vertical,
               itemController: widget.dashboardItemController,
               slotCount: widget.slotCount,
-              scrollToAdded: widget.scrollToAdded);
+              scrollToAdded: widget.scrollToAdded,
+              virtualColumnsConfig: widget.virtualColumnsConfig);
         }
       }
     }

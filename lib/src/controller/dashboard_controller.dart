@@ -251,6 +251,9 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   ///
   late double slotEdge, verticalSlotEdge;
 
+  /// Virtual columns configuration
+  VirtualColumnsConfig? virtualColumnsConfig;
+
   ///
   Map<String, _ItemCurrentLayout>? _layouts;
 
@@ -406,6 +409,53 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   ///
   List<int> getIndexCoordinate(int index) {
     return [index % slotCount, index ~/ slotCount];
+  }
+
+  /// Check if column is disabled (virtual column)
+  bool isColumnDisabled(int column) {
+    return virtualColumnsConfig?.isColumnDisabled(column) ?? false;
+  }
+
+  /// Check if item can be placed at given position considering virtual columns
+  bool canPlaceAt(ItemLayout layout) {
+    if (virtualColumnsConfig == null) return true;
+
+    // Check if any part of the item would be on disabled columns
+    for (int x = layout.startX; x < layout.startX + layout.width; x++) {
+      if (isColumnDisabled(x)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Find next available position that avoids virtual columns
+  ItemLayout? findValidPosition(ItemLayout layout) {
+    if (virtualColumnsConfig == null || canPlaceAt(layout)) {
+      return layout;
+    }
+
+    // Try to find a valid position by moving right
+    for (int startX = layout.startX;
+        startX + layout.width <= slotCount;
+        startX++) {
+      final testLayout =
+          layout.copyWithStarts(startX: startX, startY: layout.startY);
+      if (canPlaceAt(testLayout)) {
+        return testLayout;
+      }
+    }
+
+    // Try to find a valid position by moving left
+    for (int startX = layout.startX - 1; startX >= 0; startX--) {
+      final testLayout =
+          layout.copyWithStarts(startX: startX, startY: layout.startY);
+      if (canPlaceAt(testLayout)) {
+        return testLayout;
+      }
+    }
+
+    return null; // No valid position found
   }
 
   List<int?> getOverflowsAlt(ItemLayout itemLayout) {
@@ -569,6 +619,11 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
           return null;
         }
       } else {
+        // Check virtual columns constraint
+        if (!canPlaceAt(n)) {
+          return null;
+        }
+
         // Fit viewport
         var overflows = getOverflowsAlt(n);
         if (overflows.where((element) => element != null).isEmpty) {
@@ -580,8 +635,14 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
             var eY = overflows[1] ?? (n.startY + n.height);
 
             if (eX - n.startX >= n.minWidth && eY - n.startY >= n.minHeight) {
-              return n.copyWithDimension(
+              var shrunkLayout = n.copyWithDimension(
                   width: eX - n.startX, height: eY - n.startY);
+              // Check if shrunk layout still respects virtual columns
+              if (canPlaceAt(shrunkLayout)) {
+                return shrunkLayout;
+              } else {
+                return null;
+              }
             } else {
               return null;
             }
@@ -781,6 +842,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     required bool? shrinkOnMove,
     required ViewportOffset viewportOffset,
     required bool scrollToAdded,
+    VirtualColumnsConfig? virtualColumnsConfig,
   }) {
     this.shrinkOnMove = shrinkOnMove;
     this.itemController = itemController;
@@ -789,6 +851,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     this.slotCount = slotCount;
     this.animateEverytime = animateEverytime;
     this.scrollToAdded = scrollToAdded;
+    this.virtualColumnsConfig = virtualColumnsConfig;
     _axis = axis;
     _isAttached = true;
     _viewportOffset = viewportOffset;

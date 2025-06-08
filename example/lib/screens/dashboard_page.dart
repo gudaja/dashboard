@@ -182,11 +182,25 @@ class _DashboardPageState extends State<DashboardPage> {
                 absorbPointer: false,
                 slotBackgroundBuilder: SlotBackgroundBuilder.withFunction(
                     (context, item, x, y, editing) {
+                  // Show disabled columns in red
+                  final isDisabled = [7, 15].contains(x);
                   return Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black12, width: 0.5),
                       borderRadius: BorderRadius.circular(10),
+                      color: isDisabled 
+                        ? Colors.red.withOpacity(0.1)
+                        : null,
                     ),
+                    child: isDisabled 
+                      ? const Center(
+                          child: Icon(
+                            Icons.block,
+                            color: Colors.red,
+                            size: 16,
+                          ),
+                        )
+                      : null,
                   );
                 }),
                 padding: const EdgeInsets.all(8),
@@ -197,6 +211,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 cacheExtend: 250,
                 dashboardItemController: itemController,
                 slotCount: slot!,
+                virtualColumnsConfig: const VirtualColumnsConfig.visible(
+                  disabledColumns: [7, 15],
+                  disabledColumnWidth: 30.0,
+                ),
                 errorPlaceholder: (e, s) {
                   return Text("$e , $s");
                 },

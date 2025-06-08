@@ -28,6 +28,8 @@ part 'models/item_layout_data.dart';
 
 part 'models/grid_dimensions.dart';
 
+part 'models/virtual_columns.dart';
+
 part 'edit_mode/edit_mode_background_style.dart';
 
 part 'edit_mode/edit_mode_painter.dart';
