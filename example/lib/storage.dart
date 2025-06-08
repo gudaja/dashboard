@@ -73,7 +73,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         minWidth: 3,
         data: "welcome"),
     ColoredDashboardItem(
-        startX: 5,
+        startX: 4,
         startY: 0,
         minWidth: 2,
         minHeight: 2,
@@ -111,7 +111,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         minWidth: 2,
         height: 1,
         width: 2,
-        startX: 6,
+        startX: 7,
         startY: 2,
         identifier: "8",
         data: "refresh"),
@@ -124,17 +124,33 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         identifier: "9",
         data: "info"),
     ColoredDashboardItem(
-        startX: 6,
+        startX: 7,
         startY: 3,
         height: 2,
         width: 2,
         identifier: "13",
         data: "pub"),
-    ColoredDashboardItem(height: 1, width: 2, identifier: "10", data: "github"),
     ColoredDashboardItem(
-        height: 1, width: 2, identifier: "11", data: "twitter"),
+        startX: 9,
+        startY: 0,
+        height: 1, 
+        width: 2, 
+        identifier: "10", 
+        data: "github"),
     ColoredDashboardItem(
-        height: 1, width: 2, identifier: "12", data: "linkedin")
+        startX: 11,
+        startY: 0,
+        height: 1, 
+        width: 2, 
+        identifier: "11", 
+        data: "twitter"),
+    ColoredDashboardItem(
+        startX: 14,
+        startY: 0,
+        height: 1, 
+        width: 2, 
+        identifier: "12", 
+        data: "linkedin")
   ];
 
   Map<String, ColoredDashboardItem>? _localItems;
@@ -204,9 +220,9 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     var js = json
         .encode(_localItems!.map((key, value) => MapEntry(key, value.toMap())));
 
-    print("💾 SAVING ${items.length} updated items:");
+    print("💾 SAVING ${items.length} updated items (pozycje po przemieszczeniu):");
     for (var item in items) {
-      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
+      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
     }
 
     await _preferences.setString("${id}_layout_data_", js);
@@ -215,6 +231,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   @override
   FutureOr<void> onItemsAdded(
       List<ColoredDashboardItem> items, int slotCount) async {
+    print("➕ ADDING ${items.length} new items:");
+    for (var item in items) {
+      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+    }
+    
     _setLocal();
     for (var i in items) {
       _localItems![i.identifier] = i;
@@ -229,6 +250,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   @override
   FutureOr<void> onItemsDeleted(
       List<ColoredDashboardItem> items, int slotCount) async {
+    print("🗑️ DELETING ${items.length} items:");
+    for (var item in items) {
+      print("  ${item.identifier}: was at (${item.layoutData.startX}, ${item.layoutData.startY})");
+    }
+    
     _setLocal();
     for (var i in items) {
       _localItems?.remove(i.identifier);
@@ -249,7 +275,13 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
   /// Resetuje cache żeby wymusić ponowne ładowanie z SharedPreferences
   void resetCache() {
+    print("🔄 RESETTING CACHE - wymuszam ponowne ładowanie z SharedPreferences");
     _localItems = null;
+  }
+
+  /// Sprawdza czy cache jest pusty
+  bool isCacheEmpty() {
+    return _localItems == null;
   }
 
   void _setLocal() {

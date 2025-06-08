@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:dashboard/dashboard.dart';
@@ -6,6 +7,7 @@ import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';
 import 'package:example/performance_optimizations.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
   @override
@@ -103,6 +105,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   MyItemStorage storage = MyItemStorage();
 
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   //var dummyItemController =
   //    DashboardItemController<ColoredDashboardItem>(items: []);
 
@@ -135,7 +147,7 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4285F4),
         automaticallyImplyLeading: false,
-        actions: [
+                actions: [
           IconButton(
               onPressed: () async {
                 await storage.clear();
@@ -160,6 +172,12 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: const Icon(Icons.download),
               tooltip: 'Przeładuj z storage'),
           IconButton(
+              onPressed: () async {
+                await printCurrentConfiguration();
+              },
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Wypisz SharedPreferences'),
+          IconButton(
               onPressed: () {
                 itemController.clear();
               },
@@ -171,8 +189,9 @@ class _DashboardPageState extends State<DashboardPage> {
               },
               icon: const Icon(Icons.add),
               tooltip: 'Dodaj nowy element'),
-                    IconButton(
+          IconButton(
               onPressed: () {
+                print("✏️ TOGGLE EDIT MODE: ${!itemController.isEditing ? 'WŁĄCZAM' : 'WYŁĄCZAM'} edycję");
                 itemController.isEditing = !itemController.isEditing;
                 setState(() {});
               },
@@ -299,24 +318,84 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  /// Przeładowuje konfigurację z storage bez czyszczenia
+    /// Przeładowuje konfigurację z storage bez czyszczenia
   Future<void> reloadFromStorage() async {
+    print("🔄 RELOAD FROM STORAGE - START");
+    
     setState(() {
       refreshing = true;
     });
-
-    // Odśwież cache storage żeby wymusić ponowne załadowanie
-    storage.resetCache();
-
-    // Stwórz nowy controller który załaduje elementy z storage
-    _itemController =
-        DashboardItemController.withDelegate(itemStorageDelegate: storage);
-
-    Future.delayed(const Duration(milliseconds: 150)).then((value) {
+    
+    try {
+      // Odśwież cache storage żeby wymusić ponowne załadowanie
+      storage.resetCache();
+      
+      // Stwórz nowy controller który załaduje elementy z storage
+      _itemController = DashboardItemController.withDelegate(
+          itemStorageDelegate: storage);
+      
+      // Poczekaj chwilę na inicjalizację
+      await Future.delayed(const Duration(milliseconds: 300));
+      
       setState(() {
         refreshing = false;
       });
-    });
+      
+      print("🔄 RELOAD FROM STORAGE - COMPLETE");
+      
+    } catch (e) {
+      print("❌ RELOAD ERROR: $e");
+      setState(() {
+        refreshing = false;
+      });
+    }
+  }
+
+  /// Wypisuje zawartość SharedPreferences
+  Future<void> printCurrentConfiguration() async {
+    print("🔍 ===== ZAWARTOŚĆ SHARED PREFERENCES =====");
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final layoutData = prefs.getString("${storage.id}_layout_data_");
+      final initFlag = prefs.getBool("init");
+      
+      
+      
+             if (layoutData != null) {
+         try {
+           final decoded = json.decode(layoutData);
+           print("📥 SHARED PREFERENCES ${decoded.length} items:");
+           
+           // Konwertuj i posortuj dla czytelności
+           final items = decoded.values
+               .map<ColoredDashboardItem>((value) => ColoredDashboardItem.fromMap(value))
+               .toList();
+           
+           items.sort((ColoredDashboardItem a, ColoredDashboardItem b) {
+             int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+             if (yCompare != 0) return yCompare;
+             return a.layoutData.startX.compareTo(b.layoutData.startX);
+           });
+           
+           for (var item in items) {
+             print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
+           }
+           
+         } catch (e) {
+           print("  ❌ Error parsing layout data: $e");
+         }
+       } else {
+         print("  ❌ No layout data found in SharedPreferences");
+       }
+      
+      
+      
+    } catch (e) {
+      print("❌ Error reading SharedPreferences: $e");
+    }
+    
+    print("🔍 ===== KONIEC ZAWARTOŚCI =====");
   }
 
   Future<void> add(BuildContext context) async {
@@ -327,6 +406,9 @@ class _DashboardPageState extends State<DashboardPage> {
         });
 
     if (res != null) {
+      final newId = (Random().nextInt(100000) + 4).toString();
+      print("➕ ADDING NEW ITEM: $newId with size ${res[0]}x${res[1]}");
+      
       itemController.add(
           ColoredDashboardItem(
               color: res[6],
@@ -334,7 +416,7 @@ class _DashboardPageState extends State<DashboardPage> {
               height: res[1],
               startX: 0,
               startY: 0,
-              identifier: (Random().nextInt(100000) + 4).toString(),
+              identifier: newId,
               minWidth: res[2],
               minHeight: res[3],
               maxWidth: res[4] == 0 ? null : res[4],
