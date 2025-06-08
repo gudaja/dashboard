@@ -342,6 +342,15 @@ class _DashboardPageState extends State<DashboardPage> {
       });
       
       print("🔄 RELOAD FROM STORAGE - COMPLETE");
+      print("🔍 SPRAWDZAM AKTUALNY STAN KONTROLERA...");
+      
+      // Sprawdź czy kontroler ma elementy  
+      try {
+        final itemCount = _itemController.items.length;
+        print("📋 KONTROLER MA $itemCount elementów");
+      } catch (e) {
+        print("⚠️ NIE MOŻNA SPRAWDZIĆ KONTROLERA: $e");
+      }
       
     } catch (e) {
       print("❌ RELOAD ERROR: $e");

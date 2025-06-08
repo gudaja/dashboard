@@ -198,7 +198,32 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         
         print("📥 LOADING ${items.length} items from storage:");
         for (var item in items) {
-          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
+          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+        }
+        
+        // Dodatkowa analiza pozycji
+        print("📊 ANALIZA POZYCJI PO ZAŁADOWANIU:");
+        final Map<int, List<String>> rowItems = {};
+        for (var item in items) {
+          final row = item.layoutData.startY;
+          rowItems[row] ??= [];
+          rowItems[row]!.add("${item.identifier}(${item.layoutData.startX},${item.layoutData.startY})");
+        }
+        
+        final sortedRows = rowItems.keys.toList()..sort();
+        for (var row in sortedRows) {
+          print("  Rząd $row: ${rowItems[row]!.join(', ')}");
+        }
+        
+        // Sprawdź kolizje z virtual columns (6, 13)
+        print("🚫 SPRAWDZAM KOLIZJE Z VIRTUAL COLUMNS (6, 13):");
+        final disabledCols = [6, 13];
+        for (var item in items) {
+          for (int x = item.layoutData.startX; x < item.layoutData.startX + item.layoutData.width; x++) {
+            if (disabledCols.contains(x)) {
+              print("  ⚠️ KOLIZJA: ${item.identifier} na kolumnie $x (disabled)");
+            }
+          }
         }
         
         return items;
@@ -276,6 +301,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   /// Resetuje cache żeby wymusić ponowne ładowanie z SharedPreferences
   void resetCache() {
     print("🔄 RESETTING CACHE - wymuszam ponowne ładowanie z SharedPreferences");
+    if (_localItems != null) {
+      print("🗑️ Usuwam ${_localItems!.length} elementów z cache");
+    } else {
+      print("ℹ️ Cache już był pusty");
+    }
     _localItems = null;
   }
 

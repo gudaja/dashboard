@@ -199,7 +199,6 @@ class InfoAdvice extends StatelessWidget {
               child: Container(
                 alignment: Alignment.center,
                 child: DataTable(
-
                     headingRowHeight: 25,
                     border: const TableBorder(
                         horizontalInside: BorderSide(color: Colors.white)),
@@ -322,40 +321,52 @@ class TransformAdvice extends StatelessWidget {
         color: red,
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              "Users can move widgets.",
-              style: TextStyle(color: Colors.white, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              "To try moving, hold (or long press) the widget and move.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 13),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "While moving, it shrinks if possible according to the "
-                    "minimum width and height values.\n(This min w: 2 , h: 2)",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                  ),
+        child: ClipRect(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  "Users can move widgets.",
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.fade,
                 ),
+              ),
+              Flexible(
+                child: Text(
+                  "To try moving, hold (or long press) the widget and move.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  overflow: TextOverflow.fade,
+                ),
+              ),
+              Flexible(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "While moving, it shrinks if possible according to the "
+                        "minimum width and height values.\n(This min w: 2 , h: 2)",
+                        textAlign: TextAlign.center,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 13),
+                        overflow: TextOverflow.fade,
+                      ),
+                    ),
 /*
-                Icon(
-                  Icons.arrow_right_alt,
-                  color: Colors.white,
-                  size: 30,
-                )
+                    Icon(
+                      Icons.arrow_right_alt,
+                      color: Colors.white,
+                      size: 30,
+                    )
 */
-              ],
-            ),
-          ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ));
   }
 }
