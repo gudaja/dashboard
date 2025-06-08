@@ -533,15 +533,31 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         if (direction == AxisDirection.left) {
           if ((maxWidth == null || width < maxWidth!) &&
               width < _layoutController.slotCount) {
-            _startX = startX - 1;
-            _width = width + 1;
-            return _Resize(resize);
+            // Check virtual columns before expanding left
+            final newLayout = ItemLayout(
+                startX: startX - 1,
+                startY: startY,
+                width: width + 1,
+                height: height);
+            if (_layoutController.canPlaceAt(newLayout)) {
+              _startX = startX - 1;
+              _width = width + 1;
+              return _Resize(resize);
+            }
           }
         } else if (direction == AxisDirection.right) {
           if ((maxWidth == null || width < maxWidth!) &&
               width < _layoutController.slotCount) {
-            _width = width + 1;
-            return _Resize(resize);
+            // Check virtual columns before expanding right
+            final newLayout = ItemLayout(
+                startX: startX,
+                startY: startY,
+                width: width + 1,
+                height: height);
+            if (_layoutController.canPlaceAt(newLayout)) {
+              _width = width + 1;
+              return _Resize(resize);
+            }
           }
         } else if (direction == AxisDirection.up) {
           if ((maxHeight == null || height < maxHeight!)) {
@@ -584,15 +600,31 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         if (direction == AxisDirection.left) {
           if ((maxWidth == null || width < maxWidth!) &&
               width < _layoutController.slotCount) {
-            _startX = startX - 1;
-            _width = width + 1;
-            result = _Resize(resize, indirectResizes: indirectResizing);
+            // Check virtual columns before expanding left with indirect resizing
+            final newLayout = ItemLayout(
+                startX: startX - 1,
+                startY: startY,
+                width: width + 1,
+                height: height);
+            if (_layoutController.canPlaceAt(newLayout)) {
+              _startX = startX - 1;
+              _width = width + 1;
+              result = _Resize(resize, indirectResizes: indirectResizing);
+            }
           }
         } else if (direction == AxisDirection.right) {
           if ((maxWidth == null || width < maxWidth!) &&
               width < _layoutController.slotCount) {
-            _width = width + 1;
-            result = _Resize(resize, indirectResizes: indirectResizing);
+            // Check virtual columns before expanding right with indirect resizing
+            final newLayout = ItemLayout(
+                startX: startX,
+                startY: startY,
+                width: width + 1,
+                height: height);
+            if (_layoutController.canPlaceAt(newLayout)) {
+              _width = width + 1;
+              result = _Resize(resize, indirectResizes: indirectResizing);
+            }
           }
         } else if (direction == AxisDirection.up) {
           if ((maxHeight == null || height < maxHeight!)) {
