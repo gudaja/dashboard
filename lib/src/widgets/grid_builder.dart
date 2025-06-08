@@ -12,6 +12,15 @@ abstract class SlotBackgroundBuilder<T extends DashboardItem> {
     return _WithFunctionSlotBackgroundBuilder<T>(builder);
   }
 
+  /// Create a builder with a function that has access to virtual columns config.
+  static SlotBackgroundBuilder<T>
+      withVirtualColumnsFunction<T extends DashboardItem>(
+          Widget? Function(BuildContext context, T? item, int x, int y,
+                  bool editing, VirtualColumnsConfig? virtualConfig)
+              builder) {
+    return _WithVirtualColumnsSlotBackgroundBuilder<T>(builder);
+  }
+
   DashboardItemController<T>? _itemController;
 
   Widget _build(BuildContext context, int x, int y) {
@@ -44,5 +53,21 @@ class _WithFunctionSlotBackgroundBuilder<T extends DashboardItem>
   Widget? buildBackground(
       BuildContext context, T? item, int x, int y, bool editing) {
     return builder(context, item, x, y, editing);
+  }
+}
+
+class _WithVirtualColumnsSlotBackgroundBuilder<T extends DashboardItem>
+    extends SlotBackgroundBuilder<T> {
+  final Widget? Function(BuildContext context, T? item, int x, int y,
+      bool editing, VirtualColumnsConfig? virtualConfig) builder;
+
+  _WithVirtualColumnsSlotBackgroundBuilder(this.builder);
+
+  @override
+  Widget? buildBackground(
+      BuildContext context, T? item, int x, int y, bool editing) {
+    final virtualConfig =
+        _itemController!._layoutController!.virtualColumnsConfig;
+    return builder(context, item, x, y, editing, virtualConfig);
   }
 }

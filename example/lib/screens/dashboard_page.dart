@@ -106,7 +106,7 @@ class _DashboardPageState extends State<DashboardPage> {
   DashboardItemController<ColoredDashboardItem> get itemController =>
       _itemController;
 
-  int? slot = 24;
+  int? slot = 20;
 
   setSlot() {
     var w = MediaQuery.of(context).size.width;
@@ -180,27 +180,27 @@ class _DashboardPageState extends State<DashboardPage> {
                 shrinkToPlace: false,
                 slideToTop: true,
                 absorbPointer: false,
-                slotBackgroundBuilder: SlotBackgroundBuilder.withFunction(
-                    (context, item, x, y, editing) {
-                  // Show disabled columns in red
-                  final isDisabled = [7, 15].contains(x);
+                slotBackgroundBuilder:
+                    SlotBackgroundBuilder.withVirtualColumnsFunction(
+                        (context, item, x, y, editing, virtualConfig) {
+                  // Show disabled columns in red using config
+                  final isDisabled =
+                      virtualConfig?.isColumnDisabled(x) ?? false;
                   return Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black12, width: 0.5),
                       borderRadius: BorderRadius.circular(10),
-                      color: isDisabled 
-                        ? Colors.red.withOpacity(0.1)
-                        : null,
+                      color: isDisabled ? Colors.red.withOpacity(0.1) : null,
                     ),
-                    child: isDisabled 
-                      ? const Center(
-                          child: Icon(
-                            Icons.block,
-                            color: Colors.red,
-                            size: 16,
-                          ),
-                        )
-                      : null,
+                    child: isDisabled
+                        ? const Center(
+                            child: Icon(
+                              Icons.block,
+                              color: Colors.red,
+                              size: 16,
+                            ),
+                          )
+                        : null,
                   );
                 }),
                 padding: const EdgeInsets.all(8),
@@ -212,8 +212,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 dashboardItemController: itemController,
                 slotCount: slot!,
                 virtualColumnsConfig: const VirtualColumnsConfig.visible(
-                  disabledColumns: [7, 15],
-                  disabledColumnWidth: 30.0,
+                  disabledColumns: [6, 13],
+                  disabledColumnWidth: 10,
                 ),
                 errorPlaceholder: (e, s) {
                   return Text("$e , $s");
