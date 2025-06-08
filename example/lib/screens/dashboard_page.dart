@@ -4,6 +4,7 @@ import 'package:dashboard/dashboard.dart';
 import 'package:example/add_dialog.dart';
 import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';
+import 'package:example/performance_optimizations.dart';
 import 'package:flutter/material.dart';
 
 class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
@@ -11,14 +12,73 @@ class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
   Widget? buildBackground(BuildContext context, ColoredDashboardItem? item,
       int x, int y, bool editing) {
     if (item != null) {
-      return Container(
-        decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(10)),
+      return CachedSlotBackground(
+        cacheKey: '${item.identifier}_${x}_${y}',
+        child: Container(
+          decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10)),
+        ),
       );
     }
 
     return null;
+  }
+}
+
+class ItemDisplayWidget extends StatelessWidget {
+  const ItemDisplayWidget({
+    super.key,
+    required this.item,
+    required this.isEditing,
+    required this.onDelete,
+  });
+
+  final ColoredDashboardItem item;
+  final bool isEditing;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = item.layoutData;
+
+    final textContent = "ID: ${item.identifier}\n${[
+      "x: ${layout.startX}",
+      "y: ${layout.startY}",
+      "w: ${layout.width}",
+      "h: ${layout.height}",
+      if (layout.minWidth != 1) "minW: ${layout.minWidth}",
+      if (layout.minHeight != 1) "minH: ${layout.minHeight}",
+      if (layout.maxWidth != null) "maxW: ${layout.maxWidth}",
+      if (layout.maxHeight != null) "maxH : ${layout.maxHeight}"
+    ].join("\n")}";
+
+    return PerformantDashboardItem(
+      child: OptimizedDashboardContainer(
+        color: item.color ?? Colors.grey,
+        child: Stack(
+          children: [
+            SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child:
+                    DashboardPerformanceUtils.createOptimizedText(textContent)),
+            if (isEditing)
+              Positioned(
+                  right: 5,
+                  top: 5,
+                  child: InkResponse(
+                      radius: 20,
+                      onTap: onDelete,
+                      child: const Icon(
+                        Icons.clear,
+                        color: Colors.white,
+                        size: 20,
+                      )))
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -133,7 +193,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 horizontalSpace: 8,
                 verticalSpace: 8,
                 slotAspectRatio: 1,
-                animateEverytime: true,
+                animateEverytime: false,
+                cacheExtend: 250,
                 dashboardItemController: itemController,
                 slotCount: slot!,
                 errorPlaceholder: (e, s) {
@@ -154,7 +215,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     autoScroll: true,
                     resizeCursorSide: 40,
                     curve: Curves.easeOut,
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 200),
                     resizeHandleBuilder: (context, item, isEditing) {
                       return Container(
                         width: 30,
@@ -195,53 +256,13 @@ class _DashboardPageState extends State<DashboardPage> {
                     );
                   }
 
-                  return LayoutBuilder(builder: (_, c) {
-                    return Stack(
-                      children: [
-                        Container(
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                              color: item.color,
-                              borderRadius: BorderRadius.circular(10)),
-                          child: SizedBox(
-                              width: double.infinity,
-                              height: double.infinity,
-                              child: Text(
-                                "ID: ${item.identifier}\n${[
-                                  "x: ${layout.startX}",
-                                  "y: ${layout.startY}",
-                                  "w: ${layout.width}",
-                                  "h: ${layout.height}",
-                                  if (layout.minWidth != 1)
-                                    "minW: ${layout.minWidth}",
-                                  if (layout.minHeight != 1)
-                                    "minH: ${layout.minHeight}",
-                                  if (layout.maxWidth != null)
-                                    "maxW: ${layout.maxWidth}",
-                                  if (layout.maxHeight != null)
-                                    "maxH : ${layout.maxHeight}"
-                                ].join("\n")}",
-                                style: const TextStyle(color: Colors.white),
-                              )),
-                        ),
-                        if (itemController.isEditing)
-                          Positioned(
-                              right: 5,
-                              top: 5,
-                              child: InkResponse(
-                                  radius: 20,
-                                  onTap: () {
-                                    itemController.delete(item.identifier);
-                                  },
-                                  child: const Icon(
-                                    Icons.clear,
-                                    color: Colors.white,
-                                    size: 20,
-                                  )))
-                      ],
-                    );
-                  });
+                  return ItemDisplayWidget(
+                    item: item,
+                    isEditing: itemController.isEditing,
+                    onDelete: () {
+                      itemController.delete(item.identifier);
+                    },
+                  );
                 },
               ),
       ),

@@ -363,25 +363,6 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           );
         }
 
-        // Add resize handle at the positioned level if we're in edit mode
-        if (onEditMode && widget.editModeSettings.resizeHandleBuilder != null) {
-          finalChild = Stack(
-            clipBehavior: Clip.none,
-            children: [
-              finalChild,
-              Positioned(
-                bottom: -10,
-                right: -10,
-                child: widget.editModeSettings.resizeHandleBuilder!(
-                  context,
-                  widget.item,
-                  true,
-                ),
-              ),
-            ],
-          );
-        }
-
         return Positioned(
             left: left,
             top: top - widget.offset.pixels,
