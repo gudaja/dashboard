@@ -436,9 +436,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       return layout;
     }
 
-    print(
-        "🔍 FINDING VALID POSITION for (${layout.startX}, ${layout.startY}) - blocked by virtual columns");
-
     // Find the closest valid position by expanding search distance
     for (int distance = 1; distance < slotCount; distance++) {
       // Try moving left first (consistent behavior)
@@ -447,8 +444,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         final testLayout =
             layout.copyWithStarts(startX: leftX, startY: layout.startY);
         if (canPlaceAt(testLayout)) {
-          print(
-              "🎯 FOUND VALID POSITION: ($leftX, ${layout.startY}) - moved LEFT by $distance");
           return testLayout;
         }
       }
@@ -459,14 +454,11 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         final testLayout =
             layout.copyWithStarts(startX: rightX, startY: layout.startY);
         if (canPlaceAt(testLayout)) {
-          print(
-              "🎯 FOUND VALID POSITION: ($rightX, ${layout.startY}) - moved RIGHT by $distance");
           return testLayout;
         }
       }
     }
 
-    print("❌ NO VALID POSITION FOUND for (${layout.startX}, ${layout.startY})");
     return null; // No valid position found
   }
 
@@ -739,18 +731,8 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
             getIndex([i.value.startX, i.value.startY]), i.value.origin);
 
         if (mount == null) {
-          print(
-              "❌ MOUNT FAILED: ${i.key} at (${i.value.startX}, ${i.value.startY}) - adding to mountToTop");
           not.add(i.key);
           continue layouts;
-        }
-
-        // Check if position changed during mounting
-        if (mount.startX != i.value.startX || mount.startY != i.value.startY) {
-          print(
-              "🔄 MOUNT ADJUSTED: ${i.key} from (${i.value.startX}, ${i.value.startY}) → (${mount.startX}, ${mount.startY})");
-        } else {
-          print("✅ MOUNT OK: ${i.key} at (${mount.startX}, ${mount.startY})");
         }
 
         _indexItem(mount, i.key);
@@ -790,18 +772,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       }
 
       for (var n in not) {
-        print("🔝 MOUNT TO TOP: $n - finding new position");
         mountToTop(n);
-        var layout = _layouts![n]!.origin;
-        print(
-            "🔝 MOUNT TO TOP RESULT: $n at (${layout.startX}, ${layout.startY})");
       }
 
       changes.addAll(not);
 
       if (changes.isNotEmpty) {
-        print(
-            "🔄 MOUNT PROCESS COMPLETED: ${changes.length} items changed positions");
         itemController.itemStorageDelegate?._onItemsUpdated(
             changes.map((e) => itemController._getItemWithLayout(e)).toList(),
             slotCount);
