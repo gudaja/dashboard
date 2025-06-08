@@ -399,7 +399,8 @@ class _DashboardStackState<T extends DashboardItem>
     var holdGlobal = Offset(local.dx - viewportDelegate.padding.left,
         local.dy - viewportDelegate.padding.top);
 
-    var x = (local.dx - viewportDelegate.padding.left) ~/ slotEdge;
+    var x = widget.dashboardController
+        .getColumnFromPosition(local.dx - viewportDelegate.padding.left);
     var y =
         (local.dy + pixels - viewportDelegate.padding.top) ~/ verticalSlotEdge;
 

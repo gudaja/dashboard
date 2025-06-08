@@ -133,36 +133,48 @@ class _Resize {
   late Offset offsetDifference;
   late _ItemCurrentPosition positionDifference;
 
-  void adjustResizeOffset(
-      double slotEdge, double verticalSlotEdge, _ItemCurrentPosition difPos) {
+  void adjustResizeOffset(double slotEdge, double verticalSlotEdge,
+      _ItemCurrentPosition difPos, _ItemCurrentLayout itemLayout) {
     Offset? difOffset;
     if (resize.increment) {
       if (resize.direction == AxisDirection.left) {
+        // Use actual column width for left resize instead of average slotEdge
+        final actualSlotWidth =
+            itemLayout._layoutController.getColumnWidth(itemLayout.startX - 1);
         difPos
-          ..x += slotEdge
-          ..width -= slotEdge;
-        difOffset = Offset(-slotEdge, 0);
+          ..x += actualSlotWidth
+          ..width -= actualSlotWidth;
+        difOffset = Offset(-actualSlotWidth, 0);
       } else if (resize.direction == AxisDirection.up) {
         difPos
           ..y += verticalSlotEdge
           ..height -= verticalSlotEdge;
         difOffset = Offset(0, -verticalSlotEdge);
       } else if (resize.direction == AxisDirection.right) {
-        difPos.width -= slotEdge;
-        difOffset = Offset(slotEdge, 0);
+        // Use actual column width for right resize instead of average slotEdge
+        final actualSlotWidth = itemLayout._layoutController
+            .getColumnWidth(itemLayout.startX + itemLayout.width);
+        difPos.width -= actualSlotWidth;
+        difOffset = Offset(actualSlotWidth, 0);
       } else {
         difPos.height -= verticalSlotEdge;
         difOffset = Offset(0, verticalSlotEdge);
       }
     } else {
       if (resize.direction == AxisDirection.left) {
+        // Use actual column width for left resize instead of average slotEdge
+        final actualSlotWidth =
+            itemLayout._layoutController.getColumnWidth(itemLayout.startX);
         difPos.x += 0;
-        difOffset = Offset(slotEdge, 0);
+        difOffset = Offset(actualSlotWidth, 0);
       } else if (resize.direction == AxisDirection.up) {
         difPos.y += 0;
         difOffset = Offset(0, verticalSlotEdge);
       } else if (resize.direction == AxisDirection.right) {
-        difOffset = Offset(-slotEdge, 0);
+        // Use actual column width for right resize instead of average slotEdge
+        final actualSlotWidth = itemLayout._layoutController
+            .getColumnWidth(itemLayout.startX + itemLayout.width - 1);
+        difOffset = Offset(-actualSlotWidth, 0);
       } else {
         difOffset = Offset(0, -verticalSlotEdge);
       }
@@ -253,14 +265,30 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   }
 
   double _clampDifLeft(double x) {
-    var slot = _slotEdge;
-    return x.clamp(0, (width - minWidth) * slot);
+    // Calculate actual width of widget considering virtual columns
+    double actualWidth = 0.0;
+    for (int i = startX; i < startX + width; i++) {
+      actualWidth += _layoutController.getColumnWidth(i);
+    }
+    double minActualWidth = 0.0;
+    for (int i = startX; i < startX + minWidth; i++) {
+      minActualWidth += _layoutController.getColumnWidth(i);
+    }
+    return x.clamp(0, actualWidth - minActualWidth);
   }
 
   double _clampDifRight(double x) {
-    var slot = _slotEdge;
+    // Calculate actual width of widget considering virtual columns
+    double actualWidth = 0.0;
+    for (int i = startX; i < startX + width; i++) {
+      actualWidth += _layoutController.getColumnWidth(i);
+    }
+    double minActualWidth = 0.0;
+    for (int i = startX; i < startX + minWidth; i++) {
+      minActualWidth += _layoutController.getColumnWidth(i);
+    }
     return x.clamp(
-      (width - minWidth) * -slot,
+      (actualWidth - minActualWidth) * -1,
       0,
     );
   }
@@ -301,7 +329,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
       if (difference.dx < 0) {
         resizing = (_Resizing(AxisDirection.left, true));
-      } else if (difference.dx > _slotEdge) {
+      } else if (difference.dx > _layoutController.getColumnWidth(startX)) {
         resizing = (_Resizing(AxisDirection.left, false));
       }
 
@@ -339,7 +367,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     if (holdDirections.contains(AxisDirection.right)) {
       _Resizing? resizing;
 
-      if (difference.dx < -_slotEdge) {
+      if (difference.dx <
+          -_layoutController.getColumnWidth(startX + width - 1)) {
         resizing = (_Resizing(AxisDirection.right, false));
       } else if (difference.dx > 0) {
         resizing = (_Resizing(AxisDirection.right, true));
@@ -385,7 +414,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       _ItemCurrentPosition itemPositionDifference, _ResizeMoveResult result) {
     save();
     res.adjustResizeOffset(
-        _slotEdge, _verticalSlotEdge, itemPositionDifference);
+        _slotEdge, _verticalSlotEdge, itemPositionDifference, this);
     result.startDifference += res.offsetDifference;
     result.isChanged = true;
     return res.positionDifference;
