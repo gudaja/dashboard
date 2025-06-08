@@ -147,7 +147,7 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4285F4),
         automaticallyImplyLeading: false,
-                actions: [
+        actions: [
           IconButton(
               onPressed: () async {
                 await storage.clear();
@@ -191,7 +191,6 @@ class _DashboardPageState extends State<DashboardPage> {
               tooltip: 'Dodaj nowy element'),
           IconButton(
               onPressed: () {
-                print("✏️ TOGGLE EDIT MODE: ${!itemController.isEditing ? 'WŁĄCZAM' : 'WYŁĄCZAM'} edycję");
                 itemController.isEditing = !itemController.isEditing;
                 setState(() {});
               },
@@ -318,36 +317,27 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-    /// Przeładowuje konfigurację z storage bez czyszczenia
+  /// Przeładowuje konfigurację z storage bez czyszczenia
   Future<void> reloadFromStorage() async {
-    print("🔄 RELOAD FROM STORAGE - START");
-    
     setState(() {
       refreshing = true;
     });
-    
+
     try {
       // Odśwież cache storage żeby wymusić ponowne załadowanie
       storage.resetCache();
-      
+
       // Stwórz nowy controller który załaduje elementy z storage
-      _itemController = DashboardItemController.withDelegate(
-          itemStorageDelegate: storage);
-      
+      _itemController =
+          DashboardItemController.withDelegate(itemStorageDelegate: storage);
+
       // Poczekaj chwilę na inicjalizację
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       setState(() {
         refreshing = false;
       });
-      
-      print("🔄 RELOAD FROM STORAGE - COMPLETE");
-      
-      // Wypisz pozycje odczytane z SharedPreferences
-      await _printPositionsAfterReload();
-      
     } catch (e) {
-      print("❌ RELOAD ERROR: $e");
       setState(() {
         refreshing = false;
       });
@@ -356,89 +346,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   /// Wypisuje pozycje odczytane po przeładowaniu
   Future<void> _printPositionsAfterReload() async {
-    print("📋 POZYCJE ODCZYTANE PO PRZEŁADOWANIU:");
-    
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final layoutData = prefs.getString("${storage.id}_layout_data_");
-      
-      if (layoutData != null) {
-        try {
-          final decoded = json.decode(layoutData);
-          print("📍 ODCZYTANO ${decoded.length} elementów z pozycjami:");
-          
-          // Konwertuj i posortuj dla czytelności
-          final items = decoded.values
-              .map<ColoredDashboardItem>((value) => ColoredDashboardItem.fromMap(value))
-              .toList();
-          
-          items.sort((ColoredDashboardItem a, ColoredDashboardItem b) {
-            int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
-            if (yCompare != 0) return yCompare;
-            return a.layoutData.startX.compareTo(b.layoutData.startX);
-          });
-          
-          for (var item in items) {
-            print("  📌 ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
-          }
-          
-        } catch (e) {
-          print("  ❌ Error parsing reloaded data: $e");
-        }
-      } else {
-        print("  ❌ No data found after reload");
-      }
-      
-    } catch (e) {
-      print("❌ Error reading positions after reload: $e");
-    }
+    // Function kept for potential future debugging but body removed
   }
 
   /// Wypisuje zawartość SharedPreferences
   Future<void> printCurrentConfiguration() async {
-    print("🔍 ===== ZAWARTOŚĆ SHARED PREFERENCES =====");
-    
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final layoutData = prefs.getString("${storage.id}_layout_data_");
-      final initFlag = prefs.getBool("init");
-      
-      
-      
-             if (layoutData != null) {
-         try {
-           final decoded = json.decode(layoutData);
-           print("📥 SHARED PREFERENCES ${decoded.length} items:");
-           
-           // Konwertuj i posortuj dla czytelności
-           final items = decoded.values
-               .map<ColoredDashboardItem>((value) => ColoredDashboardItem.fromMap(value))
-               .toList();
-           
-           items.sort((ColoredDashboardItem a, ColoredDashboardItem b) {
-             int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
-             if (yCompare != 0) return yCompare;
-             return a.layoutData.startX.compareTo(b.layoutData.startX);
-           });
-           
-           for (var item in items) {
-             print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY})");
-           }
-           
-         } catch (e) {
-           print("  ❌ Error parsing layout data: $e");
-         }
-       } else {
-         print("  ❌ No layout data found in SharedPreferences");
-       }
-      
-      
-      
-    } catch (e) {
-      print("❌ Error reading SharedPreferences: $e");
-    }
-    
-    print("🔍 ===== KONIEC ZAWARTOŚCI =====");
+    // Function kept for potential future debugging but body removed
   }
 
   Future<void> add(BuildContext context) async {
@@ -449,22 +362,15 @@ class _DashboardPageState extends State<DashboardPage> {
         });
 
     if (res != null) {
-      final newId = (Random().nextInt(100000) + 4).toString();
-      print("➕ ADDING NEW ITEM: $newId with size ${res[0]}x${res[1]}");
-      
-      itemController.add(
-          ColoredDashboardItem(
-              color: res[6],
-              width: res[0],
-              height: res[1],
-              startX: 0,
-              startY: 0,
-              identifier: newId,
-              minWidth: res[2],
-              minHeight: res[3],
-              maxWidth: res[4] == 0 ? null : res[4],
-              maxHeight: res[5] == 0 ? null : res[5]),
-          mountToTop: false);
+      final newId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      itemController.add(ColoredDashboardItem(
+          width: res[0],
+          height: res[1],
+          startX: 0,
+          startY: 0,
+          identifier: newId,
+          data: "new_item"));
     }
   }
 }
