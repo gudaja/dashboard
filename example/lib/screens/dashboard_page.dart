@@ -163,7 +163,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           color: Colors.red,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
                               color: Colors.black26,
                               blurRadius: 4,
@@ -173,7 +173,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         child: Transform.rotate(
                           angle: 3.14159 / 2, // 180 stopni
-                          child: Icon(
+                          child: const Icon(
                             Icons.open_in_full,
                             color: Colors.white,
                             size: 16,
