@@ -133,23 +133,23 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     ColoredDashboardItem(
         startX: 9,
         startY: 0,
-        height: 1, 
-        width: 2, 
-        identifier: "10", 
+        height: 1,
+        width: 2,
+        identifier: "10",
         data: "github"),
     ColoredDashboardItem(
         startX: 11,
         startY: 0,
-        height: 1, 
-        width: 2, 
-        identifier: "11", 
+        height: 1,
+        width: 2,
+        identifier: "11",
         data: "twitter"),
     ColoredDashboardItem(
         startX: 14,
         startY: 0,
-        height: 1, 
-        width: 2, 
-        identifier: "12", 
+        height: 1,
+        width: 2,
+        identifier: "12",
         data: "linkedin")
   ];
 
@@ -158,24 +158,25 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   @override
   FutureOr<List<ColoredDashboardItem>> getAllItems(int slotCount) {
     print("🔍 GET ALL ITEMS wywoływane dla slotCount: $slotCount");
-    
+
     try {
       if (_localItems != null) {
         print("💾 Zwracam elementy z cache (${_localItems!.length} items)");
         final cachedItems = _localItems!.values.toList();
-        
+
         // Wypisz pozycje z cache
         cachedItems.sort((a, b) {
           int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
           if (yCompare != 0) return yCompare;
           return a.layoutData.startX.compareTo(b.layoutData.startX);
         });
-        
+
         print("💭 POZYCJE Z CACHE:");
         for (var item in cachedItems) {
-          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+          print(
+              "  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
         }
-        
+
         return cachedItems;
       }
 
@@ -214,41 +215,46 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
           // First sort by Y position (row)
           int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
           if (yCompare != 0) return yCompare;
-          
+
           // Then sort by X position (column) within the same row
           return a.layoutData.startX.compareTo(b.layoutData.startX);
         });
-        
+
         print("📥 LOADING ${items.length} items from storage:");
         for (var item in items) {
-          print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+          print(
+              "  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
         }
-        
+
         // Dodatkowa analiza pozycji
         print("📊 ANALIZA POZYCJI PO ZAŁADOWANIU:");
         final Map<int, List<String>> rowItems = {};
         for (var item in items) {
           final row = item.layoutData.startY;
           rowItems[row] ??= [];
-          rowItems[row]!.add("${item.identifier}(${item.layoutData.startX},${item.layoutData.startY})");
+          rowItems[row]!.add(
+              "${item.identifier}(${item.layoutData.startX},${item.layoutData.startY})");
         }
-        
+
         final sortedRows = rowItems.keys.toList()..sort();
         for (var row in sortedRows) {
           print("  Rząd $row: ${rowItems[row]!.join(', ')}");
         }
-        
+
         // Sprawdź kolizje z virtual columns (6, 13)
         print("🚫 SPRAWDZAM KOLIZJE Z VIRTUAL COLUMNS (6, 13):");
         final disabledCols = [6, 13];
         for (var item in items) {
-          for (int x = item.layoutData.startX; x < item.layoutData.startX + item.layoutData.width; x++) {
+          for (int x = item.layoutData.startX;
+              x < item.layoutData.startX + item.layoutData.width;
+              x++) {
             if (disabledCols.contains(x)) {
-              print("  ⚠️ KOLIZJA: ${item.identifier} na kolumnie $x (disabled)");
+              print(
+                  "  ⚠️ KOLIZJA: ${item.identifier} na kolumnie $x (disabled)");
             }
           }
         }
-        
+
         return items;
       });
     } on Exception {
@@ -268,9 +274,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     var js = json
         .encode(_localItems!.map((key, value) => MapEntry(key, value.toMap())));
 
-    print("💾 SAVING ${items.length} updated items (pozycje po przemieszczeniu):");
+    print(
+        "💾 SAVING ${items.length} updated items (pozycje po przemieszczeniu):");
     for (var item in items) {
-      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+      print(
+          "  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
     }
 
     await _preferences.setString("${id}_layout_data_", js);
@@ -281,9 +289,10 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
       List<ColoredDashboardItem> items, int slotCount) async {
     print("➕ ADDING ${items.length} new items:");
     for (var item in items) {
-      print("  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
+      print(
+          "  ${item.identifier}: (${item.layoutData.startX}, ${item.layoutData.startY}) ${item.layoutData.width}x${item.layoutData.height}");
     }
-    
+
     _setLocal();
     for (var i in items) {
       _localItems![i.identifier] = i;
@@ -300,9 +309,10 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
       List<ColoredDashboardItem> items, int slotCount) async {
     print("🗑️ DELETING ${items.length} items:");
     for (var item in items) {
-      print("  ${item.identifier}: was at (${item.layoutData.startX}, ${item.layoutData.startY})");
+      print(
+          "  ${item.identifier}: was at (${item.layoutData.startX}, ${item.layoutData.startY})");
     }
-    
+
     _setLocal();
     for (var i in items) {
       _localItems?.remove(i.identifier);
@@ -323,10 +333,11 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
   /// Resetuje cache żeby wymusić ponowne ładowanie z SharedPreferences
   void resetCache() {
-    print("🔄 RESETTING CACHE - wymuszam ponowne ładowanie z SharedPreferences");
+    print(
+        "🔄 RESETTING CACHE - wymuszam ponowne ładowanie z SharedPreferences");
     if (_localItems != null) {
       print("🗑️ Usuwam ${_localItems!.length} elementów z cache:");
-      
+
       // Wypisz pozycje elementów przed usunięciem z cache
       final sortedItems = _localItems!.values.toList();
       sortedItems.sort((a, b) {
@@ -334,9 +345,10 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         if (yCompare != 0) return yCompare;
         return a.layoutData.startX.compareTo(b.layoutData.startX);
       });
-      
+
       for (var item in sortedItems) {
-        print("  💭 Cache miał: ${item.identifier} na (${item.layoutData.startX}, ${item.layoutData.startY})");
+        print(
+            "  💭 Cache miał: ${item.identifier} na (${item.layoutData.startX}, ${item.layoutData.startY})");
       }
     } else {
       print("ℹ️ Cache już był pusty");
@@ -350,7 +362,8 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   }
 
   void _setLocal() {
-    _localItems = {for (var item in _default) item.identifier: item};
+    // Only initialize if _localItems is null, don't reset existing data
+    _localItems ??= {for (var item in _default) item.identifier: item};
   }
 
   @override
