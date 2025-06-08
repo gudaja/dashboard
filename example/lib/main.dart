@@ -32,6 +32,8 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Dashboard demo',
+      // PERFORMANCE MONITORING - showPerformanceOverlay nie działa na web
+      // showPerformanceOverlay: true, // WYŁĄCZONY - nie wspiera Web
       onGenerateInitialRoutes: (r) {
         return r == "/dashboard"
             ? [
@@ -52,6 +54,8 @@ class _MyAppState extends State<MyApp> {
       },
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:example/add_dialog.dart';
 import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';
 import 'package:example/performance_optimizations.dart';
+import 'package:example/performance_testing.dart';
 import 'package:flutter/material.dart';
 
 class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
@@ -175,95 +176,106 @@ class _DashboardPageState extends State<DashboardPage> {
             ? const Center(
                 child: CircularProgressIndicator(),
               )
-            : Dashboard<ColoredDashboardItem>(
-                scrollController: scrollController,
-                shrinkToPlace: false,
-                slideToTop: true,
-                absorbPointer: false,
-                slotBackgroundBuilder: SlotBackgroundBuilder.withFunction(
-                    (context, item, x, y, editing) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black12, width: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  );
-                }),
-                padding: const EdgeInsets.all(8),
-                horizontalSpace: 8,
-                verticalSpace: 8,
-                slotAspectRatio: 1,
-                animateEverytime: false,
-                cacheExtend: 250,
-                dashboardItemController: itemController,
-                slotCount: slot!,
-                errorPlaceholder: (e, s) {
-                  return Text("$e , $s");
-                },
-                emptyPlaceholder: const Center(child: Text("Empty")),
-                itemStyle: ItemStyle(
-                    color: Colors.transparent,
-                    clipBehavior: Clip.antiAliasWithSaveLayer,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15))),
-                physics: const RangeMaintainingScrollPhysics()
-                    .applyTo(ClampingScrollPhysics()),
-                editModeSettings: EditModeSettings(
-                    draggableOutside: false,
-                    paintBackgroundLines: false,
-                    autoScroll: true,
-                    resizeCursorSide: 40,
-                    curve: Curves.easeOut,
-                    duration: const Duration(milliseconds: 200),
-                    resizeHandleBuilder: (context, item, isEditing) {
+            : PerformanceMonitor(
+                child: BenchmarkWidget(
+                  testName: 'Dashboard',
+                  child: Dashboard<ColoredDashboardItem>(
+                    scrollController: scrollController,
+                    shrinkToPlace: false,
+                    slideToTop: true,
+                    absorbPointer: false,
+                    slotBackgroundBuilder: SlotBackgroundBuilder.withFunction(
+                        (context, item, x, y, editing) {
                       return Container(
-                        width: 30,
-                        height: 30,
                         decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 4,
-                              offset: Offset(2, 2),
-                            ),
-                          ],
+                          border: Border.all(color: Colors.black12, width: 0.5),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Transform.rotate(
-                          angle: 3.14159 / 2, // 180 stopni
-                          child: const Icon(
-                            Icons.open_in_full,
-                            color: Colors.white,
-                            size: 16,
+                      );
+                    }),
+                    padding: const EdgeInsets.all(8),
+                    horizontalSpace: 8,
+                    verticalSpace: 8,
+                    slotAspectRatio: 1,
+                    animateEverytime: false,
+                    cacheExtend: 250,
+                    dashboardItemController: itemController,
+                    slotCount: slot!,
+                    errorPlaceholder: (e, s) {
+                      return Text("$e , $s");
+                    },
+                    emptyPlaceholder: const Center(child: Text("Empty")),
+                    itemStyle: ItemStyle(
+                        color: Colors.transparent,
+                        clipBehavior: Clip.antiAliasWithSaveLayer,
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15))),
+                    physics: const RangeMaintainingScrollPhysics()
+                        .applyTo(ClampingScrollPhysics()),
+                    editModeSettings: EditModeSettings(
+                        draggableOutside: false,
+                        paintBackgroundLines: false,
+                        autoScroll: true,
+                        resizeCursorSide: 40,
+                        curve: Curves.easeOut,
+                        duration: const Duration(milliseconds: 200),
+                        resizeHandleBuilder: (context, item, isEditing) {
+                          return Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(2, 2),
+                                ),
+                              ],
+                            ),
+                            child: Transform.rotate(
+                              angle: 3.14159 / 2, // 180 stopni
+                              child: const Icon(
+                                Icons.open_in_full,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          );
+                        },
+                        backgroundStyle: const EditModeBackgroundStyle(
+                            lineColor: Colors.black38,
+                            lineWidth: 0.5,
+                            dualLineHorizontal: false,
+                            dualLineVertical: false)),
+                    itemBuilder: (ColoredDashboardItem item) {
+                      var layout = item.layoutData;
+
+                      if (item.data != null) {
+                        return BenchmarkWidget(
+                          testName: 'DataWidget_${item.identifier}',
+                          child: DataWidget(
+                            item: item,
                           ),
+                        );
+                      }
+
+                      return BenchmarkWidget(
+                        testName: 'ItemDisplay_${item.identifier}',
+                        child: ItemDisplayWidget(
+                          item: item,
+                          isEditing: itemController.isEditing,
+                          onDelete: () {
+                            itemController.delete(item.identifier);
+                          },
                         ),
                       );
                     },
-                    backgroundStyle: const EditModeBackgroundStyle(
-                        lineColor: Colors.black38,
-                        lineWidth: 0.5,
-                        dualLineHorizontal: false,
-                        dualLineVertical: false)),
-                itemBuilder: (ColoredDashboardItem item) {
-                  var layout = item.layoutData;
-
-                  if (item.data != null) {
-                    return DataWidget(
-                      item: item,
-                    );
-                  }
-
-                  return ItemDisplayWidget(
-                    item: item,
-                    isEditing: itemController.isEditing,
-                    onDelete: () {
-                      itemController.delete(item.identifier);
-                    },
-                  );
-                },
+                  ),
+                ),
               ),
       ),
     );
