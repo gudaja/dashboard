@@ -32,7 +32,7 @@ class ColoredDashboardItem extends DashboardItem {
   Map<String, dynamic> toMap() {
     var sup = super.toMap();
     if (color != null) {
-      sup["color"] = color?.value;
+      sup["color"] = color?.toARGB32();
     }
     if (data != null) {
       sup["data"] = data;
@@ -152,21 +152,20 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         var init = _preferences.getBool("init") ?? false;
 
         if (!init) {
-          _localItems = Map.fromIterable(
-            _default,
-            key: (item) => (item as ColoredDashboardItem).identifier,
-            value: (item) => item as ColoredDashboardItem,
-          );
+          _localItems = {
+            for (var item in _default)
+              item.identifier: item
+          };
 
           await _preferences.setString(
-              "$id" + "_layout_data_",
+              "${id}_layout_data_",
               json.encode(_default.asMap().map(
                   (key, value) => MapEntry(value.identifier, value.toMap()))));
 
           await _preferences.setBool("init", true);
         }
 
-        var js = json.decode(_preferences.getString("$id" + "_layout_data_")!);
+        var js = json.decode(_preferences.getString("${id}_layout_data_")!);
 
         return js!.values
             .map<ColoredDashboardItem>(
@@ -190,7 +189,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     var js = json
         .encode(_localItems!.map((key, value) => MapEntry(key, value.toMap())));
 
-    await _preferences.setString("$id" + "_layout_data_", js);
+    await _preferences.setString("${id}_layout_data_", js);
   }
 
   @override
@@ -202,7 +201,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     }
 
     await _preferences.setString(
-        "$id" + "_layout_data_",
+        "${id}_layout_data_",
         json.encode(
             _localItems!.map((key, value) => MapEntry(key, value.toMap()))));
   }
@@ -216,24 +215,23 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
     }
 
     await _preferences.setString(
-        "$id" + "_layout_data_",
+        "${id}_layout_data_",
         json.encode(
             _localItems!.map((key, value) => MapEntry(key, value.toMap()))));
   }
 
   Future<void> clear() async {
     _localItems?.clear();
-    await _preferences.remove("$id" + "_layout_data_");
+    await _preferences.remove("${id}_layout_data_");
     _localItems = null;
     await _preferences.setBool("init", false);
   }
 
-  _setLocal() {
-    _localItems = Map.fromIterable(
-      _default,
-      key: (item) => (item as ColoredDashboardItem).identifier,
-      value: (item) => item as ColoredDashboardItem,
-    );
+  void _setLocal() {
+    _localItems = {
+      for (var item in _default)
+        item.identifier: item
+    };
   }
 
   @override

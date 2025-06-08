@@ -84,7 +84,7 @@ class OptimizedDashboardContainer extends StatelessWidget {
   static final Map<String, BoxDecoration> _decorationCache = {};
 
   BoxDecoration _getDecoration() {
-    final key = '${color.value}_$borderRadius';
+    final key = '${color.toARGB32()}_$borderRadius';
     return _decorationCache.putIfAbsent(
       key,
       () => BoxDecoration(

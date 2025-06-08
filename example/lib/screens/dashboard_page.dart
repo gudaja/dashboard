@@ -13,10 +13,10 @@ class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
       int x, int y, bool editing) {
     if (item != null) {
       return CachedSlotBackground(
-        cacheKey: '${item.identifier}_${x}_${y}',
+        cacheKey: '${item.identifier}_${x}_$y',
         child: Container(
           decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.5),
+              color: Colors.red.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(6)),
         ),
       );
@@ -101,7 +101,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   bool refreshing = false;
 
-  var storage = MyItemStorage();
+  MyItemStorage storage = MyItemStorage();
 
   //var dummyItemController =
   //    DashboardItemController<ColoredDashboardItem>(items: []);
@@ -111,8 +111,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   int? slot = 20;
 
-  setSlot() {
-    var w = MediaQuery.of(context).size.width;
+  void setSlot() {
     setState(() {
       // slot = w > 600
       //     ? w > 900
@@ -268,8 +267,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         dualLineHorizontal: false,
                         dualLineVertical: false)),
                 itemBuilder: (ColoredDashboardItem item) {
-                  var layout = item.layoutData;
-
                   if (item.data != null) {
                     return DataWidget(
                       item: item,
