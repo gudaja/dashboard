@@ -180,7 +180,7 @@ class _DashboardPageState extends State<DashboardPage> {
             : Dashboard<ColoredDashboardItem>(
                 scrollController: scrollController,
                 shrinkToPlace: false,
-                slideToTop: true,
+                slideToTop: false,
                 absorbPointer: false,
                 slotBackgroundBuilder:
                     SlotBackgroundBuilder.withDimensionsFunction((context, item,

@@ -167,10 +167,22 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
         var js = json.decode(_preferences.getString("${id}_layout_data_")!);
 
-        return js!.values
+        final items = js!.values
             .map<ColoredDashboardItem>(
                 (value) => ColoredDashboardItem.fromMap(value))
             .toList();
+        
+        // Sort items by position to maintain consistent order
+        items.sort((a, b) {
+          // First sort by Y position (row)
+          int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+          if (yCompare != 0) return yCompare;
+          
+          // Then sort by X position (column) within the same row
+          return a.layoutData.startX.compareTo(b.layoutData.startX);
+        });
+        
+        return items;
       });
     } on Exception {
       rethrow;
