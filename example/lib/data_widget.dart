@@ -75,7 +75,10 @@ class LinkedIn extends StatelessWidget {
             const Expanded(
                 child: Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text("Connect Me!", style: TextStyle(color: Colors.white)),
+              child: AutoSizeText("Connect Me!",
+                  style: TextStyle(color: Colors.white),
+                  maxLines: 2,
+                  textAlign: TextAlign.center),
             )),
             Expanded(
               child: Container(
@@ -108,7 +111,10 @@ class Twitter extends StatelessWidget {
             const Expanded(
                 child: Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text("Follow Me!", style: TextStyle(color: Colors.white)),
+              child: AutoSizeText("Follow Me!",
+                  style: TextStyle(color: Colors.white),
+                  maxLines: 2,
+                  textAlign: TextAlign.center),
             )),
             Expanded(
               child: Container(
@@ -141,9 +147,11 @@ class Github extends StatelessWidget {
             const Expanded(
                 child: Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text(
+              child: AutoSizeText(
                 "Create Issue!",
                 style: TextStyle(color: Colors.black),
+                maxLines: 2,
+                textAlign: TextAlign.center,
               ),
             )),
             Expanded(
@@ -193,8 +201,13 @@ class InfoAdvice extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Column(
           children: [
-            const Text("Example dimensions and locations. (showing this)",
-                style: TextStyle(color: Colors.white)),
+            const Flexible(
+              child: AutoSizeText(
+                  "Example dimensions and locations. (showing this)",
+                  style: TextStyle(color: Colors.white),
+                  maxLines: 2,
+                  textAlign: TextAlign.center),
+            ),
             Expanded(
               child: Container(
                 alignment: Alignment.center,
@@ -244,11 +257,13 @@ class DefaultAdvice extends StatelessWidget {
               color: Colors.white,
             ),
             Expanded(
-              child: Text(
+              child: AutoSizeText(
                 "Your layout changes saved locally."
                 " Set default with this button.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             )
           ],
@@ -274,10 +289,14 @@ class ClearAdvice extends StatelessWidget {
               size: 30,
               color: Colors.white,
             ),
-            Text(
-              "Delete all widgets.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white),
+            Expanded(
+              child: AutoSizeText(
+                "Delete all widgets.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             )
           ],
         ));
@@ -297,15 +316,21 @@ class AddAdvice extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              Icons.add,
-              size: 30,
-              color: Colors.white,
+            Flexible(
+              child: Icon(
+                Icons.add,
+                size: 30,
+                color: Colors.white,
+              ),
             ),
-            Text(
-              "Add own colored widget with custom sizes.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white),
+            Flexible(
+              child: AutoSizeText(
+                "Add own colored widget with custom sizes.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
             )
           ],
         ));
@@ -327,32 +352,35 @@ class TransformAdvice extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Flexible(
-                child: Text(
+                child: AutoSizeText(
                   "Users can move widgets.",
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   textAlign: TextAlign.center,
-                  overflow: TextOverflow.fade,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Flexible(
-                child: Text(
+                child: AutoSizeText(
                   "To try moving, hold (or long press) the widget and move.",
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
-                  overflow: TextOverflow.fade,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Flexible(
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: AutoSizeText(
                         "While moving, it shrinks if possible according to the "
                         "minimum width and height values.\n(This min w: 2 , h: 2)",
                         textAlign: TextAlign.center,
                         style:
                             const TextStyle(color: Colors.white, fontSize: 13),
-                        overflow: TextOverflow.fade,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
 /*
@@ -380,23 +408,27 @@ class WelcomeWidget extends StatelessWidget {
         color: red,
         alignment: Alignment.center,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            RichText(
-                text: TextSpan(
-                    style: const TextStyle(color: Colors.white, fontSize: 20),
-                    children: [
-                  const TextSpan(text: "Welcome to "),
-                  TextSpan(
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          launchUrlString("https://pub.dev/packages/dashboard");
-                        },
-                      text: "dashboard",
-                      style: const TextStyle(
-                          decoration: TextDecoration.underline)),
-                  const TextSpan(text: " online demo!"),
-                ])),
+            Flexible(
+              child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                      children: [
+                        const TextSpan(text: "Welcome to "),
+                        TextSpan(
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                launchUrlString(
+                                    "https://pub.dev/packages/dashboard");
+                              },
+                            text: "dashboard",
+                            style: const TextStyle(
+                                decoration: TextDecoration.underline)),
+                        const TextSpan(text: " online demo!"),
+                      ])),
+            ),
           ],
         ));
   }
@@ -414,35 +446,53 @@ class BasicDescription extends StatelessWidget {
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            AutoSizeText(
-                "Each widget on the screen is called \"DashboardItem\"",
-                maxLines: 4,
-                style: TextStyle(color: Colors.white, fontSize: 13),
-                textAlign: TextAlign.center),
-            AutoSizeText("Each has a location and dimensions by slots.",
-                maxLines: 3,
-                style: TextStyle(color: Colors.white, fontSize: 13),
-                textAlign: TextAlign.center),
-            Row(
-              children: [
-                Expanded(
-                  child: AutoSizeText(
-                      "You can switch to edit mode to see these slots.",
-                      maxLines: 4,
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 8,
-                ),
-                Column(
-                  children: [
-                    Text("Tap: ",
-                        style: TextStyle(color: Colors.white, fontSize: 10)),
-                    Icon(Icons.edit, color: Colors.white),
-                  ],
-                )
-              ],
+            Flexible(
+              child: AutoSizeText(
+                  "Each widget on the screen is called \"DashboardItem\"",
+                  maxLines: 4,
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                  textAlign: TextAlign.center),
+            ),
+            Flexible(
+              child: AutoSizeText(
+                  "Each has a location and dimensions by slots.",
+                  maxLines: 3,
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                  textAlign: TextAlign.center),
+            ),
+            Flexible(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AutoSizeText(
+                        "You can switch to edit mode to see these slots.",
+                        maxLines: 4,
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                        textAlign: TextAlign.center),
+                  ),
+                  SizedBox(
+                    width: 8,
+                  ),
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: AutoSizeText("Tap:",
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 9),
+                              maxLines: 1,
+                              minFontSize: 6),
+                        ),
+                        Flexible(
+                          child:
+                              Icon(Icons.edit, color: Colors.white, size: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
             ),
           ],
         ));
@@ -472,20 +522,27 @@ class AdviceResize extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                AutoSizeText("Users can resize widgets.",
-                    maxLines: 2,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                    textAlign: TextAlign.center),
-                AutoSizeText(
-                    "To try resizing, hold (or long press) the line on the left"
-                    " and drag it to the left.",
-                    maxLines: 5,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                    textAlign: TextAlign.center),
-                AutoSizeText("Don't forget switch to edit mode.",
-                    maxLines: 3,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                    textAlign: TextAlign.center),
+                Flexible(
+                  child: AutoSizeText("Users can resize widgets.",
+                      maxLines: 2,
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      textAlign: TextAlign.center),
+                ),
+                Flexible(
+                  flex: 2,
+                  child: AutoSizeText(
+                      "To try resizing, hold (or long press) the line on the left"
+                      " and drag it to the left.",
+                      maxLines: 5,
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      textAlign: TextAlign.center),
+                ),
+                Flexible(
+                  child: AutoSizeText("Don't forget switch to edit mode.",
+                      maxLines: 3,
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      textAlign: TextAlign.center),
+                ),
               ],
             ))
           ],

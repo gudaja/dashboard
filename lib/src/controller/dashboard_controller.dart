@@ -436,9 +436,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       return layout;
     }
 
-    print(
-        "🚫 VIRTUAL COLUMNS COLLISION: Looking for valid position for item at (${layout.startX}, ${layout.startY}) ${layout.width}x${layout.height}");
-
     // Find the closest valid position by expanding search distance
     for (int distance = 1; distance < slotCount; distance++) {
       // Try moving left first (consistent behavior)
@@ -447,8 +444,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         final testLayout =
             layout.copyWithStarts(startX: leftX, startY: layout.startY);
         if (canPlaceAt(testLayout)) {
-          print(
-              "✅ FOUND VALID POSITION: moved left to (${testLayout.startX}, ${testLayout.startY})");
           return testLayout;
         }
       }
@@ -459,15 +454,10 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         final testLayout =
             layout.copyWithStarts(startX: rightX, startY: layout.startY);
         if (canPlaceAt(testLayout)) {
-          print(
-              "✅ FOUND VALID POSITION: moved right to (${testLayout.startX}, ${testLayout.startY})");
           return testLayout;
         }
       }
     }
-
-    print(
-        "❌ NO VALID POSITION FOUND for item at (${layout.startX}, ${layout.startY})");
     return null; // No valid position found
   }
 
@@ -715,8 +705,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     try {
       if (!_isAttached) throw Exception("Not Attached");
 
-      print("🏗️ MOUNT ITEMS START - slideToTop: $slideToTop");
-
       _startsTree.clear();
       _endsTree.clear();
       _indexesTree.clear();
@@ -737,23 +725,13 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
           }
         }
 
-        print(
-            "🔧 MOUNTING item ${i.key} at original position (${i.value.startX}, ${i.value.startY})");
-
         // can mount given start index
         var mount = tryMount(
             getIndex([i.value.startX, i.value.startY]), i.value.origin);
 
         if (mount == null) {
-          print("❌ MOUNT FAILED for item ${i.key} - will try mountToTop");
           not.add(i.key);
           continue layouts;
-        }
-
-        if (mount.startX != i.value.origin.startX ||
-            mount.startY != i.value.origin.startY) {
-          print(
-              "⚠️ POSITION CHANGED during mount: ${i.key} from (${i.value.origin.startX}, ${i.value.origin.startY}) to (${mount.startX}, ${mount.startY})");
         }
 
         _indexItem(mount, i.key);
@@ -773,23 +751,13 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
           }
         }
 
-        print(
-            "🔧 MOUNTING item ${i.key} without location at (${i.value.startX}, ${i.value.startY})");
-
         // can mount given start index
         var mount = tryMount(
             getIndex([i.value.startX, i.value.startY]), i.value.origin);
 
         if (mount == null) {
-          print("❌ MOUNT FAILED for item ${i.key} - will try mountToTop");
           not.add(i.key);
           continue layouts;
-        }
-
-        if (mount.startX != i.value.origin.startX ||
-            mount.startY != i.value.origin.startY) {
-          print(
-              "⚠️ POSITION CHANGED during mount: ${i.key} from (${i.value.origin.startX}, ${i.value.origin.startY}) to (${mount.startX}, ${mount.startY})");
         }
 
         _indexItem(mount, i.key);
@@ -798,13 +766,8 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       List<String> changes = [];
 
       if (slideToTop) {
-        print("📈 SLIDE TO TOP enabled - moving all items");
         _slideToTopAll();
         changes.addAll(_startsTree.values);
-      }
-
-      if (not.isNotEmpty) {
-        print("🔄 MOUNT TO TOP needed for ${not.length} items: $not");
       }
 
       for (var n in not) {
@@ -814,15 +777,10 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       changes.addAll(not);
 
       if (changes.isNotEmpty) {
-        print("💾 MOUNT ITEMS saving ${changes.length} changed positions");
         itemController.itemStorageDelegate?._onItemsUpdated(
             changes.map((e) => itemController._getItemWithLayout(e)).toList(),
             slotCount);
-      } else {
-        print("✅ MOUNT ITEMS completed - no position changes");
       }
-
-      print("🏗️ MOUNT ITEMS END");
     } on Exception {
       rethrow;
     }
