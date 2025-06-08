@@ -152,10 +152,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
         var init = _preferences.getBool("init") ?? false;
 
         if (!init) {
-          _localItems = {
-            for (var item in _default)
-              item.identifier: item
-          };
+          _localItems = {for (var item in _default) item.identifier: item};
 
           await _preferences.setString(
               "${id}_layout_data_",
@@ -167,10 +164,23 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
 
         var js = json.decode(_preferences.getString("${id}_layout_data_")!);
 
-        return js!.values
+        final items = js!.values
             .map<ColoredDashboardItem>(
                 (value) => ColoredDashboardItem.fromMap(value))
             .toList();
+
+        // Sort items by position to ensure consistent loading order
+        // This prevents random positioning after restart
+        items.sort((ColoredDashboardItem a, ColoredDashboardItem b) {
+          // First sort by Y position (row)
+          int yCompare = a.layoutData.startY.compareTo(b.layoutData.startY);
+          if (yCompare != 0) return yCompare;
+          
+          // Then sort by X position (column) within the same row
+          return a.layoutData.startX.compareTo(b.layoutData.startX);
+        });
+
+        return items;
       });
     } on Exception {
       rethrow;
@@ -228,10 +238,7 @@ class MyItemStorage extends DashboardItemStorageDelegate<ColoredDashboardItem> {
   }
 
   void _setLocal() {
-    _localItems = {
-      for (var item in _default)
-        item.identifier: item
-    };
+    _localItems = {for (var item in _default) item.identifier: item};
   }
 
   @override
