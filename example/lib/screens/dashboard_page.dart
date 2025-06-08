@@ -152,9 +152,34 @@ class _DashboardPageState extends State<DashboardPage> {
                     draggableOutside: false,
                     paintBackgroundLines: false,
                     autoScroll: true,
-                    resizeCursorSide: 15,
+                    resizeCursorSide: 40,
                     curve: Curves.easeOut,
                     duration: const Duration(milliseconds: 300),
+                    resizeHandleBuilder: (context, item, isEditing) {
+                      print(
+                          'Building resize handle for item: ${item.identifier}, isEditing: $isEditing');
+                      return Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.open_in_full,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      );
+                    },
                     backgroundStyle: const EditModeBackgroundStyle(
                         lineColor: Colors.black38,
                         lineWidth: 0.5,

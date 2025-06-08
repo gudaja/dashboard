@@ -85,7 +85,7 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   Widget buildPositioned(List list) {
-    return _DashboardItemWidget(
+    return _DashboardItemWidget<T>(
       style: widget.itemStyle,
       key: _keys[list[2]]!,
       itemGlobalPosition: (list[0] as _ItemCurrentLayout)._currentPosition(
@@ -98,6 +98,7 @@ class _DashboardStackState<T extends DashboardItem>
       child: list[1],
       offset: viewportOffset,
       layoutController: widget.dashboardController,
+      item: widget.dashboardController.itemController._items[list[2]]!,
     );
   }
 
@@ -128,11 +129,11 @@ class _DashboardStackState<T extends DashboardItem>
       id,
     ];
 
-    _keys[id] ??= GlobalKey<_DashboardItemWidgetState>();
+    _keys[id] ??= GlobalKey<_DashboardItemWidgetState<T>>();
     l._key = _keys[id]!;
   }
 
-  final Map<String, GlobalKey<_DashboardItemWidgetState>> _keys = {};
+  final Map<String, GlobalKey<_DashboardItemWidgetState<T>>> _keys = {};
 
   late int startIndex, endIndex;
 
@@ -369,9 +370,7 @@ class _DashboardStackState<T extends DashboardItem>
         if (speed != 0) {
           var n = pixels + speed;
 
-
           viewportOffset.jumpTo(n.clamp(0.0, (1 << 31).toDouble()));
-
 
           scroll();
         }

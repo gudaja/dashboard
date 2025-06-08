@@ -20,7 +20,7 @@ class DashboardItemWidget<T extends DashboardItem> extends InheritedWidget {
   }
 }
 
-class _DashboardItemWidget extends StatefulWidget {
+class _DashboardItemWidget<T extends DashboardItem> extends StatefulWidget {
   const _DashboardItemWidget(
       {required Key key,
       required this.layoutController,
@@ -30,7 +30,8 @@ class _DashboardItemWidget extends StatefulWidget {
       required this.itemCurrentLayout,
       required this.itemGlobalPosition,
       required this.offset,
-      required this.style})
+      required this.style,
+      required this.item})
       : super(key: key);
 
   final _ItemCurrentLayout itemCurrentLayout;
@@ -41,13 +42,15 @@ class _DashboardItemWidget extends StatefulWidget {
   final _ItemCurrentPosition itemGlobalPosition;
   final ViewportOffset offset;
   final ItemStyle style;
+  final T item;
 
   @override
-  State<_DashboardItemWidget> createState() => _DashboardItemWidgetState();
+  State<_DashboardItemWidget<T>> createState() =>
+      _DashboardItemWidgetState<T>();
 }
 
-class _DashboardItemWidgetState extends State<_DashboardItemWidget>
-    with TickerProviderStateMixin {
+class _DashboardItemWidgetState<T extends DashboardItem>
+    extends State<_DashboardItemWidget<T>> with TickerProviderStateMixin {
   late MouseCursor cursor;
 
   // late double leftPad, rightPad, topPad, bottomPad;
@@ -206,6 +209,27 @@ class _DashboardItemWidgetState extends State<_DashboardItemWidget>
         onExit: _exit,
         child: result,
       );
+
+      // Add custom resize handle if provided
+      if (widget.editModeSettings.resizeHandleBuilder != null) {
+        print(
+            'Adding resize handle to Stack for item: ${widget.item.identifier}');
+        result = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            result,
+            Positioned(
+              bottom: -5,
+              right: -5,
+              child: widget.editModeSettings.resizeHandleBuilder!(
+                context,
+                widget.item,
+                true,
+              ),
+            ),
+          ],
+        );
+      }
     }
 
     var currentEdit = widget.layoutController.editSession?.editing.id ==

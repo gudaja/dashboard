@@ -1,5 +1,12 @@
 part of '../dashboard_base.dart';
 
+/// Callback function for custom resize handle widget
+typedef ResizeHandleBuilder<T extends DashboardItem> = Widget Function(
+  BuildContext context,
+  T item,
+  bool isEditing,
+);
+
 /// Edit mode settings.
 /// It contains parameters related to gesture, animations, resizing.
 class EditModeSettings {
@@ -17,6 +24,7 @@ class EditModeSettings {
     this.shrinkOnMove = true,
     this.draggableOutside = true,
     this.autoScroll = true,
+    this.resizeHandleBuilder,
   }) : duration = duration ?? kThemeAnimationDuration;
 
   /// If [draggableOutside] is true, items can be dragged outside the viewport.
@@ -58,4 +66,8 @@ class EditModeSettings {
 
   /// Background style
   final EditModeBackgroundStyle backgroundStyle;
+
+  /// Custom resize handle builder that displays a widget in the bottom-right corner
+  /// during edit mode. If null, no custom resize handle is shown.
+  final ResizeHandleBuilder? resizeHandleBuilder;
 }

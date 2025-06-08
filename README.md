@@ -1,4 +1,3 @@
-
 Dynamic dashboard widget that allows your users to create their own layouts. Rezise, move, indirect resize/move, auto  re-layout are supported.
 
 ## Features
@@ -152,45 +151,73 @@ Shrink items when re-layout or editing is possible.
 
 
 ### Edit Mode Settings
-See code comments for edit mode settings parameters.
 
-All is optional.
-````dart
-    EditModeSettings(
+EditModeSettings contains parameters related to gesture, animations, resizing.
 
-        // animation settings
-        curve: Curves.easeInOutCirc,
-        duration: const Duration(milliseconds: 200),
-        
-        // fill editing item actual size
-        fillEditingBackground: true,
+```dart
+EditModeSettings(
+  resizeCursorSide: 10, // Resize side width
+  paintBackgroundLines: true, // Paint background lines
+  fillEditingBackground: true, // Fill editing item background
+  longPressEnabled: true, // Start resize or move with long press
+  panEnabled: true, // Start resize or move with pan
+  backgroundStyle: EditModeBackgroundStyle(), // Background style
+  curve: Curves.easeOut, // Animation curve
+  duration: Duration(milliseconds: 300), // Animation duration
+  shrinkOnMove: true, // Shrink items on moving if necessary
+  draggableOutside: true, // Items can be dragged outside the viewport
+  autoScroll: true, // Viewport will scroll automatically when item is dragged outside
+  resizeHandleBuilder: (context, item, isEditing) {
+    // Custom resize handle widget displayed in bottom-right corner during edit mode
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(Icons.open_in_full, color: Colors.white, size: 12),
+    );
+  },
+)
+```
 
-        // space that can be held to resize
-        resizeCursorSide: 20,
-        
-        // draw lines for slots
-        paintBackgroundLines: true,
-        
-        // shrink items when editing if possible and necessary
-        shrinkOnMove: true,
-        
-        // long press to edit
-        longPressEnabled: true,
-        
-        // pan to edit
-        panEnabled: true,
-        
-        backgroundStyle: const EditModeBackgroundStyle(
-            fillColor: Colors.red,
-            lineWidth: 1.5,
-            lineColor: Colors.black,
-            
-            // line by vertical space
-            dualLineHorizontal: true,
+#### Custom Resize Handle
 
-            // line by horizontal space
-            dualLineVertical: true));
-````
+The `resizeHandleBuilder` parameter allows you to display a custom widget in the bottom-right corner of each dashboard item during edit mode. This provides a more visible and user-friendly way to resize items.
+
+**Parameters:**
+- `context`: The build context
+- `item`: The dashboard item being edited
+- `isEditing`: Whether the item is currently in edit mode
+
+**Example:**
+```dart
+resizeHandleBuilder: (context, item, isEditing) {
+  return Container(
+    width: 24,
+    height: 24,
+    decoration: BoxDecoration(
+      color: Colors.blue.withOpacity(0.8),
+      shape: BoxShape.circle,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black26,
+          blurRadius: 4,
+          offset: Offset(2, 2),
+        ),
+      ],
+    ),
+    child: Icon(
+      Icons.open_in_full,
+      color: Colors.white,
+      size: 14,
+    ),
+  );
+}
+```
+
+If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resizing works through the traditional edge detection method.
 
 ### Storage Delegate
 
