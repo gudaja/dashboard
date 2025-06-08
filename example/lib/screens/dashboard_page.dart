@@ -186,22 +186,17 @@ class _DashboardPageState extends State<DashboardPage> {
                   // Show disabled columns in red using config
                   final isDisabled =
                       virtualConfig?.isColumnDisabled(x) ?? false;
-                  return Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black12, width: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                      color: isDisabled ? Colors.red.withOpacity(0.1) : null,
-                    ),
-                    child: isDisabled
-                        ? const Center(
-                            child: Icon(
-                              Icons.block,
-                              color: Colors.red,
-                              size: 16,
-                            ),
-                          )
-                        : null,
-                  );
+                  return isDisabled
+                      ? null
+                      : Container(
+                          decoration: BoxDecoration(
+                            border:
+                                Border.all(color: Colors.black12, width: 0.5),
+                            borderRadius: BorderRadius.circular(10),
+                            color: null,
+                          ),
+                          child: null,
+                        );
                 }),
                 padding: const EdgeInsets.all(8),
                 horizontalSpace: 8,
@@ -213,7 +208,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 slotCount: slot!,
                 virtualColumnsConfig: const VirtualColumnsConfig.visible(
                   disabledColumns: [6, 13],
-                  disabledColumnWidth: 10,
+                  disabledColumnWidth: 50,
                 ),
                 errorPlaceholder: (e, s) {
                   return Text("$e , $s");

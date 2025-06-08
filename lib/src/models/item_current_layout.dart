@@ -226,13 +226,22 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var rightPad = isRightSide ? 0.0 : viewportDelegate.crossAxisSpace / 2;
     var topPad = isTopSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
     var bottomPad = isBottomSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
+
+    // Calculate total width considering virtual columns
+    double totalWidth = 0.0;
+    for (int i = 0; i < width; i++) {
+      totalWidth += _layoutController.getColumnWidth(startX + i);
+    }
+
     return _ItemCurrentPosition(
         height: height * verticalSlotEdge - topPad - bottomPad,
-        width: width * slotEdge - rightPad - leftPad,
+        width: totalWidth - rightPad - leftPad,
         y: ((startY * (verticalSlotEdge))) +
             viewportDelegate.padding.top +
             topPad,
-        x: (startX * slotEdge) + viewportDelegate.padding.left + leftPad);
+        x: _layoutController.getColumnPosition(startX) +
+            viewportDelegate.padding.left +
+            leftPad);
   }
 
   double get _slotEdge {

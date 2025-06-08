@@ -820,11 +820,55 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     return l;
   }
 
+  /// Get the X position for a column considering virtual columns
+  double getColumnPosition(int column) {
+    if (virtualColumnsConfig == null) {
+      return column * slotEdge;
+    }
+
+    double position = 0.0;
+    for (int i = 0; i < column; i++) {
+      if (virtualColumnsConfig!.isColumnDisabled(i)) {
+        position += virtualColumnsConfig!.disabledColumnWidth ?? 0.0;
+      } else {
+        position += slotEdge;
+      }
+    }
+    return position;
+  }
+
+  /// Get the width for a specific column
+  double getColumnWidth(int column) {
+    if (virtualColumnsConfig?.isColumnDisabled(column) ?? false) {
+      return virtualColumnsConfig!.disabledColumnWidth ?? 0.0;
+    }
+    return slotEdge;
+  }
+
   void _setSizes(BoxConstraints constrains, double vertical) {
     verticalSlotEdge = vertical;
-    slotEdge =
-        (_axis == Axis.vertical ? constrains.maxWidth : constrains.maxHeight) /
-            slotCount;
+
+    if (virtualColumnsConfig != null) {
+      // Calculate normal slot width considering disabled columns
+      final totalWidth =
+          _axis == Axis.vertical ? constrains.maxWidth : constrains.maxHeight;
+      final disabledColumnsWidth =
+          virtualColumnsConfig!.disabledColumns.length *
+              (virtualColumnsConfig!.disabledColumnWidth ?? 0.0);
+      final enabledColumnsCount =
+          slotCount - virtualColumnsConfig!.disabledColumns.length;
+
+      if (enabledColumnsCount > 0) {
+        slotEdge = (totalWidth - disabledColumnsWidth) / enabledColumnsCount;
+      } else {
+        slotEdge = totalWidth / slotCount; // fallback
+      }
+    } else {
+      slotEdge = (_axis == Axis.vertical
+              ? constrains.maxWidth
+              : constrains.maxHeight) /
+          slotCount;
+    }
   }
 
   late bool animateEverytime;

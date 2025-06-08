@@ -147,16 +147,21 @@ class _DashboardStackState<T extends DashboardItem>
     var t = viewportDelegate.padding.top -
         pixels +
         (viewportDelegate.mainAxisSpace / 2);
-    var w = slotEdge - viewportDelegate.crossAxisSpace;
     var h = verticalSlotEdge - viewportDelegate.mainAxisSpace;
 
     while (i <= endIndex) {
       var x = i % widget.dashboardController.slotCount;
       var y = (i / widget.dashboardController.slotCount).floor();
+
+      // Use virtual columns aware positioning
+      var columnPos = widget.dashboardController.getColumnPosition(x);
+      var columnWidth = widget.dashboardController.getColumnWidth(x);
+      var w = columnWidth - viewportDelegate.crossAxisSpace;
+
       widget.slotBackground!._itemController =
           widget.dashboardController.itemController;
       res.add(Positioned(
-        left: x * slotEdge + l,
+        left: columnPos + l,
         top: y * verticalSlotEdge + t,
         width: w,
         height: h,
