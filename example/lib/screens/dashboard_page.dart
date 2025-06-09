@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:dashboard/dashboard.dart';
@@ -288,6 +287,29 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: Colors.white,
                             size: 16,
                           ),
+                        ),
+                      );
+                    },
+                    deleteHandleBuilder: (context, item, isEditing) {
+                      return Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.white,
+                          size: 16,
                         ),
                       );
                     },
