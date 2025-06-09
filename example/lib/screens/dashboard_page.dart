@@ -291,6 +291,32 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       );
                     },
+                    deleteHandleBuilder: (context, item, isEditing, onDelete) {
+                      return GestureDetector(
+                        onTap: onDelete,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      );
+                    },
                     backgroundStyle: const EditModeBackgroundStyle(
                         lineColor: Colors.black38,
                         lineWidth: 0.5,

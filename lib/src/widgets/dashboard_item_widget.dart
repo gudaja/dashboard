@@ -344,12 +344,14 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
         Widget finalChild = w!;
 
-        // Add resize handle at the positioned level if we're in edit mode
-        if (onEditMode && widget.editModeSettings.resizeHandleBuilder != null) {
-          finalChild = Stack(
-            clipBehavior: Clip.none,
-            children: [
-              finalChild,
+        // Add resize and delete handles at the positioned level if we're in edit mode
+        if (onEditMode && (widget.editModeSettings.resizeHandleBuilder != null || 
+                          widget.editModeSettings.deleteHandleBuilder != null)) {
+          List<Widget> stackChildren = [finalChild];
+
+          // Add resize handle in bottom-right corner
+          if (widget.editModeSettings.resizeHandleBuilder != null) {
+            stackChildren.add(
               Positioned(
                 bottom: -10,
                 right: -10,
@@ -359,7 +361,31 @@ class _DashboardItemWidgetState<T extends DashboardItem>
                   true,
                 ),
               ),
-            ],
+            );
+          }
+
+          // Add delete handle in top-right corner
+          if (widget.editModeSettings.deleteHandleBuilder != null) {
+            stackChildren.add(
+              Positioned(
+                top: -10,
+                right: -10,
+                child: widget.editModeSettings.deleteHandleBuilder!(
+                  context,
+                  widget.item,
+                  true,
+                  () {
+                    // Delete the widget
+                    widget.layoutController.delete(widget.item.identifier);
+                  },
+                ),
+              ),
+            );
+          }
+
+          finalChild = Stack(
+            clipBehavior: Clip.none,
+            children: stackChildren,
           );
         }
 

@@ -7,6 +7,14 @@ typedef ResizeHandleBuilder<T extends DashboardItem> = Widget Function(
   bool isEditing,
 );
 
+/// Callback function for custom delete handle widget
+typedef DeleteHandleBuilder<T extends DashboardItem> = Widget Function(
+  BuildContext context,
+  T item,
+  bool isEditing,
+  VoidCallback onDelete,
+);
+
 /// Edit mode settings.
 /// It contains parameters related to gesture, animations, resizing.
 class EditModeSettings {
@@ -25,6 +33,7 @@ class EditModeSettings {
     this.draggableOutside = true,
     this.autoScroll = true,
     this.resizeHandleBuilder,
+    this.deleteHandleBuilder,
   }) : duration = duration ?? kThemeAnimationDuration;
 
   /// If [draggableOutside] is true, items can be dragged outside the viewport.
@@ -70,4 +79,8 @@ class EditModeSettings {
   /// Custom resize handle builder that displays a widget in the bottom-right corner
   /// during edit mode. If null, no custom resize handle is shown.
   final ResizeHandleBuilder? resizeHandleBuilder;
+
+  /// Custom delete handle builder that displays a widget in the top-right corner
+  /// during edit mode. If null, no custom delete handle is shown.
+  final DeleteHandleBuilder? deleteHandleBuilder;
 }
