@@ -882,6 +882,33 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     return (slotCount - 1).clamp(0, slotCount - 1);
   }
 
+  /// Get the column index from X coordinate using exact boundaries instead of center-based logic
+  /// This is better for precise edge detection during resize operations
+  int getColumnFromPositionExact(double x) {
+    if (virtualColumnsConfig == null) {
+      return (x / slotEdge).floor().clamp(0, slotCount - 1);
+    }
+
+    final totalWidth = _axis == Axis.vertical
+        ? _viewportDelegate.constraints.maxWidth
+        : _viewportDelegate.constraints.maxHeight;
+
+    // Find which column contains this X position using exact boundaries
+    double currentPosition = 0.0;
+    for (int column = 0; column < slotCount; column++) {
+      double columnWidth =
+          virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
+      double columnEnd = currentPosition + columnWidth;
+      if (x < columnEnd) {
+        return column;
+      }
+      currentPosition = columnEnd;
+    }
+
+    // If position is beyond all columns, return last column
+    return (slotCount - 1).clamp(0, slotCount - 1);
+  }
+
   void _setSizes(BoxConstraints constrains, double vertical) {
     verticalSlotEdge = vertical;
 

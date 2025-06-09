@@ -396,11 +396,12 @@ class _DashboardStackState<T extends DashboardItem>
   Offset holdOffset = Offset.zero;
 
   void _onMoveStart(Offset local) {
+    // Oblicz pozycję względną (bez padding)
     var holdGlobal = Offset(local.dx - viewportDelegate.padding.left,
         local.dy - viewportDelegate.padding.top);
 
     var x = widget.dashboardController
-        .getColumnFromPosition(local.dx - viewportDelegate.padding.left);
+        .getColumnFromPositionExact(local.dx - viewportDelegate.padding.left);
     var y =
         (local.dy + pixels - viewportDelegate.padding.top) ~/ verticalSlotEdge;
 
@@ -414,31 +415,39 @@ class _DashboardStackState<T extends DashboardItem>
           slotEdge: slotEdge,
           viewportDelegate: viewportDelegate,
           verticalSlotEdge: verticalSlotEdge);
+      
+      // Popraw obliczenia pozycji elementu - current.x już zawiera padding.left
       var itemGlobal = _ItemCurrentPosition(
           x: current.x - viewportDelegate.padding.left,
           y: current.y - viewportDelegate.padding.top - pixels,
           height: current.height,
           width: current.width);
+      
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
         _editing = null;
         setState(() {});
         return;
       }
+      
+      // Lewa krawędź
       if (itemGlobal.x + widget.editModeSettings.resizeCursorSide >
           holdGlobal.dx) {
         directions.add(AxisDirection.left);
       }
 
+      // Górna krawędź
       if ((itemGlobal.y) + widget.editModeSettings.resizeCursorSide >
           holdGlobal.dy) {
         directions.add(AxisDirection.up);
       }
 
+      // Prawa krawędź
       if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
           holdGlobal.dx) {
         directions.add(AxisDirection.right);
       }
 
+      // Dolna krawędź
       if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
           holdGlobal.dy) {
         directions.add(AxisDirection.down);
