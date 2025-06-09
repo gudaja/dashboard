@@ -241,10 +241,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 cacheExtend: 250,
                 dashboardItemController: itemController,
                 slotCount: slot!,
-                virtualColumnsConfig: const VirtualColumnsConfig.visible(
-                  disabledColumns: [6, 13],
-                  disabledColumnWidth: 0.03,
-                ),
+                // virtualColumnsConfig: const VirtualColumnsConfig.visible(
+                //   disabledColumns: [6, 13],
+                //   disabledColumnWidth: 0.03,
+                // ),
                 errorPlaceholder: (e, s) {
                   return Text("$e , $s");
                 },

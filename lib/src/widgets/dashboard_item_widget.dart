@@ -83,10 +83,11 @@ class _DashboardItemWidgetState<T extends DashboardItem>
   _ItemCurrentPosition? get _resizePosition =>
       widget.itemCurrentLayout._resizePosition?.value;
 
-  bool onRightSide(double dX) =>
-      dX >
-      (widget.itemGlobalPosition.width + (_resizePosition?.width ?? 0)) -
-          widget.editModeSettings.resizeCursorSide;
+  bool onRightSide(double dX) {
+    final threshold = (widget.itemGlobalPosition.width + (_resizePosition?.width ?? 0)) -
+        widget.editModeSettings.resizeCursorSide;
+    return dX > threshold;
+  }
 
   bool onLeftSide(double dX) =>
       (dX + (_resizePosition?.x ?? 0)) <
@@ -353,23 +354,25 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           if (widget.editModeSettings.resizeHandleBuilder != null) {
             stackChildren.add(
               Positioned(
-                bottom: -5,
-                right: -5,
-                child: widget.editModeSettings.resizeHandleBuilder!(
-                  context,
-                  widget.item,
-                  true,
+                bottom: -10,
+                right: -10,
+                child: IgnorePointer(
+                  child: widget.editModeSettings.resizeHandleBuilder!(
+                    context,
+                    widget.item,
+                    true,
+                  ),
                 ),
               ),
             );
           }
           
-          // Add delete handle in top-right corner
+          // Add delete handle in top-left corner
           if (widget.editModeSettings.deleteHandleBuilder != null) {
             stackChildren.add(
               Positioned(
                 top: -5,
-                right: -5,
+                left: -5,
                 child: GestureDetector(
                   onTap: () {
                     widget.layoutController.itemController.delete(widget.item.identifier);

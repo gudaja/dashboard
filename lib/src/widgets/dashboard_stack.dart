@@ -396,7 +396,7 @@ class _DashboardStackState<T extends DashboardItem>
   Offset holdOffset = Offset.zero;
 
   void _onMoveStart(Offset local) {
-    var holdGlobal = Offset(local.dx - viewportDelegate.padding.left,
+    var holdViewport = Offset(local.dx - viewportDelegate.padding.left,
         local.dy - viewportDelegate.padding.top);
 
     var x = widget.dashboardController
@@ -404,8 +404,31 @@ class _DashboardStackState<T extends DashboardItem>
     var y =
         (local.dy + pixels - viewportDelegate.padding.top) ~/ verticalSlotEdge;
 
-    var e = widget.dashboardController
-        ._indexesTree[widget.dashboardController.getIndex([x, y])];
+    var index = widget.dashboardController.getIndex([x, y]);
+    var e = widget.dashboardController._indexesTree[index];
+
+    // If no element found at current position, check adjacent positions for resize
+    if (e == null) {
+      // Check left position (for right-side resize)
+      if (x > 0) {
+        var leftIndex = widget.dashboardController.getIndex([x - 1, y]);
+        var leftElement = widget.dashboardController._indexesTree[leftIndex];
+        if (leftElement is String) {
+          e = leftElement;
+          x = x - 1; // Update position to the actual element
+        }
+      }
+      
+      // Check above position (for bottom-side resize)
+      if (e == null && y > 0) {
+        var topIndex = widget.dashboardController.getIndex([x, y - 1]);
+        var topElement = widget.dashboardController._indexesTree[topIndex];
+        if (topElement is String) {
+          e = topElement;
+          y = y - 1; // Update position to the actual element
+        }
+      }
+    }
 
     if (e is String) {
       var directions = <AxisDirection>[];
@@ -419,28 +442,31 @@ class _DashboardStackState<T extends DashboardItem>
           y: current.y - viewportDelegate.padding.top - pixels,
           height: current.height,
           width: current.width);
-      if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
+      
+      if (holdViewport.dx < itemGlobal.x || holdViewport.dy < itemGlobal.y) {
         _editing = null;
         setState(() {});
         return;
       }
       if (itemGlobal.x + widget.editModeSettings.resizeCursorSide >
-          holdGlobal.dx) {
+          holdViewport.dx) {
         directions.add(AxisDirection.left);
       }
 
       if ((itemGlobal.y) + widget.editModeSettings.resizeCursorSide >
-          holdGlobal.dy) {
+          holdViewport.dy) {
         directions.add(AxisDirection.up);
       }
 
-      if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dx) {
+      // Check for right-side resize using same coordinate system as MouseRegion
+      final clickRelativeToItem = local.dx - current.x;  // Position relative to item's left edge
+      final threshold = current.width - widget.editModeSettings.resizeCursorSide;
+      if (clickRelativeToItem > threshold) {
         directions.add(AxisDirection.right);
       }
 
       if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dy) {
+          holdViewport.dy) {
         directions.add(AxisDirection.down);
       }
       if (directions.isNotEmpty) {
@@ -452,7 +478,7 @@ class _DashboardStackState<T extends DashboardItem>
       _startScrollPixels = pixels;
       widget.dashboardController.startEdit(e, _holdDirections == null);
 
-      holdOffset = holdGlobal - Offset(itemGlobal.x, itemGlobal.y);
+      holdOffset = holdViewport - Offset(itemGlobal.x, itemGlobal.y);
 
       var l = widget.dashboardController._layouts![e];
       widget.dashboardController.editSession!.editing._originSize = [
