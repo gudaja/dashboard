@@ -262,7 +262,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     draggableOutside: false,
                     paintBackgroundLines: false,
                     autoScroll: true,
-                    resizeCursorSide: 40,
+                    resizeCursorSide: 5,
                     curve: Curves.easeOut,
                     duration: const Duration(milliseconds: 200),
                     resizeHandleBuilder: (context, item, isEditing) {

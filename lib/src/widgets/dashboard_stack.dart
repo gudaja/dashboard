@@ -429,6 +429,20 @@ class _DashboardStackState<T extends DashboardItem>
         return;
       }
       
+      // Sprawdź czy kliknięcie jest na przycisku skalowania (bottom-right)
+      bool onResizeButton = false;
+      if (widget.editModeSettings.resizeHandleBuilder != null) {
+        // Przycisk ma 30x30px i jest na pozycji bottom: 5, right: 5
+        // Więc zajmuje obszar od (width-35, height-35) do (width-5, height-5)
+        double buttonLeft = itemGlobal.endX - 35;
+        double buttonTop = itemGlobal.endY - 35;
+        double buttonRight = itemGlobal.endX - 5;
+        double buttonBottom = itemGlobal.endY - 5;
+        
+        onResizeButton = holdGlobal.dx >= buttonLeft && holdGlobal.dx <= buttonRight &&
+                        holdGlobal.dy >= buttonTop && holdGlobal.dy <= buttonBottom;
+      }
+
       // Lewa krawędź
       if (itemGlobal.x + widget.editModeSettings.resizeCursorSide >
           holdGlobal.dx) {
@@ -443,13 +457,13 @@ class _DashboardStackState<T extends DashboardItem>
 
       // Prawa krawędź
       if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dx) {
+          holdGlobal.dx || onResizeButton) {
         directions.add(AxisDirection.right);
       }
 
       // Dolna krawędź
       if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dy) {
+          holdGlobal.dy || onResizeButton) {
         directions.add(AxisDirection.down);
       }
       if (directions.isNotEmpty) {
