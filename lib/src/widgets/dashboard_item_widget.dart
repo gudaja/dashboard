@@ -63,7 +63,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
     super.dispose();
   }
 
-  _listen() {
+  void _listen() {
     setState(() {});
   }
 
@@ -104,28 +104,32 @@ class _DashboardItemWidgetState<T extends DashboardItem>
   // Sprawdza czy pozycja jest na przycisku skalowania (bottom-right)
   bool onResizeHandle(double dX, double dY) {
     if (widget.editModeSettings.resizeHandleBuilder == null) return false;
-    
-    final widgetWidth = widget.itemGlobalPosition.width + (_resizePosition?.width ?? 0);
-    final widgetHeight = widget.itemGlobalPosition.height + (_resizePosition?.height ?? 0);
-    
+
+    final widgetWidth =
+        widget.itemGlobalPosition.width + (_resizePosition?.width ?? 0);
+    final widgetHeight =
+        widget.itemGlobalPosition.height + (_resizePosition?.height ?? 0);
+
     // Przycisk ma 30x30px i jest na pozycji bottom: 5, right: 5
     // Więc zajmuje obszar od (width-35, height-35) do (width-5, height-5)
-    return dX >= widgetWidth - 35 && dX <= widgetWidth - 5 &&
-           dY >= widgetHeight - 35 && dY <= widgetHeight - 5;
+    return dX >= widgetWidth - 35 &&
+        dX <= widgetWidth - 5 &&
+        dY >= widgetHeight - 35 &&
+        dY <= widgetHeight - 5;
   }
 
   void _hover(PointerHoverEvent hover) {
     var x = hover.localPosition.dx;
     var y = hover.localPosition.dy;
     MouseCursor cursor;
-    
+
     // Sprawdź najpierw czy jesteśmy na przycisku skalowania
     var onResizeButton = onResizeHandle(x, y);
     var r = onRightSide(x) || onResizeButton;
     var l = onLeftSide(x);
     var t = onTopSide(y);
     var b = onBottomSide(y) || onResizeButton;
-    
+
     if (r) {
       if (b) {
         cursor = SystemMouseCursors.resizeUpLeftDownRight;
@@ -362,8 +366,9 @@ class _DashboardItemWidgetState<T extends DashboardItem>
         Widget finalChild = w!;
 
         // Add resize and delete handles at the positioned level if we're in edit mode
-        if (onEditMode && (widget.editModeSettings.resizeHandleBuilder != null || 
-                          widget.editModeSettings.deleteHandleBuilder != null)) {
+        if (onEditMode &&
+            (widget.editModeSettings.resizeHandleBuilder != null ||
+                widget.editModeSettings.deleteHandleBuilder != null)) {
           List<Widget> stackChildren = [finalChild];
 
           // Add resize handle in bottom-right corner

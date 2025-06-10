@@ -69,14 +69,15 @@ void main() {
         await rightGesture.up();
         await tester.pumpAndSettle();
 
-        print('✅ Basic resize functionality - OK');
+        debugPrint('✅ Basic resize functionality - OK');
       });
     });
 
     group('🏗️ Virtual Columns Resize Tests', () {
       testWidgets('Virtual columns resize - ALL DIRECTIONS WORK',
           (WidgetTester tester) async {
-        print('🎯 Testing virtual columns resize - all directions should work');
+        debugPrint(
+            '🎯 Testing virtual columns resize - all directions should work');
 
         final controller = DashboardItemController<DashboardItem>(items: [
           DashboardItem(
@@ -128,17 +129,17 @@ void main() {
         );
 
         await tester.pumpAndSettle();
-        print('✅ Virtual columns dashboard loaded');
+        debugPrint('✅ Virtual columns dashboard loaded');
 
         final widgetFinder = find.text('Virtual Columns Widget');
         expect(widgetFinder, findsOneWidget);
 
         await tester.longPress(widgetFinder);
         await tester.pumpAndSettle();
-        print('👆 Edit mode activated');
+        debugPrint('👆 Edit mode activated');
 
         final originalRect = tester.getRect(widgetFinder);
-        print('📐 Widget positioned at: $originalRect');
+        debugPrint('📐 Widget positioned at: $originalRect');
 
         // Test ALL directions - they all work in real application
         final leftPoint = Offset(originalRect.left + 5, originalRect.center.dy);
@@ -146,7 +147,7 @@ void main() {
         await leftGesture.moveBy(const Offset(-20, 0));
         await leftGesture.up();
         await tester.pumpAndSettle();
-        print('👈 Left edge resize gesture completed');
+        debugPrint('👈 Left edge resize gesture completed');
 
         final rightPoint =
             Offset(originalRect.right - 5, originalRect.center.dy);
@@ -154,14 +155,14 @@ void main() {
         await rightGesture.moveBy(const Offset(20, 0));
         await rightGesture.up();
         await tester.pumpAndSettle();
-        print('👉 Right edge resize gesture completed');
+        debugPrint('👉 Right edge resize gesture completed');
 
         final topPoint = Offset(originalRect.center.dx, originalRect.top + 5);
         final topGesture = await tester.startGesture(topPoint);
         await topGesture.moveBy(const Offset(0, -20));
         await topGesture.up();
         await tester.pumpAndSettle();
-        print('👆 Top edge resize gesture completed');
+        debugPrint('👆 Top edge resize gesture completed');
 
         final bottomPoint =
             Offset(originalRect.center.dx, originalRect.bottom - 5);
@@ -169,20 +170,21 @@ void main() {
         await bottomGesture.moveBy(const Offset(0, 20));
         await bottomGesture.up();
         await tester.pumpAndSettle();
-        print('👇 Bottom edge resize gesture completed');
+        debugPrint('👇 Bottom edge resize gesture completed');
 
-        print('');
-        print('🎉 SUCCESS: All resize directions work with virtual columns!');
-        print('   ✅ Left edge resize - WORKS');
-        print('   ✅ Right edge resize - WORKS');
-        print('   ✅ Top edge resize - WORKS');
-        print('   ✅ Bottom edge resize - WORKS');
-        print('');
-        print('🛠️  Implemented fixes:');
-        print(
+        debugPrint('');
+        debugPrint(
+            '🎉 SUCCESS: All resize directions work with virtual columns!');
+        debugPrint('   ✅ Left edge resize - WORKS');
+        debugPrint('   ✅ Right edge resize - WORKS');
+        debugPrint('   ✅ Top edge resize - WORKS');
+        debugPrint('   ✅ Bottom edge resize - WORKS');
+        debugPrint('');
+        debugPrint('🛠️  Implemented fixes:');
+        debugPrint(
             '   - getColumnFromPosition() method for proper gesture detection');
-        print('   - adjustResizeOffset() uses real column widths');
-        print(
+        debugPrint('   - adjustResizeOffset() uses real column widths');
+        debugPrint(
             '   - _clampDifLeft/_clampDifRight use actual column calculations');
       });
     });
@@ -247,7 +249,7 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        print('✅ Resize scaling tests - OK');
+        debugPrint('✅ Resize scaling tests - OK');
       });
     });
   });

@@ -345,7 +345,7 @@ void main() {
                 itemBuilder: (item) => Container(
                   key: Key('item1_aspect_${(aspectRatio * 10).toInt()}'),
                   color: Colors.green,
-                  child: Text('Aspect: ${aspectRatio}'),
+                  child: Text('Aspect: $aspectRatio'),
                 ),
                 dashboardItemController: controller,
                 slotAspectRatio: aspectRatio,

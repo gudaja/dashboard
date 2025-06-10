@@ -1,13 +1,9 @@
-import 'dart:convert';
-import 'dart:math';
-
+import 'package:flutter/material.dart';
 import 'package:dashboard/dashboard.dart';
 import 'package:example/add_dialog.dart';
 import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';
 import 'package:example/performance_optimizations.dart';
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
   @override
@@ -368,11 +364,6 @@ class _DashboardPageState extends State<DashboardPage> {
         refreshing = false;
       });
     }
-  }
-
-  /// Wypisuje pozycje odczytane po przeładowaniu
-  Future<void> _printPositionsAfterReload() async {
-    // Function kept for potential future debugging but body removed
   }
 
   /// Wypisuje zawartość SharedPreferences

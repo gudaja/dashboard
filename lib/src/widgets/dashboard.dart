@@ -285,7 +285,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   }
 
   ///
-  _setNewOffset(ViewportOffset o, BoxConstraints constraints, [bool i = true]) {
+  void _setNewOffset(ViewportOffset o, BoxConstraints constraints,
+      [bool i = true]) {
     /// check slot count
     /// check new constrains equal exists
     _layoutController.absorbPointer = widget.absorbPointer;

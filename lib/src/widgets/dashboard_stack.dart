@@ -55,7 +55,7 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   ///
-  _listenOffset(ViewportOffset o) {
+  void _listenOffset(ViewportOffset o) {
     setState(() {});
     o.removeListener(_listen);
     o.addListener(_listen);
@@ -415,20 +415,20 @@ class _DashboardStackState<T extends DashboardItem>
           slotEdge: slotEdge,
           viewportDelegate: viewportDelegate,
           verticalSlotEdge: verticalSlotEdge);
-      
+
       // Popraw obliczenia pozycji elementu - current.x już zawiera padding.left
       var itemGlobal = _ItemCurrentPosition(
           x: current.x - viewportDelegate.padding.left,
           y: current.y - viewportDelegate.padding.top - pixels,
           height: current.height,
           width: current.width);
-      
+
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
         _editing = null;
         setState(() {});
         return;
       }
-      
+
       // Sprawdź czy kliknięcie jest na przycisku skalowania (bottom-right)
       bool onResizeButton = false;
       if (widget.editModeSettings.resizeHandleBuilder != null) {
@@ -438,9 +438,11 @@ class _DashboardStackState<T extends DashboardItem>
         double buttonTop = itemGlobal.endY - 35;
         double buttonRight = itemGlobal.endX - 5;
         double buttonBottom = itemGlobal.endY - 5;
-        
-        onResizeButton = holdGlobal.dx >= buttonLeft && holdGlobal.dx <= buttonRight &&
-                        holdGlobal.dy >= buttonTop && holdGlobal.dy <= buttonBottom;
+
+        onResizeButton = holdGlobal.dx >= buttonLeft &&
+            holdGlobal.dx <= buttonRight &&
+            holdGlobal.dy >= buttonTop &&
+            holdGlobal.dy <= buttonBottom;
       }
 
       // Lewa krawędź
@@ -457,13 +459,15 @@ class _DashboardStackState<T extends DashboardItem>
 
       // Prawa krawędź
       if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dx || onResizeButton) {
+              holdGlobal.dx ||
+          onResizeButton) {
         directions.add(AxisDirection.right);
       }
 
       // Dolna krawędź
       if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
-          holdGlobal.dy || onResizeButton) {
+              holdGlobal.dy ||
+          onResizeButton) {
         directions.add(AxisDirection.down);
       }
       if (directions.isNotEmpty) {
