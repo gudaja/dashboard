@@ -52,6 +52,10 @@ class _MyAppState extends State<MyApp> {
       },
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        // Reduce shader compilation overhead
+        useMaterial3: false,
+        // Optimize text rendering
+        typography: Typography.material2014(),
       ),
     );
   }
