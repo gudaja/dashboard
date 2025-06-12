@@ -1,6 +1,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:dashboard/dashboard.dart';
 import 'package:example/storage.dart';
+import 'package:example/performance_optimizations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -46,7 +47,7 @@ class Pub extends StatelessWidget {
       onTap: () {
         launchUrlString("https://pub.dev/packages/dashboard");
       },
-      child: Container(
+      child: PerformantPaintedDashboardItem(
         color: Colors.white,
         child: Container(
             alignment: Alignment.center,
@@ -68,7 +69,7 @@ class LinkedIn extends StatelessWidget {
       onTap: () {
         launchUrlString("https://www.linkedin.com/in/mehmetyaz/");
       },
-      child: Container(
+      child: PerformantPaintedDashboardItem(
         color: const Color(0xFF0A66C2),
         child: Row(
           children: [
@@ -104,7 +105,7 @@ class Twitter extends StatelessWidget {
       onTap: () {
         launchUrlString("https://twitter.com/smehmetyaz");
       },
-      child: Container(
+      child: PerformantPaintedDashboardItem(
         color: const Color(0xFF1DA0F1),
         child: Row(
           children: [
@@ -140,7 +141,7 @@ class Github extends StatelessWidget {
       onTap: () {
         launchUrlString("https://github.com/Mehmetyaz/dashboard");
       },
-      child: Container(
+      child: PerformantPaintedDashboardItem(
         color: Colors.white,
         child: Row(
           children: [
@@ -243,31 +244,13 @@ class DefaultAdvice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: yellow,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.refresh,
-              size: 30,
-              color: Colors.white,
-            ),
-            Expanded(
-              child: AutoSizeText(
-                "Your layout changes saved locally."
-                " Set default with this button.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: yellow,
+      text: "Your layout changes saved locally. Set default with this button.",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 11),
+      icon: Icons.refresh,
+      iconColor: Colors.white,
+    );
   }
 }
 
@@ -276,30 +259,13 @@ class ClearAdvice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: green,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.delete,
-              size: 30,
-              color: Colors.white,
-            ),
-            Expanded(
-              child: AutoSizeText(
-                "Delete all widgets.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: green,
+      text: "Delete all widgets.",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 12),
+      icon: Icons.delete,
+      iconColor: Colors.white,
+    );
   }
 }
 
@@ -308,32 +274,13 @@ class AddAdvice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: blue,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Flexible(
-              child: Icon(
-                Icons.add,
-                size: 30,
-                color: Colors.white,
-              ),
-            ),
-            Flexible(
-              child: AutoSizeText(
-                "Add own colored widget with custom sizes.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: blue,
+      text: "Add own colored widget with custom sizes.",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 11),
+      icon: Icons.add,
+      iconColor: Colors.white,
+    );
   }
 }
 
@@ -439,63 +386,14 @@ class BasicDescription extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: yellow,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Flexible(
-              child: AutoSizeText(
-                  "Each widget on the screen is called \"DashboardItem\"",
-                  maxLines: 4,
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                  textAlign: TextAlign.center),
-            ),
-            Flexible(
-              child: AutoSizeText(
-                  "Each has a location and dimensions by slots.",
-                  maxLines: 3,
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                  textAlign: TextAlign.center),
-            ),
-            Flexible(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: AutoSizeText(
-                        "You can switch to edit mode to see these slots.",
-                        maxLines: 4,
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                        textAlign: TextAlign.center),
-                  ),
-                  SizedBox(
-                    width: 8,
-                  ),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: AutoSizeText("Tap:",
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 9),
-                              maxLines: 1,
-                              minFontSize: 6),
-                        ),
-                        Flexible(
-                          child:
-                              Icon(Icons.edit, color: Colors.white, size: 14),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: yellow,
+      text:
+          "Each widget is \"DashboardItem\" with location and dimensions by slots. Switch to edit mode to see slots.",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 10),
+      icon: Icons.edit,
+      iconColor: Colors.white,
+    );
   }
 }
 

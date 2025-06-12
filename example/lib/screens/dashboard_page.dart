@@ -53,33 +53,27 @@ class ItemDisplayWidget extends StatelessWidget {
       if (layout.maxHeight != null) "maxH : ${layout.maxHeight}"
     ].join("\n")}";
 
-    return PerformantDashboardItem(
-      child: OptimizedDashboardContainer(
-        color: item.color ?? Colors.grey,
-        borderRadius: borderRadius,
-        child: Stack(
-          children: [
-            SizedBox(
-                width: double.infinity,
-                height: double.infinity,
-                child:
-                    DashboardPerformanceUtils.createOptimizedText(textContent)),
-            if (isEditing)
-              Positioned(
-                  right: 5,
-                  top: 5,
-                  child: InkResponse(
-                      radius: 20,
-                      onTap: onDelete,
-                      child: const Icon(
-                        Icons.clear,
-                        color: Colors.white,
-                        size: 20,
-                      )))
-          ],
-        ),
+    final widget = UltraPerformantDashboardItem(
+      color: item.color ?? Colors.grey,
+      borderRadius: borderRadius,
+      text: textContent,
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
       ),
+      icon: isEditing ? Icons.clear : null,
+      iconColor: Colors.white,
     );
+
+    // Dodaj gesture detector tylko gdy editing
+    if (isEditing) {
+      return GestureDetector(
+        onTap: onDelete,
+        child: widget,
+      );
+    }
+
+    return widget;
   }
 }
 
@@ -208,28 +202,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 shrinkToPlace: false,
                 slideToTop: false,
                 absorbPointer: false,
-                slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withDimensionsFunction((context, item,
-                        x, y, editing, slotWidth, slotHeight, virtualConfig) {
-                  // Show disabled columns in red using config
-                  final isDisabled =
-                      virtualConfig?.isColumnDisabled(x) ?? false;
-
-                  // Calculate dynamic border radius (5% of slot width, max 10px)
-                  final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
-
-                  return isDisabled
-                      ? null
-                      : Container(
-                          decoration: BoxDecoration(
-                            border:
-                                Border.all(color: Colors.black12, width: 0.5),
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            color: null,
-                          ),
-                          child: null,
-                        );
-                }),
+                slotBackgroundBuilder: null,
                 padding: const EdgeInsets.all(8),
                 horizontalSpace: 8,
                 verticalSpace: 8,
