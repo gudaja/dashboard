@@ -687,21 +687,21 @@ class _GridPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = gridLineWidth;
 
+    const double innerPadding = 8.0;
+
     for (int y = 0; y < rowCount; y++) {
-      double top = (padding.top) +
-          y * (layoutController.verticalSlotEdge + verticalSpace);
-      double left = (padding.left);
+      double top = padding.top +
+          y * (layoutController.verticalSlotEdge + verticalSpace) +
+          innerPadding;
       for (int x = 0; x < slotCount; x++) {
-        double width = virtualConfig != null
-            ? virtualConfig!.getColumnWidth(
-                x, layoutController.slotEdge, size.width - padding.horizontal)
-            : layoutController.slotEdge;
+        double left =
+            layoutController.getColumnPosition(x) + padding.left + innerPadding;
+        double width = layoutController.getColumnWidth(x) - 2 * innerPadding;
+        double height = layoutController.verticalSlotEdge - 2 * innerPadding;
         if (virtualConfig == null || !virtualConfig!.isColumnDisabled(x)) {
-          final rect = Rect.fromLTWH(
-              left, top, width, layoutController.verticalSlotEdge);
+          final rect = Rect.fromLTWH(left, top, width, height);
           canvas.drawRect(rect, paint);
         }
-        left += width + horizontalSpace;
       }
     }
   }
