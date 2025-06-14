@@ -216,46 +216,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 shrinkToPlace: false,
                 slideToTop: false,
                 absorbPointer: false,
-                slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withDimensionsFunction(
-                  (context, item, x, y, editing, slotWidth, slotHeight,
-                      virtualConfig) {
-                    if (x == 0 && y == 0) {
-                      final slotCountValue = slot!;
-                      final horizontalSpace = 8.0;
-                      final verticalSpace = 8.0;
-                      final paddingValue = 8.0;
-                      final totalWidth =
-                          MediaQuery.of(context).size.width - 2 * paddingValue;
-                      final slotWidth = (totalWidth -
-                              (slotCountValue - 1) * horizontalSpace) /
-                          slotCountValue;
-                      final slotHeight = slotWidth;
-                      // Policz rowCount na podstawie itemController.items
-                      int rowCount = 0;
-                      for (final id in itemController.items) {
-                        final i = itemController.itemStorageDelegate
-                            ?.itemsFor(slot!)?[id];
-                        if (i == null) continue;
-                        final endY = i.layoutData.startY + i.layoutData.height;
-                        if (endY > rowCount) rowCount = endY;
-                      }
-                      return PerformantSlotBackgroundUtils
-                          .createSlotBackgroundOverlay(
-                        slotWidth: slotWidth,
-                        slotHeight: slotHeight,
-                        slotCount: slotCountValue,
-                        rowCount: rowCount,
-                        horizontalSpace: horizontalSpace,
-                        verticalSpace: verticalSpace,
-                        padding: EdgeInsets.all(paddingValue),
-                        disabledColumns: virtualConfig?.disabledColumns.toSet(),
-                        virtualConfig: virtualConfig,
-                        totalWidth: totalWidth,
-                      );
-                    }
-                    return null;
-                  },
+                gridStyle: const DashboardGridStyle(
+                  show: true,
+                  color: Colors.black38,
+                  opacity: 0.2,
+                  lineWidth: 1.0,
                 ),
                 padding: const EdgeInsets.all(8),
                 horizontalSpace: 8,
