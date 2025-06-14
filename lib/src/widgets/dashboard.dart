@@ -28,6 +28,7 @@ class DashboardGridStyle {
   final double opacity;
   final double lineWidth;
   final EdgeInsets? gridPadding;
+  final double slotInnerPadding;
 
   const DashboardGridStyle({
     this.show = false,
@@ -35,6 +36,7 @@ class DashboardGridStyle {
     this.opacity = 0.2,
     this.lineWidth = 1.0,
     this.gridPadding,
+    this.slotInnerPadding = 8.0,
   });
 }
 
@@ -497,6 +499,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
               gridColor: widget.gridStyle.color,
               gridOpacity: widget.gridStyle.opacity,
               gridLineWidth: widget.gridStyle.lineWidth,
+              gridStyle: widget.gridStyle,
             ),
           ),
         LayoutBuilder(builder: (context, constrains) {
@@ -621,6 +624,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
   final Color gridColor;
   final double gridOpacity;
   final double gridLineWidth;
+  final DashboardGridStyle gridStyle;
 
   const _DashboardGridPainter({
     required this.layoutController,
@@ -633,6 +637,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
     required this.gridColor,
     required this.gridOpacity,
     required this.gridLineWidth,
+    required this.gridStyle,
   });
 
   @override
@@ -649,6 +654,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
         gridColor: gridColor,
         gridOpacity: gridOpacity,
         gridLineWidth: gridLineWidth,
+        gridStyle: gridStyle,
       ),
       size: Size.infinite,
     );
@@ -666,6 +672,7 @@ class _GridPainter extends CustomPainter {
   final Color gridColor;
   final double gridOpacity;
   final double gridLineWidth;
+  final DashboardGridStyle gridStyle;
 
   _GridPainter({
     required this.layoutController,
@@ -678,6 +685,7 @@ class _GridPainter extends CustomPainter {
     required this.gridColor,
     required this.gridOpacity,
     required this.gridLineWidth,
+    required this.gridStyle,
   });
 
   @override
@@ -687,12 +695,11 @@ class _GridPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = gridLineWidth;
 
-    const double innerPadding = 8.0;
+    final double innerPadding = gridStyle.slotInnerPadding;
 
     for (int y = 0; y < rowCount; y++) {
-      double top = padding.top +
-          y * (layoutController.verticalSlotEdge + verticalSpace) +
-          innerPadding;
+      double top =
+          padding.top + y * layoutController.verticalSlotEdge + innerPadding;
       for (int x = 0; x < slotCount; x++) {
         double left =
             layoutController.getColumnPosition(x) + padding.left + innerPadding;
