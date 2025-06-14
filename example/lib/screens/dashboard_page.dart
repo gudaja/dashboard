@@ -249,6 +249,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 editModeSettings: EditModeSettings(
                     draggableOutside: false,
                     paintBackgroundLines: false,
+                    fillEditingBackground: true,
                     autoScroll: true,
                     resizeCursorSide: 5,
                     curve: Curves.easeOut,
