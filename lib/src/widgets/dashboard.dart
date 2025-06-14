@@ -22,40 +22,55 @@ typedef DashboardItemBuilder<T extends DashboardItem> = Widget Function(T item);
 /// [dashboardItemController] determines the layouts of widgets to be displayed
 /// in initial state.
 /// This controller is also used to add/delete widget and handle layout changes.
+class DashboardGridStyle {
+  final bool show;
+  final Color color;
+  final double opacity;
+  final double lineWidth;
+  final EdgeInsets? gridPadding;
+
+  const DashboardGridStyle({
+    this.show = false,
+    this.color = Colors.black38,
+    this.opacity = 0.2,
+    this.lineWidth = 1.0,
+    this.gridPadding,
+  });
+}
+
 class Dashboard<T extends DashboardItem> extends StatefulWidget {
   /// A list of widget arranged with hand or initially.
-  Dashboard(
-      {super.key,
-      required this.itemBuilder,
-      required this.dashboardItemController,
-      this.slotCount = 8,
-      this.scrollController,
-      this.physics,
-      this.dragStartBehavior,
-      this.scrollBehavior,
-      this.cacheExtend = 500,
-      this.verticalSpace = 8,
-      this.horizontalSpace = 8,
-      this.padding = const EdgeInsets.all(0),
-      this.shrinkToPlace = true,
-      this.slideToTop = true,
-      this.slotAspectRatio,
-      this.slotHeight,
-      EditModeSettings? editModeSettings,
-      this.textDirection = TextDirection.ltr,
-      this.errorPlaceholder,
-      this.loadingPlaceholder,
-      this.emptyPlaceholder,
-      this.absorbPointer = true,
-      this.animateEverytime = true,
-      this.itemStyle = const ItemStyle(),
-      this.scrollToAdded = true,
-      this.slotBackgroundBuilder,
-      this.onGridDimensionsChanged,
-      this.virtualColumnsConfig})
-      : assert((slotHeight == null && slotAspectRatio == null) ||
-            !(slotHeight != null && slotAspectRatio != null)),
-        editModeSettings = editModeSettings ?? EditModeSettings();
+  Dashboard({
+    super.key,
+    required this.itemBuilder,
+    required this.dashboardItemController,
+    this.slotCount = 8,
+    this.scrollController,
+    this.physics,
+    this.dragStartBehavior,
+    this.scrollBehavior,
+    this.cacheExtend = 500,
+    this.verticalSpace = 8,
+    this.horizontalSpace = 8,
+    this.padding = const EdgeInsets.all(0),
+    this.shrinkToPlace = true,
+    this.slideToTop = true,
+    this.slotAspectRatio,
+    this.slotHeight,
+    EditModeSettings? editModeSettings,
+    this.textDirection = TextDirection.ltr,
+    this.errorPlaceholder,
+    this.loadingPlaceholder,
+    this.emptyPlaceholder,
+    this.absorbPointer = true,
+    this.animateEverytime = true,
+    this.itemStyle = const ItemStyle(),
+    this.scrollToAdded = true,
+    this.slotBackgroundBuilder,
+    this.onGridDimensionsChanged,
+    this.virtualColumnsConfig,
+    this.gridStyle = const DashboardGridStyle(),
+  }) : editModeSettings = editModeSettings ?? EditModeSettings();
 
   /// If [slotBackgroundBuilder] is not null, the background of the slots
   /// is drawn with the  [SlotBackgroundBuilder.build] method.
@@ -218,6 +233,9 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
   /// )
   /// ```
   final VirtualColumnsConfig? virtualColumnsConfig;
+
+  /// Styl siatki slotów
+  final DashboardGridStyle gridStyle;
 
   @override
   State<Dashboard<T>> createState() => _DashboardState<T>();
@@ -463,27 +481,47 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       }
     }
 
-    return LayoutBuilder(builder: (context, constrains) {
-      Unbounded.check(Axis.vertical, constrains);
-      if (_withDelegate) {
-        if (_snap!.connectionState == ConnectionState.none) {
-          _building = false;
-          return widget.errorPlaceholder
-                  ?.call(_snap!.error!, _snap!.stackTrace!) ??
-              const SizedBox();
-        } else if (_snap!.connectionState == ConnectionState.waiting ||
-            _reloading) {
-          _building = false;
+    return Stack(
+      children: [
+        if (widget.gridStyle.show)
+          Positioned.fill(
+            child: _DashboardGridPainter<T>(
+              layoutController: _layoutController,
+              slotCount: widget.slotCount,
+              rowCount: _calculateRowCount(),
+              horizontalSpace: widget.horizontalSpace,
+              verticalSpace: widget.verticalSpace,
+              padding: widget.gridStyle.gridPadding ??
+                  widget.padding.resolve(widget.textDirection),
+              virtualConfig: widget.virtualColumnsConfig,
+              gridColor: widget.gridStyle.color,
+              gridOpacity: widget.gridStyle.opacity,
+              gridLineWidth: widget.gridStyle.lineWidth,
+            ),
+          ),
+        LayoutBuilder(builder: (context, constrains) {
+          Unbounded.check(Axis.vertical, constrains);
+          if (_withDelegate) {
+            if (_snap!.connectionState == ConnectionState.none) {
+              _building = false;
+              return widget.errorPlaceholder
+                      ?.call(_snap!.error!, _snap!.stackTrace!) ??
+                  const SizedBox();
+            } else if (_snap!.connectionState == ConnectionState.waiting ||
+                _reloading) {
+              _building = false;
 
-          return widget.loadingPlaceholder ??
-              const Center(
-                child: CircularProgressIndicator(),
-              );
-        }
-      }
+              return widget.loadingPlaceholder ??
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  );
+            }
+          }
 
-      return dashboardWidget(constrains);
-    });
+          return dashboardWidget(constrains);
+        }),
+      ],
+    );
   }
 
   bool _moving = false;
@@ -538,6 +576,19 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
           );
         });
   }
+
+  int _calculateRowCount() {
+    int rowCount = 0;
+    final items = widget.dashboardItemController.itemStorageDelegate
+        ?.itemsFor(widget.slotCount);
+    if (items != null) {
+      for (final i in items.values) {
+        final endY = i.layoutData.startY + i.layoutData.height;
+        if (endY > rowCount) rowCount = endY;
+      }
+    }
+    return rowCount;
+  }
 }
 
 class _ItemCurrentPositionTween extends Tween<_ItemCurrentPosition> {
@@ -557,4 +608,104 @@ class _ItemCurrentPositionTween extends Tween<_ItemCurrentPosition> {
         x: onlyDimensions ? end!.x : begin!.x * (1.0 - t) + end!.x * t,
         y: onlyDimensions ? end!.y : begin!.y * (1.0 - t) + end!.y * t);
   }
+}
+
+class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
+  final _DashboardLayoutController layoutController;
+  final int slotCount;
+  final int rowCount;
+  final double horizontalSpace;
+  final double verticalSpace;
+  final EdgeInsets padding;
+  final VirtualColumnsConfig? virtualConfig;
+  final Color gridColor;
+  final double gridOpacity;
+  final double gridLineWidth;
+
+  const _DashboardGridPainter({
+    required this.layoutController,
+    required this.slotCount,
+    required this.rowCount,
+    required this.horizontalSpace,
+    required this.verticalSpace,
+    required this.padding,
+    required this.virtualConfig,
+    required this.gridColor,
+    required this.gridOpacity,
+    required this.gridLineWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _GridPainter(
+        layoutController: layoutController,
+        slotCount: slotCount,
+        rowCount: rowCount,
+        horizontalSpace: horizontalSpace,
+        verticalSpace: verticalSpace,
+        padding: padding,
+        virtualConfig: virtualConfig,
+        gridColor: gridColor,
+        gridOpacity: gridOpacity,
+        gridLineWidth: gridLineWidth,
+      ),
+      size: Size.infinite,
+    );
+  }
+}
+
+class _GridPainter extends CustomPainter {
+  final _DashboardLayoutController layoutController;
+  final int slotCount;
+  final int rowCount;
+  final double horizontalSpace;
+  final double verticalSpace;
+  final EdgeInsets padding;
+  final VirtualColumnsConfig? virtualConfig;
+  final Color gridColor;
+  final double gridOpacity;
+  final double gridLineWidth;
+
+  _GridPainter({
+    required this.layoutController,
+    required this.slotCount,
+    required this.rowCount,
+    required this.horizontalSpace,
+    required this.verticalSpace,
+    required this.padding,
+    required this.virtualConfig,
+    required this.gridColor,
+    required this.gridOpacity,
+    required this.gridLineWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = gridColor.withOpacity(gridOpacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = gridLineWidth;
+
+    for (int y = 0; y < rowCount; y++) {
+      double top = (padding.top) +
+          y * (layoutController.verticalSlotEdge + verticalSpace);
+      double left = (padding.left);
+      for (int x = 0; x < slotCount; x++) {
+        double width = virtualConfig != null
+            ? virtualConfig!.getColumnWidth(
+                x, layoutController.slotEdge, size.width - padding.horizontal)
+            : layoutController.slotEdge;
+        if (virtualConfig == null || !virtualConfig!.isColumnDisabled(x)) {
+          final rect = Rect.fromLTWH(
+              left, top, width, layoutController.verticalSlotEdge);
+          canvas.drawRect(rect, paint);
+        }
+        left += width + horizontalSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
