@@ -221,7 +221,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   color: Colors.black38,
                   opacity: 0.2,
                   lineWidth: 1.0,
-                  slotInnerPadding: 8,
                 ),
                 padding: EdgeInsets.all(8),
                 horizontalSpace: 8,

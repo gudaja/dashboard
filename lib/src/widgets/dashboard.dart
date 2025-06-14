@@ -28,7 +28,6 @@ class DashboardGridStyle {
   final double opacity;
   final double lineWidth;
   final EdgeInsets? gridPadding;
-  final double slotInnerPadding;
 
   const DashboardGridStyle({
     this.show = false,
@@ -36,7 +35,6 @@ class DashboardGridStyle {
     this.opacity = 0.2,
     this.lineWidth = 1.0,
     this.gridPadding,
-    this.slotInnerPadding = 8.0,
   });
 }
 
@@ -695,16 +693,16 @@ class _GridPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = gridLineWidth;
 
-    final double innerPadding = gridStyle.slotInnerPadding;
-
     for (int y = 0; y < rowCount; y++) {
-      double top =
-          padding.top + y * layoutController.verticalSlotEdge + innerPadding;
+      double top = padding.top +
+          y * layoutController.verticalSlotEdge +
+          verticalSpace / 2;
       for (int x = 0; x < slotCount; x++) {
-        double left =
-            layoutController.getColumnPosition(x) + padding.left + innerPadding;
-        double width = layoutController.getColumnWidth(x) - 2 * innerPadding;
-        double height = layoutController.verticalSlotEdge - 2 * innerPadding;
+        double left = layoutController.getColumnPosition(x) +
+            padding.left +
+            horizontalSpace / 2;
+        double width = layoutController.getColumnWidth(x) - horizontalSpace;
+        double height = layoutController.verticalSlotEdge - verticalSpace;
         if (virtualConfig == null || !virtualConfig!.isColumnDisabled(x)) {
           final rect = Rect.fromLTWH(left, top, width, height);
           canvas.drawRect(rect, paint);
