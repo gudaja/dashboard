@@ -237,7 +237,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var leftPad = isLeftSide ? 0.0 : viewportDelegate.crossAxisSpace / 2;
     var rightPad = isRightSide ? 0.0 : viewportDelegate.crossAxisSpace / 2;
     var topPad = isTopSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
-    var bottomPad = isBottomSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
+    var bottomPad = viewportDelegate.mainAxisSpace / 2;
+    //isBottomSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
 
     // Calculate total width considering virtual columns
     double totalWidth = 0.0;
