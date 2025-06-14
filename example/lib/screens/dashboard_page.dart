@@ -137,7 +137,14 @@ class _DashboardPageState extends State<DashboardPage> {
     var w = MediaQuery.of(context).size.width;
 
     // Calculate dynamic border radius for items based on slot size
-    final slotWidth = (w - 16) / slot!; // subtract padding
+    final slotCountValue = slot!;
+    final horizontalSpace = 8.0;
+    final verticalSpace = 8.0;
+    final paddingValue = 8.0;
+    final totalWidth = w - 2 * paddingValue;
+    final slotWidth =
+        (totalWidth - (slotCountValue - 1) * horizontalSpace) / slotCountValue;
+    final slotHeight = slotWidth;
     final itemBorderRadius = (slotWidth * 0.08).clamp(4.0, 15.0);
 
     return Scaffold(
@@ -214,6 +221,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   (context, item, x, y, editing, slotWidth, slotHeight,
                       virtualConfig) {
                     if (x == 0 && y == 0) {
+                      final slotCountValue = slot!;
+                      final horizontalSpace = 8.0;
+                      final verticalSpace = 8.0;
+                      final paddingValue = 8.0;
+                      final totalWidth =
+                          MediaQuery.of(context).size.width - 2 * paddingValue;
+                      final slotWidth = (totalWidth -
+                              (slotCountValue - 1) * horizontalSpace) /
+                          slotCountValue;
+                      final slotHeight = slotWidth;
                       // Policz rowCount na podstawie itemController.items
                       int rowCount = 0;
                       for (final id in itemController.items) {
@@ -223,34 +240,15 @@ class _DashboardPageState extends State<DashboardPage> {
                         final endY = i.layoutData.startY + i.layoutData.height;
                         if (endY > rowCount) rowCount = endY;
                       }
-                      // Wylicz pozycje i szerokości kolumn zgodnie z logiką dashboardu
-                      List<double> columnPositions = [];
-                      List<double> columnWidths = [];
-                      double currentX = 0;
-                      for (int x = 0; x < slot!; x++) {
-                        double width = slotWidth;
-                        if (virtualConfig != null) {
-                          width = virtualConfig.getColumnWidth(
-                              x, slotWidth, slotWidth * slot!);
-                        }
-                        columnPositions.add(currentX);
-                        columnWidths.add(width);
-                        currentX += width + 8; // 8 = horizontalSpace
-                      }
-                      // Wylicz totalWidth zgodnie z dashboardem
-                      final totalWidth = slotWidth * slot! +
-                          8 *
-                              (slot! -
-                                  1); // slotWidth * slotCount + sum of horizontal spaces
                       return PerformantSlotBackgroundUtils
                           .createSlotBackgroundOverlay(
                         slotWidth: slotWidth,
                         slotHeight: slotHeight,
-                        slotCount: slot!,
+                        slotCount: slotCountValue,
                         rowCount: rowCount,
-                        horizontalSpace: 8,
-                        verticalSpace: 8,
-                        padding: const EdgeInsets.all(8),
+                        horizontalSpace: horizontalSpace,
+                        verticalSpace: verticalSpace,
+                        padding: EdgeInsets.all(paddingValue),
                         disabledColumns: virtualConfig?.disabledColumns.toSet(),
                         virtualConfig: virtualConfig,
                         totalWidth: totalWidth,
