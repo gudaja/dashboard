@@ -4,6 +4,7 @@ import 'package:example/add_dialog.dart';
 import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';
 import 'package:example/performance_optimizations.dart';
+import 'package:example/performance_optimizations.dart';
 
 class MySlotBackground extends SlotBackgroundBuilder<ColoredDashboardItem> {
   @override
@@ -209,30 +210,55 @@ class _DashboardPageState extends State<DashboardPage> {
                 slideToTop: false,
                 absorbPointer: false,
                 slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withDimensionsFunction((context, item,
-                        x, y, editing, slotWidth, slotHeight, virtualConfig) {
-                  // Show disabled columns in red using config
-                  final isDisabled =
-                      virtualConfig?.isColumnDisabled(x) ?? false;
-
-                  // Calculate dynamic border radius (5% of slot width, max 10px)
-                  final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
-
-                  return isDisabled
-                      ? null
-                      : CachedSlotBackground(
-                          cacheKey: 'slot_${x}_${y}',
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border:
-                                  Border.all(color: Colors.black12, width: 0.5),
-                              borderRadius: BorderRadius.circular(borderRadius),
-                              color: null,
-                            ),
-                            child: null,
-                          ),
-                        );
-                }),
+                    SlotBackgroundBuilder.withDimensionsFunction(
+                  (context, item, x, y, editing, slotWidth, slotHeight,
+                      virtualConfig) {
+                    if (x == 0 && y == 0) {
+                      // Policz rowCount na podstawie itemController.items
+                      int rowCount = 0;
+                      for (final id in itemController.items) {
+                        final i = itemController.itemStorageDelegate
+                            ?.itemsFor(slot!)?[id];
+                        if (i == null) continue;
+                        final endY = i.layoutData.startY + i.layoutData.height;
+                        if (endY > rowCount) rowCount = endY;
+                      }
+                      // Wylicz pozycje i szerokości kolumn zgodnie z logiką dashboardu
+                      List<double> columnPositions = [];
+                      List<double> columnWidths = [];
+                      double currentX = 0;
+                      for (int x = 0; x < slot!; x++) {
+                        double width = slotWidth;
+                        if (virtualConfig != null) {
+                          width = virtualConfig.getColumnWidth(
+                              x, slotWidth, slotWidth * slot!);
+                        }
+                        columnPositions.add(currentX);
+                        columnWidths.add(width);
+                        currentX += width + 8; // 8 = horizontalSpace
+                      }
+                      // Wylicz totalWidth zgodnie z dashboardem
+                      final totalWidth = slotWidth * slot! +
+                          8 *
+                              (slot! -
+                                  1); // slotWidth * slotCount + sum of horizontal spaces
+                      return PerformantSlotBackgroundUtils
+                          .createSlotBackgroundOverlay(
+                        slotWidth: slotWidth,
+                        slotHeight: slotHeight,
+                        slotCount: slot!,
+                        rowCount: rowCount,
+                        horizontalSpace: 8,
+                        verticalSpace: 8,
+                        padding: const EdgeInsets.all(8),
+                        disabledColumns: virtualConfig?.disabledColumns.toSet(),
+                        virtualConfig: virtualConfig,
+                        totalWidth: totalWidth,
+                      );
+                    }
+                    return null;
+                  },
+                ),
                 padding: const EdgeInsets.all(8),
                 horizontalSpace: 8,
                 verticalSpace: 8,

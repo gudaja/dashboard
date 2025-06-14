@@ -132,3 +132,103 @@ class DashboardPerformanceUtils {
     return components.map((e) => e.toString()).join('_');
   }
 }
+
+/// Ultra-wydajny painter dla slot backgrounds - maluje całą siatkę naraz
+class PerformantSlotBackgroundPainter extends CustomPainter {
+  final double slotWidth;
+  final double slotHeight;
+  final int slotCount;
+  final int rowCount;
+  final double horizontalSpace;
+  final double verticalSpace;
+  final EdgeInsets padding;
+  final Set<int>? disabledColumns;
+  final Color borderColor;
+  final double borderWidth;
+  final double borderRadius;
+  final dynamic virtualConfig;
+  final double? totalWidth;
+
+  PerformantSlotBackgroundPainter({
+    required this.slotWidth,
+    required this.slotHeight,
+    required this.slotCount,
+    required this.rowCount,
+    required this.horizontalSpace,
+    required this.verticalSpace,
+    required this.padding,
+    this.disabledColumns,
+    this.borderColor = Colors.black,
+    this.borderWidth = 2.0,
+    this.borderRadius = 5.0,
+    this.virtualConfig,
+    this.totalWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+
+    for (int y = 0; y < rowCount; y++) {
+      double top = padding.top + y * (slotHeight + verticalSpace);
+      double left = padding.left;
+      for (int x = 0; x < slotCount; x++) {
+        double width = virtualConfig != null && totalWidth != null
+            ? virtualConfig.getColumnWidth(x, slotWidth, totalWidth!)
+            : slotWidth;
+        if (disabledColumns == null ||
+            !(disabledColumns?.contains(x) ?? false)) {
+          final rect = Rect.fromLTWH(left, top, width, slotHeight);
+          final rrect =
+              RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+          canvas.drawRRect(rrect, borderPaint);
+        }
+        left += width + horizontalSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// Utility klasa dla wydajnych slot backgrounds
+class PerformantSlotBackgroundUtils {
+  static Widget createSlotBackgroundOverlay({
+    required double slotWidth,
+    required double slotHeight,
+    required int slotCount,
+    required int rowCount,
+    required double horizontalSpace,
+    required double verticalSpace,
+    required EdgeInsets padding,
+    Set<int>? disabledColumns,
+    Color borderColor = Colors.black,
+    double borderWidth = 2.0,
+    double borderRadius = 5.0,
+    dynamic virtualConfig,
+    double? totalWidth,
+  }) {
+    return CustomPaint(
+      painter: PerformantSlotBackgroundPainter(
+        slotWidth: slotWidth,
+        slotHeight: slotHeight,
+        slotCount: slotCount,
+        rowCount: rowCount,
+        horizontalSpace: horizontalSpace,
+        verticalSpace: verticalSpace,
+        padding: padding,
+        disabledColumns: disabledColumns,
+        borderColor: borderColor,
+        borderWidth: borderWidth,
+        borderRadius: borderRadius,
+        virtualConfig: virtualConfig,
+        totalWidth: totalWidth,
+      ),
+      size: Size.infinite,
+    );
+  }
+}
