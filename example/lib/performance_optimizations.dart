@@ -470,3 +470,95 @@ class PerformantSlotBackgroundUtils {
     );
   }
 }
+
+/// Zaawansowany painter do malowania wielu linii tekstu
+class MultiTextPainter extends CustomPainter {
+  final List<TextSpan> textSpans;
+  final TextStyle defaultStyle;
+  final double lineSpacing;
+  final TextAlign textAlign;
+
+  // Cache dla text layouts
+  static final Map<String, List<TextPainter>> _textCache = {};
+
+  MultiTextPainter({
+    required this.textSpans,
+    this.defaultStyle = const TextStyle(color: Colors.white),
+    this.lineSpacing = 4.0,
+    this.textAlign = TextAlign.center,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cacheKey = textSpans
+        .map((span) => '${span.text}_${span.style?.fontSize}')
+        .join('|');
+    List<TextPainter> painters = _textCache[cacheKey] ?? _createTextPainters();
+    _textCache[cacheKey] = painters;
+
+    double yOffset = 0;
+    for (var painter in painters) {
+      // Wycentruj tekst poziomo
+      final xOffset = (size.width - painter.width) / 2;
+      painter.paint(canvas, Offset(xOffset, yOffset));
+      yOffset += painter.height + lineSpacing;
+    }
+  }
+
+  List<TextPainter> _createTextPainters() {
+    return textSpans.map((span) {
+      final painter = TextPainter(
+        text: span,
+        textDirection: TextDirection.ltr,
+        textAlign: textAlign,
+      );
+      painter.layout();
+      return painter;
+    }).toList();
+  }
+
+  @override
+  bool shouldRepaint(MultiTextPainter oldDelegate) {
+    return textSpans != oldDelegate.textSpans ||
+        defaultStyle != oldDelegate.defaultStyle ||
+        lineSpacing != oldDelegate.lineSpacing ||
+        textAlign != oldDelegate.textAlign;
+  }
+
+  static void clearCache() {
+    if (_textCache.length > 50) {
+      _textCache.clear();
+    }
+  }
+}
+
+/// Ultra-wydajny widget do wyświetlania wielu linii tekstu
+class UltraPerformantMultiText extends StatelessWidget {
+  const UltraPerformantMultiText({
+    super.key,
+    required this.textSpans,
+    this.defaultStyle = const TextStyle(color: Colors.white),
+    this.lineSpacing = 4.0,
+    this.textAlign = TextAlign.center,
+  });
+
+  final List<TextSpan> textSpans;
+  final TextStyle defaultStyle;
+  final double lineSpacing;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: CustomPaint(
+        painter: MultiTextPainter(
+          textSpans: textSpans,
+          defaultStyle: defaultStyle,
+          lineSpacing: lineSpacing,
+          textAlign: textAlign,
+        ),
+        size: Size.infinite,
+      ),
+    );
+  }
+}

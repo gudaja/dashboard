@@ -289,60 +289,14 @@ class TransformAdvice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: red,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: ClipRect(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                child: AutoSizeText(
-                  "Users can move widgets.",
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Flexible(
-                child: AutoSizeText(
-                  "To try moving, hold (or long press) the widget and move.",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Flexible(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AutoSizeText(
-                        "While moving, it shrinks if possible according to the "
-                        "minimum width and height values.\n(This min w: 2 , h: 2)",
-                        textAlign: TextAlign.center,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 13),
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-/*
-                    Icon(
-                      Icons.arrow_right_alt,
-                      color: Colors.white,
-                      size: 30,
-                    )
-*/
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ));
+    return UltraPerformantDashboardItem(
+      color: red,
+      text: "Users can move widgets.\n\n"
+          "To try moving, hold (or long press) the widget and move.\n\n"
+          "While moving, it shrinks if possible according to the "
+          "minimum width and height values.\n(This min w: 2 , h: 2)",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
+    );
   }
 }
 
@@ -351,33 +305,13 @@ class WelcomeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: red,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                      style: const TextStyle(color: Colors.white, fontSize: 18),
-                      children: [
-                        const TextSpan(text: "Welcome to "),
-                        TextSpan(
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                launchUrlString(
-                                    "https://pub.dev/packages/dashboard");
-                              },
-                            text: "dashboard",
-                            style: const TextStyle(
-                                decoration: TextDecoration.underline)),
-                        const TextSpan(text: " online demo!"),
-                      ])),
-            ),
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: blue,
+      text: "Welcome to dashboard online demo!",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 18),
+      icon: Icons.waving_hand,
+      iconColor: Colors.white,
+    );
   }
 }
 
@@ -404,46 +338,13 @@ class AdviceResize extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        color: green,
-        alignment: Alignment.center,
-        child: Row(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(left: 5),
-              height: double.infinity,
-              width: 1,
-              color: Colors.white,
-            ),
-            const Expanded(
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Flexible(
-                  child: AutoSizeText("Users can resize widgets.",
-                      maxLines: 2,
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ),
-                Flexible(
-                  flex: 2,
-                  child: AutoSizeText(
-                      "To try resizing, hold (or long press) the line on the left"
-                      " and drag it to the left.",
-                      maxLines: 5,
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ),
-                Flexible(
-                  child: AutoSizeText("Don't forget switch to edit mode.",
-                      maxLines: 3,
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ),
-              ],
-            ))
-          ],
-        ));
+    return UltraPerformantDashboardItem(
+      color: green,
+      text: "Users can resize widgets.\n\n"
+          "To try resizing, hold (or long press) the widget and drag the edges.\n\n"
+          "While resizing, it shrinks if possible according to the "
+          "minimum width and height values.\n(This min w: 2 , h: 2)",
+      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
+    );
   }
 }
