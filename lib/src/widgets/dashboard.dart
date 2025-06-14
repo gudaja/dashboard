@@ -498,6 +498,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
               gridOpacity: widget.gridStyle.opacity,
               gridLineWidth: widget.gridStyle.lineWidth,
               gridStyle: widget.gridStyle,
+              itemStyle: widget.itemStyle,
             ),
           ),
         LayoutBuilder(builder: (context, constrains) {
@@ -623,6 +624,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
   final double gridOpacity;
   final double gridLineWidth;
   final DashboardGridStyle gridStyle;
+  final ItemStyle itemStyle;
 
   const _DashboardGridPainter({
     required this.layoutController,
@@ -636,6 +638,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
     required this.gridOpacity,
     required this.gridLineWidth,
     required this.gridStyle,
+    required this.itemStyle,
   });
 
   @override
@@ -653,6 +656,7 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
         gridOpacity: gridOpacity,
         gridLineWidth: gridLineWidth,
         gridStyle: gridStyle,
+        itemStyle: itemStyle,
       ),
       size: Size.infinite,
     );
@@ -671,6 +675,7 @@ class _GridPainter extends CustomPainter {
   final double gridOpacity;
   final double gridLineWidth;
   final DashboardGridStyle gridStyle;
+  final ItemStyle itemStyle;
 
   _GridPainter({
     required this.layoutController,
@@ -684,6 +689,7 @@ class _GridPainter extends CustomPainter {
     required this.gridOpacity,
     required this.gridLineWidth,
     required this.gridStyle,
+    required this.itemStyle,
   });
 
   @override
@@ -693,19 +699,31 @@ class _GridPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = gridLineWidth;
 
+    double borderRadius = 10.0;
+    if (itemStyle.shape is RoundedRectangleBorder) {
+      final shape = itemStyle.shape as RoundedRectangleBorder;
+      final radius = shape.borderRadius;
+      if (radius is BorderRadius) {
+        borderRadius = radius.topLeft.x;
+      }
+    }
+
     for (int y = 0; y < rowCount; y++) {
       double top = padding.top +
           y * layoutController.verticalSlotEdge +
-          verticalSpace / 2;
+          (verticalSpace + 1) / 2;
       for (int x = 0; x < slotCount; x++) {
         double left = layoutController.getColumnPosition(x) +
             padding.left +
-            horizontalSpace / 2;
-        double width = layoutController.getColumnWidth(x) - horizontalSpace;
-        double height = layoutController.verticalSlotEdge - verticalSpace;
+            (horizontalSpace + 1) / 2;
+        double width =
+            layoutController.getColumnWidth(x) - (horizontalSpace + 1);
+        double height = layoutController.verticalSlotEdge - (verticalSpace + 1);
         if (virtualConfig == null || !virtualConfig!.isColumnDisabled(x)) {
           final rect = Rect.fromLTWH(left, top, width, height);
-          canvas.drawRect(rect, paint);
+          final rrect =
+              RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+          canvas.drawRRect(rrect, paint);
         }
       }
     }
