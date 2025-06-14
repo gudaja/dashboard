@@ -40,26 +40,25 @@ class _EditModeBackgroundPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..color = style.lineColor
       ..strokeWidth = style.lineWidth;
-    var sY = -0.0 -
-        (offset.clamp(0, 100)) -
-        (style.dualLineHorizontal ? mainAxisSpace / 2 : 0);
-    var eY = constraints.maxHeight + 100;
-    for (var i in List.generate(slotCount + 1, (index) => index)) {
-      if (i == 0) {
-        canvas.drawLine(Offset(0, sY), Offset(0, eY), horizontalLinePaint);
-      } else if (i == slotCount) {
-        var x = slotEdge * slotCount;
-        canvas.drawLine(Offset(x, sY), Offset(x, eY), horizontalLinePaint);
+
+    // Oblicz tylko widoczne linie
+    var visibleStart = (offset / slotEdge).floor();
+    var visibleEnd = ((offset + constraints.maxHeight) / slotEdge).ceil();
+
+    for (var i = visibleStart; i <= visibleEnd; i++) {
+      if (i < 0 || i > slotCount) continue;
+
+      var x = slotEdge * i;
+      if (style.dualLineVertical) {
+        var l = x - crossAxisSpace / 2;
+        var r = x + crossAxisSpace / 2;
+        canvas.drawLine(Offset(l, 0), Offset(l, constraints.maxHeight),
+            horizontalLinePaint);
+        canvas.drawLine(Offset(r, 0), Offset(r, constraints.maxHeight),
+            horizontalLinePaint);
       } else {
-        if (style.dualLineVertical) {
-          var l = (slotEdge * i) - crossAxisSpace / 2;
-          var r = (slotEdge * i) + crossAxisSpace / 2;
-          canvas.drawLine(Offset(l, sY), Offset(l, eY), horizontalLinePaint);
-          canvas.drawLine(Offset(r, sY), Offset(r, eY), horizontalLinePaint);
-        } else {
-          var x = (slotEdge * i);
-          canvas.drawLine(Offset(x, sY), Offset(x, eY), horizontalLinePaint);
-        }
+        canvas.drawLine(Offset(x, 0), Offset(x, constraints.maxHeight),
+            horizontalLinePaint);
       }
     }
   }
@@ -73,15 +72,14 @@ class _EditModeBackgroundPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..color = style.lineColor
       ..strokeWidth = style.lineWidth;
-    var max = constraints.maxHeight;
-    var i = 0;
-    var s = offset % verticalSlotEdge;
-    while (true) {
-      var y = (i * verticalSlotEdge) - s;
-      if (y > max) {
-        break;
-      }
 
+    // Oblicz tylko widoczne linie
+    var visibleStart = (offset / verticalSlotEdge).floor();
+    var visibleEnd =
+        ((offset + constraints.maxHeight) / verticalSlotEdge).ceil();
+
+    for (var i = visibleStart; i <= visibleEnd; i++) {
+      var y = (i * verticalSlotEdge) - offset;
       if (style.dualLineHorizontal) {
         var t = y - mainAxisSpace / 2;
         var b = y + mainAxisSpace / 2;
@@ -93,8 +91,6 @@ class _EditModeBackgroundPainter extends CustomPainter {
         canvas.drawLine(
             Offset(0, y), Offset(constraints.maxWidth, y), horizontalLinePaint);
       }
-
-      i++;
     }
   }
 

@@ -220,14 +220,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
                   return isDisabled
                       ? null
-                      : Container(
-                          decoration: BoxDecoration(
-                            border:
-                                Border.all(color: Colors.black12, width: 0.5),
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            color: null,
+                      : CachedSlotBackground(
+                          cacheKey: 'slot_${x}_${y}',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border:
+                                  Border.all(color: Colors.black12, width: 0.5),
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              color: null,
+                            ),
+                            child: null,
                           ),
-                          child: null,
                         );
                 }),
                 padding: const EdgeInsets.all(8),
