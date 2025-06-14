@@ -643,9 +643,14 @@ class _DashboardGridPainter<T extends DashboardItem> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Zabezpieczenie przed brakiem inicjalizacji verticalSlotEdge
+    if (!layoutController._isAttached ||
+        layoutController.verticalSlotEdge == 0) {
+      return const SizedBox.shrink();
+    }
     final slotHeight = layoutController.verticalSlotEdge;
     final viewportHeight =
-        MediaQuery.of(context).size.height - padding.vertical;
+        MediaQuery.of(context).size.height - padding.top - padding.bottom;
     final visibleRows = (viewportHeight / slotHeight).ceil();
     final effectiveRowCount = rowCount > visibleRows ? rowCount : visibleRows;
     return CustomPaint(
