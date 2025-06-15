@@ -248,19 +248,21 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   void initState() {
     _layoutController = _DashboardLayoutController<T>();
     _layoutController.addListener(() {
-      setState(() {});
+      if (mounted && !_building) {
+        SchedulerBinding.instance.scheduleFrameCallback((_) {
+          setState(() {});
+        });
+      }
     });
 
     widget.dashboardItemController._attach(_layoutController);
     if (_withDelegate) {
-      // widget.dashboardItemController._asyncSnap =
-      //     ValueNotifier(const AsyncSnapshot.waiting());
       widget.dashboardItemController._loadItems(widget.slotCount);
       widget.dashboardItemController._asyncSnap!.addListener(() {
-        if (mounted) {
-          if (!_building) {
+        if (mounted && !_building) {
+          SchedulerBinding.instance.scheduleFrameCallback((_) {
             setState(() {});
-          }
+          });
         }
       });
     }
@@ -295,11 +297,11 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   bool _reloading = false;
 
   void _setOnNextFrame() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+    if (mounted && !_building) {
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
         setState(() {});
-      }
-    });
+      });
+    }
   }
 
   ///

@@ -56,7 +56,11 @@ class _DashboardStackState<T extends DashboardItem>
 
   ///
   void _listenOffset(ViewportOffset o) {
-    setState(() {});
+    if (mounted) {
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
+        setState(() {});
+      });
+    }
     o.removeListener(_listen);
     o.addListener(_listen);
   }
@@ -81,7 +85,11 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void _listen() {
-    setState(() {});
+    if (mounted) {
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
+        setState(() {});
+      });
+    }
   }
 
   Widget buildPositioned(List list) {
@@ -196,53 +204,10 @@ class _DashboardStackState<T extends DashboardItem>
     endIndex = widget.dashboardController
         .getIndex([widget.dashboardController.slotCount - 1, endY]);
 
-    var needs = <String>[];
-    var key = startIndex;
-
-    if (widget.dashboardController._indexesTree[key] != null) {
-      needs.add(widget.dashboardController._indexesTree[key]!);
-    }
-
-    while (true) {
-      var f = widget.dashboardController._indexesTree.firstKeyAfter(key);
-      if (f != null) {
-        key = f;
-        needs.add(widget.dashboardController._indexesTree[key]!);
-        if (key >= endIndex) {
-          break;
-        }
-      } else {
-        break;
-      }
-    }
-
-    var beforeIt = <String>[];
-    key = startIndex;
-    while (true) {
-      var f = widget.dashboardController._indexesTree.lastKeyBefore(key);
-      if (f != null) {
-        key = f;
-        beforeIt.add(widget.dashboardController._indexesTree[key]!);
-      } else {
-        break;
-      }
-    }
-
-    var afterIt = <String>[];
-    key = startIndex;
-    while (true) {
-      var f = widget.dashboardController._indexesTree.firstKeyAfter(key);
-      if (f != null) {
-        key = f;
-        afterIt.add(widget.dashboardController._indexesTree[key]!);
-      } else {
-        break;
-      }
-    }
-
-    var needDelete = [...afterIt, ...beforeIt];
-
+    var needs = widget.dashboardController._layouts!.keys.toList();
     var edit = widget.dashboardController.editSession?.editing;
+
+    var needDelete = _widgetsMap.keys.toList();
 
     for (var n in needDelete) {
       if (!needs.contains(n) && n != edit?.id) {
@@ -262,47 +227,44 @@ class _DashboardStackState<T extends DashboardItem>
       addWidget(edit.id);
     }
 
-    Widget result = Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        if (widget.slotBackground != null) ..._buildBackground(),
-        if (widget.dashboardController.isEditing)
-          Positioned(
-            top: viewportDelegate.padding.top,
-            left: viewportDelegate.padding.left,
-            width: viewportDelegate.constraints.maxWidth -
-                viewportDelegate.padding.vertical,
-            height: viewportDelegate.constraints.maxHeight -
-                viewportDelegate.padding.horizontal,
-            child: Builder(builder: (context) {
-              return _AnimatedBackgroundPainter(
-                  layoutController: widget.dashboardController,
-                  editModeSettings: widget.editModeSettings,
-                  offset: viewportOffset);
-            }),
-          ),
-        ..._widgetsMap.entries
-            .where((element) =>
-                element.value[2] !=
-                widget.dashboardController.editSession?.editing.id)
-            .map((e) {
-          return buildPositioned(e.value);
-        }),
-        if (widget.dashboardController.itemController._items.isEmpty &&
-            !widget.dashboardController._isEditing)
-          Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              top: 0,
-              child: widget.emptyPlaceholder ?? Container()),
-        ...?(widget.dashboardController.editSession == null
-            ? null
-            : [
-                buildPositioned(_widgetsMap[
-                    widget.dashboardController.editSession?.editing.id]!)
-              ])
-      ],
+    Widget result = RepaintBoundary(
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          if (widget.slotBackground != null) ..._buildBackground(),
+          if (widget.dashboardController.isEditing)
+            Positioned(
+              top: viewportDelegate.padding.top,
+              left: viewportDelegate.padding.left,
+              width: viewportDelegate.constraints.maxWidth -
+                  viewportDelegate.padding.vertical,
+              height: viewportDelegate.constraints.maxHeight -
+                  viewportDelegate.padding.horizontal,
+              child: Builder(builder: (context) {
+                return _AnimatedBackgroundPainter(
+                    layoutController: widget.dashboardController,
+                    editModeSettings: widget.editModeSettings,
+                    offset: viewportOffset);
+              }),
+            ),
+          ..._widgetsMap.entries
+              .where((element) =>
+                  element.value[2] !=
+                  widget.dashboardController.editSession?.editing.id)
+              .map((e) {
+            return buildPositioned(e.value);
+          }),
+          if (widget.dashboardController.itemController._items.isEmpty &&
+              !widget.dashboardController._isEditing)
+            Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                child: widget.emptyPlaceholder ?? Container()),
+          if (edit != null) buildPositioned(_widgetsMap[edit.id]!),
+        ],
+      ),
     );
 
     if (widget.dashboardController.isEditing) {
@@ -425,7 +387,9 @@ class _DashboardStackState<T extends DashboardItem>
 
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
         _editing = null;
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
         return;
       }
 
@@ -434,10 +398,10 @@ class _DashboardStackState<T extends DashboardItem>
       if (widget.editModeSettings.resizeHandleBuilder != null) {
         // Przycisk ma 30x30px i jest na pozycji bottom: 5, right: 5
         // Więc zajmuje obszar od (width-35, height-35) do (width-5, height-5)
-        double buttonLeft = itemGlobal.endX - 35;
-        double buttonTop = itemGlobal.endY - 35;
-        double buttonRight = itemGlobal.endX - 5;
-        double buttonBottom = itemGlobal.endY - 5;
+        double buttonLeft = itemGlobal.x + itemGlobal.width - 35;
+        double buttonTop = itemGlobal.y + itemGlobal.height - 35;
+        double buttonRight = itemGlobal.x + itemGlobal.width - 5;
+        double buttonBottom = itemGlobal.y + itemGlobal.height - 5;
 
         onResizeButton = holdGlobal.dx >= buttonLeft &&
             holdGlobal.dx <= buttonRight &&
@@ -458,14 +422,17 @@ class _DashboardStackState<T extends DashboardItem>
       }
 
       // Prawa krawędź
-      if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
+      if (itemGlobal.x +
+                  itemGlobal.width -
+                  widget.editModeSettings.resizeCursorSide <
               holdGlobal.dx ||
           onResizeButton) {
         directions.add(AxisDirection.right);
       }
 
       // Dolna krawędź
-      if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
+      if ((itemGlobal.y + itemGlobal.height) -
+                  widget.editModeSettings.resizeCursorSide <
               holdGlobal.dy ||
           onResizeButton) {
         directions.add(AxisDirection.down);
@@ -486,7 +453,11 @@ class _DashboardStackState<T extends DashboardItem>
         l!.width,
         l.height
       ];
-      setState(() {});
+
+      if (mounted) {
+        setState(() {});
+      }
+
       widget.onScrollStateChange(false);
     } else {
       _moveStartOffset = null;
@@ -529,37 +500,45 @@ class _DashboardStackState<T extends DashboardItem>
           scrollDifference: scrollDifference);
 
       if (resizeMoveResult.isChanged) {
-        setState(() {
-          _moveStartOffset =
-              _moveStartOffset! + resizeMoveResult.startDifference;
-          _widgetsMap.remove(_editing!.id);
-          for (var r in differences) {
-            _widgetsMap.remove(r);
-          }
-          if (_editing!._endIndex > (e)) {
-            widget.shouldCalculateNewDimensions();
-          }
-        });
+        // Aktualizujemy stan tylko jeśli faktycznie nastąpiła zmiana
+        if (mounted) {
+          setState(() {
+            _moveStartOffset =
+                _moveStartOffset! + resizeMoveResult.startDifference;
+            _widgetsMap.remove(_editing!.id);
+            for (var r in differences) {
+              _widgetsMap.remove(r);
+            }
+            if (_editing!._endIndex > (e)) {
+              widget.shouldCalculateNewDimensions();
+            }
+          });
+        }
       }
     } else {
       var resizeMoveResult = _editing!._transformUpdate(
           local - _moveStartOffset!, pixels - _startScrollPixels!, holdOffset);
 
       if (resizeMoveResult != null && resizeMoveResult.isChanged) {
-        setState(() {
-          _moveStartOffset =
-              _moveStartOffset! + resizeMoveResult.startDifference;
-          _widgetsMap.remove(_editing!.id);
+        // Aktualizujemy stan tylko jeśli faktycznie nastąpiła zmiana
+        if (mounted) {
+          setState(() {
+            _moveStartOffset =
+                _moveStartOffset! + resizeMoveResult.startDifference;
+            _widgetsMap.remove(_editing!.id);
 
-          if (_editing!._endIndex > (e)) {
-            widget.shouldCalculateNewDimensions();
-          }
-        });
+            if (_editing!._endIndex > (e)) {
+              widget.shouldCalculateNewDimensions();
+            }
+          });
+        }
       }
     }
   }
 
   void _onMoveEnd() {
+    if (_editing == null) return;
+
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
         ?._setLast(

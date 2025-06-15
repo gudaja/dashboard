@@ -3,10 +3,13 @@ import 'dart:math';
 import 'package:example/screens/dashboard_page.dart';
 import 'package:example/screens/main_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 ///
 void main() {
   ///
+  debugRepaintRainbowEnabled = true;
+  // debugPrintMarkNeedsPaintStacks = true;
   runApp(const MyApp());
 }
 
@@ -31,6 +34,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      showPerformanceOverlay: false,
       title: 'Dashboard demo',
       onGenerateInitialRoutes: (r) {
         return r == "/dashboard"

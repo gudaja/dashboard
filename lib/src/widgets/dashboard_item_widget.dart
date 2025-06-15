@@ -260,6 +260,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
         animationStart = DateTime.now();
         onAnimation = true;
       }
+
       _animationController.reset();
 
       _animation = CurvedAnimation(
@@ -288,6 +289,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
       ex = widget.itemGlobalPosition;
       widget.itemCurrentLayout._change = false;
     }
+
     if (!onEditMode && !widget.layoutController.animateEverytime) {
       var cp = widget.itemGlobalPosition;
       return Positioned(
@@ -295,7 +297,9 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           top: cp.y - widget.offset.pixels,
           width: cp.width,
           height: cp.height,
-          child: result);
+          child: RepaintBoundary(
+            child: result,
+          ));
     }
 
     return AnimatedBuilder(
@@ -363,60 +367,14 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           }
         }
 
-        Widget finalChild = w!;
-
-        // Add resize and delete handles at the positioned level if we're in edit mode
-        if (onEditMode &&
-            (widget.editModeSettings.resizeHandleBuilder != null ||
-                widget.editModeSettings.deleteHandleBuilder != null)) {
-          List<Widget> stackChildren = [finalChild];
-
-          // Add resize handle in bottom-right corner
-          if (widget.editModeSettings.resizeHandleBuilder != null) {
-            stackChildren.add(
-              Positioned(
-                bottom: 5,
-                right: 5,
-                child: widget.editModeSettings.resizeHandleBuilder!(
-                  context,
-                  widget.item,
-                  true,
-                ),
-              ),
-            );
-          }
-
-          // Add delete handle in top-right corner
-          if (widget.editModeSettings.deleteHandleBuilder != null) {
-            stackChildren.add(
-              Positioned(
-                top: 5,
-                right: 5,
-                child: widget.editModeSettings.deleteHandleBuilder!(
-                  context,
-                  widget.item,
-                  true,
-                  () {
-                    // Delete the widget
-                    widget.layoutController.delete(widget.item.identifier);
-                  },
-                ),
-              ),
-            );
-          }
-
-          finalChild = Stack(
-            clipBehavior: Clip.none,
-            children: stackChildren,
-          );
-        }
-
         return Positioned(
             left: left,
             top: top - widget.offset.pixels,
-            width: cp.width,
+            width: wi,
             height: cp.height,
-            child: finalChild);
+            child: RepaintBoundary(
+              child: w!,
+            ));
       },
     );
   }
