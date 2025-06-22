@@ -259,7 +259,7 @@ class _DashboardStackState<T extends DashboardItem>
     if (edit != null && !_widgetsMap.containsKey(edit.id)) {
       _widgetsMap.remove(edit.id);
       _keys.remove(edit.id);
-      addWidget(edit.id);
+      addWidget(edit.id!);
     }
 
     Widget result = Stack(
@@ -314,7 +314,7 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onPanUpdate: widget.editModeSettings.panEnabled &&
                 edit != null &&
-                edit.id.isNotEmpty
+                (edit.id?.isNotEmpty ?? false)
             ? (u) {
                 setSpeed(u.localPosition);
                 _onMoveUpdate(u.localPosition);
@@ -332,7 +332,7 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled &&
                 edit != null &&
-                edit.id.isNotEmpty
+                (edit.id?.isNotEmpty ?? false)
             ? (u) {
                 setSpeed(u.localPosition);
                 _onMoveUpdate(u.localPosition);
@@ -538,6 +538,7 @@ class _DashboardStackState<T extends DashboardItem>
           scrollDifference: scrollDifference);
 
       if (resizeMoveResult.isChanged) {
+        print('DEBUG: Layout changed during resize - updating with setState');
         setState(() {
           _moveStartOffset =
               _moveStartOffset! + resizeMoveResult.startDifference;
@@ -555,6 +556,8 @@ class _DashboardStackState<T extends DashboardItem>
           local - _moveStartOffset!, pixels - _startScrollPixels!, holdOffset);
 
       if (resizeMoveResult != null && resizeMoveResult.isChanged) {
+        print(
+            'DEBUG: Layout changed during transform - updating with setState');
         setState(() {
           _moveStartOffset =
               _moveStartOffset! + resizeMoveResult.startDifference;
@@ -572,8 +575,7 @@ class _DashboardStackState<T extends DashboardItem>
     _lastMoveUpdate = null; // Reset on move end
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
-        ?._setLast(
-            _editing!._transform?.value, _editing!._resizePosition?.value)
+        ?._setLast(_editing!._transform.value, _editing!._resizePosition.value)
         .then((value) {
       widget.dashboardController.editSession?.editing._originSize = null;
       _editing?._clearListeners();

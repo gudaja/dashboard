@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:example/screens/dashboard_page.dart';
 import 'package:example/screens/main_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 ///

@@ -251,6 +251,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   set isEditing(bool value) {
     if (value != _isEditing) {
       _isEditing = value;
+      print('DEBUG: isEditing setter notifyListeners() called - value: $value');
       notifyListeners();
     }
   }
@@ -290,6 +291,10 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   void saveEditSession() {
     if (editSession == null) return;
 
+    // Flush pending batched changes first
+    bool hasPendingChanges = _pendingLayoutChanges.isNotEmpty;
+    _flushPendingChanges();
+
     if (editSession!._changes.isNotEmpty) {
       itemController.itemStorageDelegate?._onItemsUpdated(
           editSession!._changes
@@ -306,16 +311,23 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     if (editSession!.isEqual) {
       cancelEditSession();
       editSession = null;
-      notifyListeners();
+      print('DEBUG: saveEditSession notifyListeners() called - isEqual case');
+      if (!hasPendingChanges) {
+        notifyListeners(); // Wywołaj tylko jeśli nie było batched changes
+      }
     } else {
       //Notify storage
       editSession = null;
-      notifyListeners();
+      print('DEBUG: saveEditSession notifyListeners() called - storage case');
+      if (!hasPendingChanges) {
+        notifyListeners(); // Wywołaj tylko jeśli nie było batched changes
+      }
     }
   }
 
   void cancelEditSession() {
     if (editSession == null) return;
+    _clearPendingChanges(); // Clear pending batched changes
     _layouts!.forEach((key, value) {
       value._mount(this, key);
     });
@@ -1028,6 +1040,35 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
   ///
   bool _isAttached = false;
+
+  // Batching system for edit operations
+  final Map<String, ItemLayout> _pendingLayoutChanges = {};
+
+  void _batchPendingLayout(String id, ItemLayout layout) {
+    _pendingLayoutChanges[id] = layout;
+  }
+
+  void _flushPendingChanges() {
+    if (_pendingLayoutChanges.isNotEmpty) {
+      // Przetwórz wszystkie batched changes bez wywołania notifyListeners w każdej
+      for (var entry in _pendingLayoutChanges.entries) {
+        var l = _layouts![entry.key]!;
+        _removeFromIndexes(l.origin, entry.key);
+        l._height = null;
+        l._width = null;
+        l._startX = null;
+        l._startY = null;
+        _indexItem(entry.value, entry.key);
+      }
+      _pendingLayoutChanges.clear();
+      // Tylko jeden notifyListeners na końcu
+      notifyListeners();
+    }
+  }
+
+  void _clearPendingChanges() {
+    _pendingLayoutChanges.clear();
+  }
 }
 
 class _OverflowPossibility implements Comparable<_OverflowPossibility> {
@@ -1073,7 +1114,7 @@ class _EditSession {
           }
         }
       }
-      changes.add(editing.id);
+      changes.add(editing.id!);
     }
 
     return changes;
@@ -1084,6 +1125,29 @@ class _EditSession {
   final Map<AxisDirection, Map<String, List<_Change>>> _indirectChanges = {};
 
   final Map<String, _Swap> _swapChanges = {};
+
+  /// Updates position of the currently edited item via ValueNotifier
+  void onPositionUpdate(Offset newPosition) {
+    editing._transform.value = newPosition;
+  }
+
+  /// Updates size of the currently edited item via ValueNotifier
+  void onSizeUpdate(_ItemCurrentPosition? newSize) {
+    editing._resizePosition.value = newSize;
+  }
+
+  /// Handles move operations and returns list of changes
+  List<_Change> _move(
+      AxisDirection direction, int steps, _ItemCurrentLayout item) {
+    final changes = <_Change>[];
+
+    // Create move changes for the specified direction and steps
+    for (int i = 0; i < steps; i++) {
+      changes.add(_Moving(direction, true));
+    }
+
+    return changes;
+  }
 
   void _addResize(
       _Resize resize, void Function(String id, _Change) onBackChange) {

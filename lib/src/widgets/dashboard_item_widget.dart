@@ -81,7 +81,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
   }
 
   _ItemCurrentPosition? get _resizePosition =>
-      widget.itemCurrentLayout._resizePosition?.value;
+      widget.itemCurrentLayout._resizePosition.value;
 
   bool onRightSide(double dX) =>
       dX >
@@ -300,18 +300,23 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
     return AnimatedBuilder(
       animation: Listenable.merge([
-        if (widget.itemCurrentLayout._resizePosition != null)
+        // Nasłuchuj tylko jeśli to jest obecnie edytowany widget
+        if (widget.layoutController.editSession?.editing.id == widget.id) ...[
           widget.itemCurrentLayout._resizePosition,
-        if (widget.itemCurrentLayout._transform != null)
           widget.itemCurrentLayout._transform,
+        ],
         if (_animation != null) _animation,
         if (onEditMode) _multiplierAnimationController,
       ]),
       child: result,
       builder: (c, w) {
+        final isCurrentlyEditing =
+            widget.layoutController.editSession?.editing.id == widget.id;
         var m = _multiplierAnimationController.value;
 
-        var p = widget.itemCurrentLayout._resizePosition?.value;
+        var p = isCurrentlyEditing
+            ? widget.itemCurrentLayout._resizePosition.value
+            : null;
 
         var cp = onAnimation
             ? (_animation?.value ?? widget.itemGlobalPosition)
@@ -325,7 +330,9 @@ class _DashboardItemWidgetState<T extends DashboardItem>
         }
         double left = cp.x, top = cp.y;
 
-        var o = widget.itemCurrentLayout._transform?.value;
+        var o = isCurrentlyEditing
+            ? widget.itemCurrentLayout._transform.value
+            : null;
 
         if (o != null) {
           if (_lastTransform != null) {

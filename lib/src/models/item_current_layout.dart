@@ -210,11 +210,14 @@ class _ResizeMoveResult {
 ///
 class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   ///
-  _ItemCurrentLayout(this.origin);
+  _ItemCurrentLayout(this.origin) {
+    _transform = ValueNotifier(Offset.zero);
+    _resizePosition = ValueNotifier(null);
+  }
 
-  ValueNotifier<Offset>? _transform /* = ValueNotifier(Offset.zero)*/;
+  late final ValueNotifier<Offset> _transform;
 
-  ValueNotifier<_ItemCurrentPosition>? _resizePosition;
+  late final ValueNotifier<_ItemCurrentPosition?> _resizePosition;
 
   @override
   bool get _haveLocation => origin._haveLocation;
@@ -232,8 +235,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   bool _change = false;
 
   void _clearListeners() {
-    _resizePosition = null;
-    _transform = null;
+    _resizePosition.value = null;
+    _transform.value = Offset.zero;
     notifyListeners();
   }
 
@@ -422,12 +425,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         itemPositionDifference.height += dy;
       }
     }
-    if (_resizePosition == null) {
-      _resizePosition = ValueNotifier(itemPositionDifference);
-      notifyListeners();
-    } else {
-      _resizePosition!.value = itemPositionDifference;
-    }
+    _resizePosition.value = itemPositionDifference;
 
     return result;
   }
@@ -801,12 +799,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       _height = nLayout.height;
       var dif = Offset(xDif * _slotEdge, yDif * _verticalSlotEdge);
 
-      if (_transform == null) {
-        _transform = ValueNotifier(newTransform - dif);
-        notifyListeners();
-      } else {
-        _transform!.value = newTransform - dif;
-      }
+      _transform.value = newTransform - dif;
 
       save();
       if (!c) {
@@ -964,13 +957,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       }
     }
 
-    if (_transform == null) {
-      _transform = ValueNotifier(newTransform);
-
-      notifyListeners();
-    } else {
-      _transform!.value = newTransform;
-    }
+    _transform.value = newTransform;
 
     _onTransformProcess = false;
     return null;
@@ -1019,18 +1006,26 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   ItemLayout origin;
 
   void save() {
-    // _saveToEditSession();
-    _layoutController._reIndexItem(
-        ItemLayout(
-            startX: startX,
-            startY: startY,
-            width: width,
-            height: height,
-            minWidth: minWidth,
-            maxWidth: maxWidth,
-            maxHeight: maxHeight,
-            minHeight: minHeight),
-        id);
+    var layout = ItemLayout(
+        startX: startX,
+        startY: startY,
+        width: width,
+        height: height,
+        minWidth: minWidth,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
+        minHeight: minHeight);
+
+    // Sprawdź czy to obecnie edytowany element
+    final isCurrentlyEditing = _layoutController.editSession?.editing.id == id;
+
+    if (_layoutController.isEditing && !isCurrentlyEditing) {
+      // Batch changes dla innych elementów podczas edycji
+      _layoutController._batchPendingLayout(id, layout);
+    } else {
+      // Natychmiastowa aktualizacja dla obecnie edytowanego elementu i poza edycją
+      _layoutController._reIndexItem(layout, id);
+    }
     _change = true;
   }
 
@@ -1098,8 +1093,6 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       .._layoutController = _layoutController
       .._endIndex = _endIndex
       .._startIndex = _startIndex
-      .._transform = _transform
-      .._resizePosition = _resizePosition
       ..id = id;
   }
 
