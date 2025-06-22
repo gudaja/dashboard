@@ -29,6 +29,19 @@ class _ItemCurrentPosition {
         x: x * multiplier);
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _ItemCurrentPosition &&
+        other.width == width &&
+        other.height == height &&
+        other.x == x &&
+        other.y == y;
+  }
+
+  @override
+  int get hashCode => Object.hash(width, height, x, y);
+
   bool equal(_ItemCurrentPosition other) {
     return x == other.x &&
         y == other.y &&

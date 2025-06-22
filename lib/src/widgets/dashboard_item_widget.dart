@@ -295,7 +295,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
           top: cp.y - widget.offset.pixels,
           width: cp.width,
           height: cp.height,
-          child: result);
+          child: RepaintBoundary(child: result));
     }
 
     return AnimatedBuilder(
@@ -416,7 +416,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
             top: top - widget.offset.pixels,
             width: cp.width,
             height: cp.height,
-            child: finalChild);
+            child: RepaintBoundary(child: finalChild));
       },
     );
   }
