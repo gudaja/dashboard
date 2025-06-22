@@ -287,6 +287,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         layoutController: this, editing: _layouts![id]!, transform: transform);
   }
 
+  void onUpdate(Offset delta, String id) {
+    if (editSession != null) {
+      editSession!.onUpdate(delta, id);
+    }
+  }
+
   void saveEditSession() {
     if (editSession == null) return;
 
@@ -306,7 +312,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     if (editSession!.isEqual) {
       cancelEditSession();
       editSession = null;
-      notifyListeners();
     } else {
       //Notify storage
       editSession = null;
@@ -1048,9 +1053,25 @@ class _EditSession {
       {required _DashboardLayoutController layoutController,
       required this.editing,
       required this.transform})
-      : editingOrigin = editing.copy();
+      : _layoutController = layoutController,
+        editingOrigin = editing.origin.copy();
 
-  bool transform;
+  final _ItemCurrentLayout editing;
+  final _DashboardLayoutController _layoutController;
+  final bool transform;
+
+  final Set<String> _changes = <String>{};
+
+  ///
+  final ItemLayout editingOrigin;
+
+  void onUpdate(Offset delta, String id) {
+    if (transform) {
+      editing._transformNotifier.value = delta;
+    } else {
+      editing._resizeNotifier.value = delta;
+    }
+  }
 
   ///
   bool get isEqual {
@@ -1059,80 +1080,4 @@ class _EditSession {
         editing.width == editingOrigin.width &&
         editing.height == editingOrigin.height;
   }
-
-  List<String> get _changes {
-    var changes = <String>[];
-    if (!isEqual) {
-      for (var dir in _indirectChanges.entries) {
-        var dirChanges = _indirectChanges[dir.key];
-        if (dirChanges != null) {
-          for (var ch in dirChanges.entries) {
-            if (ch.value.isNotEmpty) {
-              changes.add(ch.key);
-            }
-          }
-        }
-      }
-      changes.add(editing.id);
-    }
-
-    return changes;
-  }
-
-  // final Map<AxisDirection, List<Resizing>> _resizes = {};
-
-  final Map<AxisDirection, Map<String, List<_Change>>> _indirectChanges = {};
-
-  final Map<String, _Swap> _swapChanges = {};
-
-  void _addResize(
-      _Resize resize, void Function(String id, _Change) onBackChange) {
-    if (resize.resize.increment && resize.indirectResizes != null) {
-      for (var indirect in resize.indirectResizes!.entries) {
-        _indirectChanges[indirect.value.direction] ??= {};
-        _indirectChanges[indirect.value.direction]![indirect.key] ??= [];
-        _indirectChanges[indirect.value.direction]![indirect.key]!
-            .add(indirect.value);
-      }
-    }
-
-    if (!resize.resize.increment) {
-      var dir = resize.resize.direction;
-      AxisDirection reverseDir;
-      if (dir == AxisDirection.left) {
-        reverseDir = AxisDirection.right;
-      } else if (dir == AxisDirection.right) {
-        reverseDir = AxisDirection.left;
-      } else if (dir == AxisDirection.up) {
-        reverseDir = AxisDirection.down;
-      } else {
-        reverseDir = AxisDirection.up;
-      }
-
-      var reverseIndirectResizes = _indirectChanges[reverseDir];
-
-      if (reverseIndirectResizes == null) {
-        return;
-      } else {
-        for (var resize in reverseIndirectResizes.entries) {
-          if (resize.value.isNotEmpty) {
-            onBackChange(
-                resize.key, resize.value.removeAt(resize.value.length - 1));
-          }
-        }
-      }
-    }
-  }
-
-  /*void _addSwap(
-      String directId, String indirectId, _Swap direct, _Swap indirect) {
-    _swapChanges[directId] = direct;
-    _swapChanges[indirectId] = indirect;
-  }*/
-
-  ///
-  final _ItemCurrentLayout editing;
-
-  ///
-  final _ItemCurrentLayout editingOrigin;
 }

@@ -104,4 +104,34 @@ class ItemLayout {
         minWidth: minWidth,
         haveLocation: _haveLocation);
   }
+
+  ItemLayout copy() {
+    return ItemLayout(
+        startX: startX,
+        startY: startY,
+        width: width,
+        height: height,
+        minWidth: minWidth,
+        minHeight: minHeight,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ItemLayout) return false;
+    return startX == other.startX &&
+        startY == other.startY &&
+        width == other.width &&
+        height == other.height &&
+        minWidth == other.minWidth &&
+        minHeight == other.minHeight &&
+        maxWidth == other.maxWidth &&
+        maxHeight == other.maxHeight;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      startX, startY, width, height, minWidth, minHeight, maxWidth, maxHeight);
 }

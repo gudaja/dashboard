@@ -262,91 +262,88 @@ class _DashboardStackState<T extends DashboardItem>
       addWidget(edit.id);
     }
 
-    Widget result = Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        if (widget.slotBackground != null) ..._buildBackground(),
-        if (widget.dashboardController.isEditing)
-          Positioned(
-            top: viewportDelegate.padding.top,
-            left: viewportDelegate.padding.left,
-            width: viewportDelegate.constraints.maxWidth -
-                viewportDelegate.padding.vertical,
-            height: viewportDelegate.constraints.maxHeight -
-                viewportDelegate.padding.horizontal,
-            child: Builder(builder: (context) {
-              return _AnimatedBackgroundPainter(
-                  layoutController: widget.dashboardController,
-                  editModeSettings: widget.editModeSettings,
-                  offset: viewportOffset);
-            }),
-          ),
-        ..._widgetsMap.entries
-            .where((element) =>
-                element.value[2] !=
-                widget.dashboardController.editSession?.editing.id)
-            .map((e) {
-          return buildPositioned(e.value);
-        }),
-        if (widget.dashboardController.itemController._items.isEmpty &&
-            !widget.dashboardController._isEditing)
-          Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              top: 0,
-              child: widget.emptyPlaceholder ?? Container()),
-        ...?(widget.dashboardController.editSession == null
-            ? null
-            : [
-                buildPositioned(_widgetsMap[
-                    widget.dashboardController.editSession?.editing.id]!)
-              ])
-      ],
-    );
-
-    if (widget.dashboardController.isEditing) {
-      result = GestureDetector(
-        onPanStart: widget.editModeSettings.panEnabled
-            ? (panStart) {
-                _onMoveStart(panStart.localPosition);
-              }
-            : null,
-        onPanUpdate: widget.editModeSettings.panEnabled &&
-                edit != null &&
-                edit.id.isNotEmpty
-            ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
-              }
-            : null,
-        onPanEnd: widget.editModeSettings.panEnabled
-            ? (e) {
-                _onMoveEnd();
-              }
-            : null,
-        onLongPressStart: widget.editModeSettings.longPressEnabled
-            ? (longPressStart) {
-                _onMoveStart(longPressStart.localPosition);
-              }
-            : null,
-        onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled &&
-                edit != null &&
-                edit.id.isNotEmpty
-            ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
-              }
-            : null,
-        onLongPressEnd: widget.editModeSettings.longPressEnabled
-            ? (e) {
-                _onMoveEnd();
-              }
-            : null,
-        child: result,
-      );
+    if (widget.dashboardController.itemController._items.isEmpty &&
+        !widget.dashboardController._isEditing) {
+      return const SizedBox.shrink();
     }
-    return result;
+
+    var allChildren = [
+      ...?_widgetsMap.entries
+          .where((element) =>
+              element.value[2] !=
+              widget.dashboardController.editSession?.editing.id)
+          .map((e) {
+        return buildPositioned(e.value);
+      }),
+      if (widget.dashboardController.itemController._items.isEmpty &&
+          !widget.dashboardController._isEditing)
+        Positioned(
+            width: width,
+            height: height,
+            top: 0,
+            child: widget.emptyPlaceholder ?? Container()),
+      ...?(widget.dashboardController.editSession == null
+          ? null
+          : [
+              buildPositioned(_widgetsMap[
+                  widget.dashboardController.editSession?.editing.id]!)
+            ])
+    ];
+
+    return GestureDetector(
+      onPanStart: widget.editModeSettings.panEnabled
+          ? (panStart) {
+              _onMoveStart(panStart.localPosition);
+            }
+          : null,
+      onPanUpdate: widget.editModeSettings.panEnabled &&
+              edit != null &&
+              edit.id.isNotEmpty
+          ? (u) {
+              setSpeed(u.localPosition);
+              _onMoveUpdate(u.localPosition);
+            }
+          : null,
+      onPanEnd: widget.editModeSettings.panEnabled
+          ? (e) {
+              _onMoveEnd();
+            }
+          : null,
+      onLongPressStart: widget.editModeSettings.longPressEnabled
+          ? (longPressStart) {
+              _onMoveStart(longPressStart.localPosition);
+            }
+          : null,
+      onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled &&
+              edit != null &&
+              edit.id.isNotEmpty
+          ? (u) {
+              setSpeed(u.localPosition);
+              _onMoveUpdate(u.localPosition);
+            }
+          : null,
+      onLongPressEnd: widget.editModeSettings.longPressEnabled
+          ? (e) {
+              _onMoveEnd();
+            }
+          : null,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          if (widget.dashboardController.isEditing)
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: _AnimatedBackgroundPainter(
+                    layoutController: widget.dashboardController,
+                    editModeSettings: widget.editModeSettings,
+                    offset: viewportOffset),
+              ),
+            ),
+          if (widget.slotBackground != null) ..._buildBackground(),
+          ...allChildren,
+        ],
+      ),
+    );
   }
 
   void setSpeed(Offset global) {
