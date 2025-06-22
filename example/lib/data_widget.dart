@@ -33,7 +33,7 @@ class DataWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _map[item.data]!(item);
+    return RepaintBoundary(child: _map[item.data]!(item));
   }
 }
 

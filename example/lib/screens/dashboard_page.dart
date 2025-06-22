@@ -53,30 +53,32 @@ class ItemDisplayWidget extends StatelessWidget {
       if (layout.maxHeight != null) "maxH : ${layout.maxHeight}"
     ].join("\n")}";
 
-    return PerformantDashboardItem(
-      child: OptimizedDashboardContainer(
-        color: item.color ?? Colors.grey,
-        borderRadius: borderRadius,
-        child: Stack(
-          children: [
-            SizedBox(
-                width: double.infinity,
-                height: double.infinity,
-                child:
-                    DashboardPerformanceUtils.createOptimizedText(textContent)),
-            if (isEditing)
-              Positioned(
-                  right: 5,
-                  top: 5,
-                  child: InkResponse(
-                      radius: 20,
-                      onTap: onDelete,
-                      child: const Icon(
-                        Icons.clear,
-                        color: Colors.white,
-                        size: 20,
-                      )))
-          ],
+    return RepaintBoundary(
+      child: PerformantDashboardItem(
+        child: OptimizedDashboardContainer(
+          color: item.color ?? Colors.grey,
+          borderRadius: borderRadius,
+          child: Stack(
+            children: [
+              SizedBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: DashboardPerformanceUtils.createOptimizedText(
+                      textContent)),
+              if (isEditing)
+                Positioned(
+                    right: 5,
+                    top: 5,
+                    child: InkResponse(
+                        radius: 20,
+                        onTap: onDelete,
+                        child: const Icon(
+                          Icons.clear,
+                          color: Colors.white,
+                          size: 20,
+                        )))
+            ],
+          ),
         ),
       ),
     );
