@@ -216,166 +216,57 @@ class _DashboardItemWidgetState<T extends DashboardItem>
   bool onAnimation = false;
   DateTime? animationStart;
 
+  Offset? _dragOffset;
+
+  void _onPanStart(DragStartDetails details) {
+    setState(() {
+      _dragOffset = details.localPosition;
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset = (_dragOffset ?? Offset.zero) + details.delta;
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _dragOffset = null;
+    });
+    // Możesz tu powiadomić kontroler o zakończeniu przeciągania
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget result = widget.child;
+    final pos = widget.itemGlobalPosition;
+    final offset = _dragOffset ?? Offset.zero;
 
-    if (onEditMode) {
-      if (widget.layoutController.absorbPointer) {
-        result = AbsorbPointer(child: result);
-      }
-      result = MouseRegion(
-        cursor: cursor,
-        onHover: _hover,
-        onExit: _exit,
-        child: result,
-      );
-    }
-
-    var currentEdit = widget.layoutController.editSession?.editing.id ==
-        widget.itemCurrentLayout.id;
-
-    var transform =
-        currentEdit ? widget.layoutController.editSession!.transform : false;
-
-    var onlyDimensions = currentEdit && transform;
-
-    if (onAnimation ||
-        ((currentEdit ? transform : true) &&
-            (onEditMode || widget.layoutController.animateEverytime) &&
-            ex != null &&
-            (widget.itemCurrentLayout._change))) {
-      widget.itemCurrentLayout._change = false;
-
-      if (onAnimation) {
-        ex = _animation!.value;
-
-        var difMicro = (widget.editModeSettings.duration -
-                (DateTime.now().difference(animationStart!).abs()))
-            .inMicroseconds;
-        _animationController.duration = Duration(
-            microseconds: difMicro.clamp(
-                0, widget.editModeSettings.duration.inMicroseconds));
-      } else {
-        animationStart = DateTime.now();
-        onAnimation = true;
-      }
-
-      _animationController.reset();
-
-      _animation = CurvedAnimation(
-              parent: _animationController,
-              curve: widget.editModeSettings.curve)
-          .drive(_ItemCurrentPositionTween(
-              begin: onlyDimensions
-                  ? _ItemCurrentPosition(
-                      height: ex!.height,
-                      width: ex!.width,
-                      y: widget.itemGlobalPosition.y,
-                      x: widget.itemGlobalPosition.x)
-                  : ex!,
-              end: widget.itemGlobalPosition,
-              onlyDimensions: onlyDimensions));
-
-      _animationController.forward().then((value) {
-        onAnimation = false;
-        animationStart = null;
-        _animationController.duration = widget.editModeSettings.duration;
-        _animation = null;
-        widget.itemCurrentLayout._change = false;
-        ex = widget.itemGlobalPosition;
-      });
-    } else {
-      ex = widget.itemGlobalPosition;
-      widget.itemCurrentLayout._change = false;
-    }
-
-    if (!onEditMode && !widget.layoutController.animateEverytime) {
-      var cp = widget.itemGlobalPosition;
-      return Positioned(
-          left: cp.x,
-          top: cp.y - widget.offset.pixels,
-          width: cp.width,
-          height: cp.height,
-          child: RepaintBoundary(
-            child: result,
-          ));
-    }
-
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        if (widget.itemCurrentLayout._resizePosition != null)
-          widget.itemCurrentLayout._resizePosition,
-        if (widget.itemCurrentLayout._transform != null)
-          widget.itemCurrentLayout._transform,
-        if (_animation != null) _animation,
-        if (onEditMode) _multiplierAnimationController,
-      ]),
-      child: result,
-      builder: (c, w) {
-        var m = _multiplierAnimationController.value;
-
-        var p = widget.itemCurrentLayout._resizePosition?.value;
-
-        var cp = onAnimation
-            ? (_animation?.value ?? widget.itemGlobalPosition)
-            : widget.itemGlobalPosition;
-
-        if (p != null) {
-          if (_lastPosition != null) {
-            p = _lastPosition! * m;
-          }
-          cp += p;
-        }
-        double left = cp.x, top = cp.y;
-
-        var o = widget.itemCurrentLayout._transform?.value;
-
-        if (o != null) {
-          if (_lastTransform != null) {
-            o = _lastTransform! * m;
-          }
-          left += o.dx;
-          top += o.dy;
-        }
-
-        var wi = cp.width;
-
-        if (!widget.editModeSettings.draggableOutside) {
-          final constraints =
-              widget.layoutController._viewportDelegate.constraints;
-          final maxW = constraints.maxWidth;
-
-          if (left < 0) {
-            left = 0;
-          } else if (left + wi > maxW) {
-            left = maxW - wi;
-          }
-
-          if (!widget.editModeSettings.autoScroll) {
-            if (o != null) {
-              final maxH = constraints.maxHeight;
-              final hi = cp.height;
-              final scrollOffset = widget.offset.pixels;
-
-              if (top < scrollOffset) {
-                top = scrollOffset;
-              } else if (top + hi > maxH + scrollOffset) {
-                top = maxH + scrollOffset - hi;
-              }
-            }
-          }
-        }
-
-        return Positioned(
-            left: left,
-            top: top - widget.offset.pixels,
-            width: wi,
-            height: cp.height,
-            child: RepaintBoundary(
-              child: w!,
-            ));
-      },
+    return Positioned(
+      left: pos.x + offset.dx,
+      top: pos.y + offset.dy,
+      width: pos.width,
+      height: pos.height,
+      child: RepaintBoundary(
+        child: GestureDetector(
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          child: DashboardItemWidget(
+            item: widget.item,
+            child: Material(
+              elevation: widget.style.elevation ?? 0.0,
+              type: widget.style.type ?? MaterialType.card,
+              shape: widget.style.shape,
+              color: widget.style.color,
+              clipBehavior: widget.style.clipBehavior ?? Clip.none,
+              animationDuration:
+                  widget.style.animationDuration ?? kThemeChangeDuration,
+              child: widget.child,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

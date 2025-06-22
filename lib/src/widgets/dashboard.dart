@@ -483,48 +483,50 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       }
     }
 
-    return Stack(
-      children: [
-        if (widget.gridStyle.show)
-          Positioned.fill(
-            child: _DashboardGridPainter<T>(
-              layoutController: _layoutController,
-              slotCount: widget.slotCount,
-              rowCount: _calculateRowCount(),
-              horizontalSpace: widget.horizontalSpace,
-              verticalSpace: widget.verticalSpace,
-              padding: widget.gridStyle.gridPadding ??
-                  widget.padding.resolve(widget.textDirection),
-              virtualConfig: widget.virtualColumnsConfig,
-              gridColor: widget.gridStyle.color,
-              gridOpacity: widget.gridStyle.opacity,
-              gridLineWidth: widget.gridStyle.lineWidth,
-              gridStyle: widget.gridStyle,
-              itemStyle: widget.itemStyle,
+    return RepaintBoundary(
+      child: Stack(
+        children: [
+          if (widget.gridStyle.show)
+            Positioned.fill(
+              child: _DashboardGridPainter<T>(
+                layoutController: _layoutController,
+                slotCount: widget.slotCount,
+                rowCount: _calculateRowCount(),
+                horizontalSpace: widget.horizontalSpace,
+                verticalSpace: widget.verticalSpace,
+                padding: widget.gridStyle.gridPadding ??
+                    widget.padding.resolve(widget.textDirection),
+                virtualConfig: widget.virtualColumnsConfig,
+                gridColor: widget.gridStyle.color,
+                gridOpacity: widget.gridStyle.opacity,
+                gridLineWidth: widget.gridStyle.lineWidth,
+                gridStyle: widget.gridStyle,
+                itemStyle: widget.itemStyle,
+              ),
             ),
-          ),
-        LayoutBuilder(builder: (context, constrains) {
-          Unbounded.check(Axis.vertical, constrains);
-          if (_withDelegate) {
-            if (_snap!.connectionState == ConnectionState.none) {
-              _building = false;
-              return widget.errorPlaceholder
-                      ?.call(_snap!.error!, _snap!.stackTrace!) ??
-                  const SizedBox();
-            } else if (_snap!.connectionState == ConnectionState.waiting ||
-                _reloading) {
-              _building = false;
+          LayoutBuilder(builder: (context, constrains) {
+            Unbounded.check(Axis.vertical, constrains);
+            if (_withDelegate) {
+              if (_snap!.connectionState == ConnectionState.none) {
+                _building = false;
+                return widget.errorPlaceholder
+                        ?.call(_snap!.error!, _snap!.stackTrace!) ??
+                    const SizedBox();
+              } else if (_snap!.connectionState == ConnectionState.waiting ||
+                  _reloading) {
+                _building = false;
 
-              return widget.loadingPlaceholder ??
-                  const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                return widget.loadingPlaceholder ??
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    );
+              }
             }
-          }
 
-          return dashboardWidget(constrains);
-        }),
-      ],
+            return dashboardWidget(constrains);
+          }),
+        ],
+      ),
     );
   }
 
@@ -546,37 +548,39 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
             _stateKey.currentState?._listenOffset(o);
           });
           _building = false;
-          return _DashboardStack<T>(
-            itemStyle: widget.itemStyle,
-            shouldCalculateNewDimensions: () {
-              if (_moving) {
-                return;
-              }
-              _setNewOffset(o, constrains);
-            },
-            onScrollStateChange: (st) {
-              SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
-                _moving = !st;
-
-                setState(() {
-                  scrollable = st;
-                });
-
-                if (!_moving) {
+          return RepaintBoundary(
+            child: _DashboardStack<T>(
+              itemStyle: widget.itemStyle,
+              shouldCalculateNewDimensions: () {
+                if (_moving) {
                   return;
                 }
-                _setNewOffset(o, constrains, _moving);
-              });
-            },
-            emptyPlaceholder: widget.emptyPlaceholder,
-            maxScrollOffset: _maxExtend,
-            editModeSettings: widget.editModeSettings,
-            cacheExtend: widget.cacheExtend,
-            key: _stateKey,
-            itemBuilder: widget.itemBuilder,
-            dashboardController: _layoutController,
-            offset: offset,
-            slotBackground: widget.slotBackgroundBuilder,
+                _setNewOffset(o, constrains);
+              },
+              onScrollStateChange: (st) {
+                SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
+                  _moving = !st;
+
+                  setState(() {
+                    scrollable = st;
+                  });
+
+                  if (!_moving) {
+                    return;
+                  }
+                  _setNewOffset(o, constrains, _moving);
+                });
+              },
+              emptyPlaceholder: widget.emptyPlaceholder,
+              maxScrollOffset: _maxExtend,
+              editModeSettings: widget.editModeSettings,
+              cacheExtend: widget.cacheExtend,
+              key: _stateKey,
+              itemBuilder: widget.itemBuilder,
+              dashboardController: _layoutController,
+              offset: offset,
+              slotBackground: widget.slotBackgroundBuilder,
+            ),
           );
         });
   }

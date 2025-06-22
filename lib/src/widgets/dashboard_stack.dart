@@ -227,44 +227,34 @@ class _DashboardStackState<T extends DashboardItem>
       addWidget(edit.id);
     }
 
-    Widget result = RepaintBoundary(
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          if (widget.slotBackground != null) ..._buildBackground(),
-          if (widget.dashboardController.isEditing)
-            Positioned(
-              top: viewportDelegate.padding.top,
-              left: viewportDelegate.padding.left,
-              width: viewportDelegate.constraints.maxWidth -
-                  viewportDelegate.padding.vertical,
-              height: viewportDelegate.constraints.maxHeight -
-                  viewportDelegate.padding.horizontal,
-              child: Builder(builder: (context) {
-                return _AnimatedBackgroundPainter(
-                    layoutController: widget.dashboardController,
-                    editModeSettings: widget.editModeSettings,
-                    offset: viewportOffset);
-              }),
-            ),
-          ..._widgetsMap.entries
-              .where((element) =>
-                  element.value[2] !=
-                  widget.dashboardController.editSession?.editing.id)
-              .map((e) {
-            return buildPositioned(e.value);
-          }),
-          if (widget.dashboardController.itemController._items.isEmpty &&
-              !widget.dashboardController._isEditing)
-            Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                top: 0,
-                child: widget.emptyPlaceholder ?? Container()),
-          if (edit != null) buildPositioned(_widgetsMap[edit.id]!),
-        ],
-      ),
+    Widget result = Stack(
+      children: [
+        ...widget.dashboardController.itemController._items.entries.map((e) {
+          var key = _keys[e.key] as GlobalKey<_DashboardItemWidgetState<T>>?;
+          if (key == null) {
+            key = GlobalKey<_DashboardItemWidgetState<T>>();
+            _keys[e.key] = key;
+          }
+          final layout = widget.dashboardController._layouts![e.key]!;
+          final itemGlobalPosition = layout._currentPosition(
+            viewportDelegate: viewportDelegate,
+            slotEdge: slotEdge,
+            verticalSlotEdge: verticalSlotEdge,
+          );
+          return _DashboardItemWidget<T>(
+            key: key,
+            layoutController: widget.dashboardController,
+            child: widget.itemBuilder(e.value),
+            editModeSettings: widget.editModeSettings,
+            id: e.key,
+            itemCurrentLayout: layout,
+            itemGlobalPosition: itemGlobalPosition,
+            offset: viewportOffset,
+            style: widget.itemStyle,
+            item: e.value,
+          );
+        }),
+      ],
     );
 
     if (widget.dashboardController.isEditing) {
