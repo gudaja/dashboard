@@ -230,6 +230,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         "\n origin: ($origin)";
   }
 
+  _ItemCurrentPosition? _cachedPosition;
+
   _ItemCurrentPosition _currentPosition(
       {required _ViewportDelegate viewportDelegate,
       required double slotEdge,
