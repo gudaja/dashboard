@@ -246,12 +246,24 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         "\n origin: ($origin)";
   }
 
+  // Cache for position calculation
   _ItemCurrentPosition? _cachedPosition;
+  double? _cachedSlotEdge;
+  double? _cachedVerticalSlotEdge;
+  _ViewportDelegate? _cachedViewportDelegate;
 
   _ItemCurrentPosition _currentPosition(
       {required _ViewportDelegate viewportDelegate,
       required double slotEdge,
       required double verticalSlotEdge}) {
+    // Check if cache is valid
+    if (_cachedPosition != null &&
+        _cachedSlotEdge == slotEdge &&
+        _cachedVerticalSlotEdge == verticalSlotEdge &&
+        _cachedViewportDelegate == viewportDelegate) {
+      return _cachedPosition!;
+    }
+
     var leftPad = isLeftSide ? 0.0 : viewportDelegate.crossAxisSpace / 2;
     var rightPad = isRightSide ? 0.0 : viewportDelegate.crossAxisSpace / 2;
     var topPad = isTopSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
@@ -263,7 +275,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       totalWidth += _layoutController.getColumnWidth(startX + i);
     }
 
-    return _ItemCurrentPosition(
+    _cachedPosition = _ItemCurrentPosition(
         height: height * verticalSlotEdge - topPad - bottomPad,
         width: totalWidth - rightPad - leftPad,
         y: ((startY * (verticalSlotEdge))) +
@@ -272,6 +284,21 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         x: _layoutController.getColumnPosition(startX) +
             viewportDelegate.padding.left +
             leftPad);
+
+    // Cache the parameters used to calculate this position
+    _cachedSlotEdge = slotEdge;
+    _cachedVerticalSlotEdge = verticalSlotEdge;
+    _cachedViewportDelegate = viewportDelegate;
+
+    return _cachedPosition!;
+  }
+
+  // Invalidate cache when position changes
+  void _invalidatePositionCache() {
+    _cachedPosition = null;
+    _cachedSlotEdge = null;
+    _cachedVerticalSlotEdge = null;
+    _cachedViewportDelegate = null;
   }
 
   double get _slotEdge {
@@ -969,6 +996,9 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   late String id;
 
   void _mount(_DashboardLayoutController layoutController, String id) {
+    // Invalidate position cache when remounting
+    _invalidatePositionCache();
+
     _layoutController = layoutController;
     this.id = id;
     indexes = layoutController.getItemIndexes(origin);
@@ -1006,6 +1036,9 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   ItemLayout origin;
 
   void save() {
+    // Invalidate position cache when layout changes
+    _invalidatePositionCache();
+
     var layout = ItemLayout(
         startX: startX,
         startY: startY,

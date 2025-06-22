@@ -218,6 +218,8 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
   @override
   Widget build(BuildContext context) {
+    var onEditMode = widget.layoutController.isEditing;
+
     Widget result = widget.child;
 
     if (onEditMode) {

@@ -179,8 +179,11 @@ class _DashboardStackState<T extends DashboardItem>
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: Dashboard Stack build() called');
+
     if (widget.dashboardController._rebuild) {
       _widgetsMap.clear();
+      _invalidateStaticCache();
       widget.dashboardController._rebuild = false;
     }
 
@@ -266,6 +269,8 @@ class _DashboardStackState<T extends DashboardItem>
       clipBehavior: Clip.hardEdge,
       children: [
         if (widget.slotBackground != null) ..._buildBackground(),
+
+        // Background painter should be below widgets to not block interactions
         if (widget.dashboardController.isEditing)
           Positioned(
             top: viewportDelegate.padding.top,
@@ -274,20 +279,24 @@ class _DashboardStackState<T extends DashboardItem>
                 viewportDelegate.padding.vertical,
             height: viewportDelegate.constraints.maxHeight -
                 viewportDelegate.padding.horizontal,
-            child: Builder(builder: (context) {
-              return _AnimatedBackgroundPainter(
-                  layoutController: widget.dashboardController,
-                  editModeSettings: widget.editModeSettings,
-                  offset: viewportOffset);
-            }),
+            child: IgnorePointer(
+              // Important: don't block interactions
+              child: Builder(builder: (context) {
+                return _AnimatedBackgroundPainter(
+                    layoutController: widget.dashboardController,
+                    editModeSettings: widget.editModeSettings,
+                    offset: viewportOffset);
+              }),
+            ),
           ),
-        ..._widgetsMap.entries
-            .where((element) =>
-                element.value[2] !=
-                widget.dashboardController.editSession?.editing.id)
-            .map((e) {
-          return buildPositioned(e.value);
-        }),
+
+        // Static layer - widgets that don't change during editing
+        ..._buildStaticWidgets(),
+
+        // Dynamic overlay layer - only currently editing widget (on top)
+        if (widget.dashboardController.editSession?.editing != null)
+          _buildEditingOverlay(),
+
         if (widget.dashboardController.itemController._items.isEmpty &&
             !widget.dashboardController._isEditing)
           Positioned(
@@ -296,12 +305,6 @@ class _DashboardStackState<T extends DashboardItem>
               right: 0,
               top: 0,
               child: widget.emptyPlaceholder ?? Container()),
-        ...?(widget.dashboardController.editSession == null
-            ? null
-            : [
-                buildPositioned(_widgetsMap[
-                    widget.dashboardController.editSession?.editing.id]!)
-              ])
       ],
     );
 
@@ -347,6 +350,50 @@ class _DashboardStackState<T extends DashboardItem>
       );
     }
     return result;
+  }
+
+  // Cache for static widgets
+  List<Widget>? _cachedStaticWidgets;
+  String? _lastEditingId;
+
+  List<Widget> _buildStaticWidgets() {
+    final currentEditingId = widget.dashboardController.editSession?.editing.id;
+
+    // Use cache if editing widget hasn't changed
+    if (_cachedStaticWidgets != null && _lastEditingId == currentEditingId) {
+      print(
+          'DEBUG: Using cached static widgets (${_cachedStaticWidgets!.length} widgets)');
+      return _cachedStaticWidgets!;
+    }
+
+    print(
+        'DEBUG: Rebuilding static widgets cache for editing: $currentEditingId');
+    _cachedStaticWidgets = _widgetsMap.entries
+        .where((element) => element.value[2] != currentEditingId)
+        .map((e) {
+      return buildPositioned(e.value);
+    }).toList();
+
+    _lastEditingId = currentEditingId;
+    print('DEBUG: Built ${_cachedStaticWidgets!.length} static widgets');
+    return _cachedStaticWidgets!;
+  }
+
+  void _invalidateStaticCache() {
+    if (_cachedStaticWidgets != null) {
+      print('DEBUG: Invalidating static widgets cache');
+    }
+    _cachedStaticWidgets = null;
+    _lastEditingId = null;
+  }
+
+  Widget _buildEditingOverlay() {
+    final editingId = widget.dashboardController.editSession?.editing.id;
+    if (editingId == null || !_widgetsMap.containsKey(editingId)) {
+      return const SizedBox.shrink();
+    }
+
+    return buildPositioned(_widgetsMap[editingId]!);
   }
 
   void setSpeed(Offset global) {
@@ -425,7 +472,6 @@ class _DashboardStackState<T extends DashboardItem>
 
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
         _editing = null;
-        setState(() {});
         return;
       }
 
@@ -486,7 +532,6 @@ class _DashboardStackState<T extends DashboardItem>
         l!.width,
         l.height
       ];
-      setState(() {});
       widget.onScrollStateChange(false);
     } else {
       _moveStartOffset = null;
@@ -538,36 +583,46 @@ class _DashboardStackState<T extends DashboardItem>
           scrollDifference: scrollDifference);
 
       if (resizeMoveResult.isChanged) {
-        print('DEBUG: Layout changed during resize - updating with setState');
-        setState(() {
-          _moveStartOffset =
-              _moveStartOffset! + resizeMoveResult.startDifference;
-          _widgetsMap.remove(_editing!.id);
-          for (var r in differences) {
-            _widgetsMap.remove(r);
-          }
-          if (_editing!._endIndex > (e)) {
-            widget.shouldCalculateNewDimensions();
-          }
-        });
+        _moveStartOffset = _moveStartOffset! + resizeMoveResult.startDifference;
+
+        // Only call setState if other widgets were affected
+        // Don't rebuild for just the editing widget - it uses transform feedback
+        if (differences.isNotEmpty) {
+          setState(() {
+            _widgetsMap.remove(_editing!.id);
+            for (var r in differences) {
+              _widgetsMap.remove(r);
+            }
+            _invalidateStaticCache();
+          });
+        }
+
+        if (_editing!._endIndex > (e)) {
+          widget.shouldCalculateNewDimensions();
+        }
       }
     } else {
       var resizeMoveResult = _editing!._transformUpdate(
           local - _moveStartOffset!, pixels - _startScrollPixels!, holdOffset);
 
       if (resizeMoveResult != null && resizeMoveResult.isChanged) {
-        print(
-            'DEBUG: Layout changed during transform - updating with setState');
-        setState(() {
-          _moveStartOffset =
-              _moveStartOffset! + resizeMoveResult.startDifference;
-          _widgetsMap.remove(_editing!.id);
+        // Real position change - element snapped to new grid position
+        _moveStartOffset = _moveStartOffset! + resizeMoveResult.startDifference;
 
-          if (_editing!._endIndex > (e)) {
-            widget.shouldCalculateNewDimensions();
-          }
+        // For transform changes, only setState for position update
+        // Don't invalidate cache unless absolutely necessary
+        setState(() {
+          _widgetsMap.remove(_editing!.id);
+          // Only invalidate cache if this move might affect other widgets
+          // For most moves to empty spaces, this is not needed
         });
+
+        if (_editing!._endIndex > (e)) {
+          widget.shouldCalculateNewDimensions();
+        }
       }
+      // If resizeMoveResult is null, it's just visual transform - no rebuild needed
+      // Visual feedback is handled by AnimatedBuilder listening to _transform ValueNotifier
     }
   }
 
