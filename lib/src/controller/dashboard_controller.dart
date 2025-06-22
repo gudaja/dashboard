@@ -220,7 +220,16 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   late _ViewportDelegate _viewportDelegate;
 
   ///
-  late int slotCount;
+  int? _slotCount;
+
+  int get slotCount => _slotCount!;
+
+  set slotCount(int value) {
+    if (_slotCount != value) {
+      _slotCount = value;
+      _clearColumnCache();
+    }
+  }
 
   ///
   late bool shrinkToPlace;
@@ -252,7 +261,16 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   late double slotEdge, verticalSlotEdge;
 
   /// Virtual columns configuration
-  VirtualColumnsConfig? virtualColumnsConfig;
+  VirtualColumnsConfig? _virtualColumnsConfig;
+
+  VirtualColumnsConfig? get virtualColumnsConfig => _virtualColumnsConfig;
+
+  set virtualColumnsConfig(VirtualColumnsConfig? value) {
+    if (_virtualColumnsConfig != value) {
+      _virtualColumnsConfig = value;
+      _clearColumnCache();
+    }
+  }
 
   ///
   Map<String, _ItemCurrentLayout>? _layouts;
@@ -831,29 +849,24 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
   /// Get the X position for a column considering virtual columns
   double getColumnPosition(int column) {
-    if (virtualColumnsConfig == null) {
-      return column * slotEdge;
+    _ensureColumnCache();
+    if (column >= 0 && column < _columnPositions!.length) {
+      return _columnPositions![column];
     }
-
-    final totalWidth = _axis == Axis.vertical
-        ? _viewportDelegate.constraints.maxWidth
-        : _viewportDelegate.constraints.maxHeight;
-
-    return virtualColumnsConfig!
-        .getColumnPosition(column, slotEdge, totalWidth);
+    // Fallback for out-of-bounds requests
+    if (column >= _columnPositions!.length) {
+      return _lastTotalWidthForCache ?? 0.0;
+    }
+    return 0.0;
   }
 
   /// Get the width for a specific column
   double getColumnWidth(int column) {
-    if (virtualColumnsConfig == null) {
-      return slotEdge;
+    _ensureColumnCache();
+    if (column >= 0 && column < _columnWidths!.length) {
+      return _columnWidths![column];
     }
-
-    final totalWidth = _axis == Axis.vertical
-        ? _viewportDelegate.constraints.maxWidth
-        : _viewportDelegate.constraints.maxHeight;
-
-    return virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
+    return 0.0; // Fallback
   }
 
   /// Get the column index from X coordinate considering virtual columns
@@ -862,24 +875,21 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       return (x / slotEdge).round().clamp(0, slotCount - 1);
     }
 
-    final totalWidth = _axis == Axis.vertical
-        ? _viewportDelegate.constraints.maxWidth
-        : _viewportDelegate.constraints.maxHeight;
+    _ensureColumnCache();
 
-    // Find which column contains this X position using center-based logic for symmetry
-    double currentPosition = 0.0;
-    for (int column = 0; column < slotCount; column++) {
-      double columnWidth =
-          virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
-      double columnCenter = currentPosition + columnWidth / 2;
+    // Binary search on cached positions
+    int left = 0;
+    int right = _columnPositions!.length - 1;
+    while (left <= right) {
+      int mid = left + ((right - left) >> 1);
+      double columnCenter = _columnPositions![mid] + _columnWidths![mid] / 2;
       if (x < columnCenter) {
-        return column;
+        right = mid - 1;
+      } else {
+        left = mid + 1;
       }
-      currentPosition += columnWidth;
     }
-
-    // If position is beyond all columns, return last column
-    return (slotCount - 1).clamp(0, slotCount - 1);
+    return left.clamp(0, slotCount - 1);
   }
 
   /// Get the column index from X coordinate using exact boundaries instead of center-based logic
@@ -889,24 +899,65 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       return (x / slotEdge).floor().clamp(0, slotCount - 1);
     }
 
+    _ensureColumnCache();
+
+    // Binary search on cached positions
+    int left = 0;
+    int right = _columnPositions!.length - 1;
+    while (left <= right) {
+      int mid = left + ((right - left) >> 1);
+      double columnEnd = _columnPositions![mid] + _columnWidths![mid];
+      if (x < columnEnd) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
+    }
+    return left.clamp(0, slotCount - 1);
+  }
+
+  // Cache for column positions and widths
+  List<double>? _columnPositions;
+  List<double>? _columnWidths;
+  double? _lastTotalWidthForCache;
+
+  void _clearColumnCache() {
+    _columnPositions = null;
+    _columnWidths = null;
+    _lastTotalWidthForCache = null;
+  }
+
+  void _ensureColumnCache() {
     final totalWidth = _axis == Axis.vertical
         ? _viewportDelegate.constraints.maxWidth
         : _viewportDelegate.constraints.maxHeight;
 
-    // Find which column contains this X position using exact boundaries
-    double currentPosition = 0.0;
-    for (int column = 0; column < slotCount; column++) {
-      double columnWidth =
-          virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
-      double columnEnd = currentPosition + columnWidth;
-      if (x < columnEnd) {
-        return column;
-      }
-      currentPosition = columnEnd;
+    // Check if cache is valid
+    if (_columnPositions != null && _lastTotalWidthForCache == totalWidth) {
+      return;
     }
 
-    // If position is beyond all columns, return last column
-    return (slotCount - 1).clamp(0, slotCount - 1);
+    // Rebuild cache
+    _columnPositions = List.filled(slotCount, 0.0);
+    _columnWidths = List.filled(slotCount, 0.0);
+    _lastTotalWidthForCache = totalWidth;
+
+    if (slotCount == 0) return;
+
+    double currentPosition = 0.0;
+    for (int column = 0; column < slotCount; column++) {
+      double columnWidth;
+      if (virtualColumnsConfig != null) {
+        columnWidth =
+            virtualColumnsConfig!.getColumnWidth(column, slotEdge, totalWidth);
+      } else {
+        columnWidth = slotEdge;
+      }
+
+      _columnPositions![column] = currentPosition;
+      _columnWidths![column] = columnWidth;
+      currentPosition += columnWidth;
+    }
   }
 
   void _setSizes(BoxConstraints constrains, double vertical) {
@@ -935,6 +986,8 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
               : constrains.maxHeight) /
           slotCount;
     }
+
+    _clearColumnCache();
   }
 
   late bool animateEverytime;

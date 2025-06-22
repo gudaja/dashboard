@@ -313,6 +313,13 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     required double scrollDifference,
     required void Function(String id) onChange,
   }) {
+    // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastResizeUpdate != null && now - _lastResizeUpdate! < 16) {
+      return _ResizeMoveResult();
+    }
+    _lastResizeUpdate = now;
+
     var difference = local - start;
     difference += Offset(0, scrollDifference);
     if (holdDirections.isEmpty || (difference == Offset.zero)) {
@@ -826,6 +833,14 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   _ResizeMoveResult? _transformUpdate(
       Offset offsetDifference, double scrollDifference, Offset holdOffset) {
     if (_onTransformProcess) return null;
+
+    // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastTransformUpdate != null && now - _lastTransformUpdate! < 16) {
+      return null;
+    }
+    _lastTransformUpdate = now;
+
     _onTransformProcess = true;
 
     var newTransform = offsetDifference + Offset(0, scrollDifference);
@@ -945,6 +960,9 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     _onTransformProcess = false;
     return null;
   }
+
+  int? _lastResizeUpdate;
+  int? _lastTransformUpdate;
 
   late String id;
 

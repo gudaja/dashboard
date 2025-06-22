@@ -509,10 +509,19 @@ class _DashboardStackState<T extends DashboardItem>
   bool isResizing(AxisDirection direction) =>
       _holdDirections!.contains(direction);
 
+  int? _lastMoveUpdate;
+
   void _onMoveUpdate(Offset local) {
     if (_editing == null) {
       return;
     }
+
+    // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastMoveUpdate != null && now - _lastMoveUpdate! < 16) {
+      return;
+    }
+    _lastMoveUpdate = now;
 
     var e = widget.dashboardController._endsTree.lastKey() ?? 0;
 
@@ -560,6 +569,7 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void _onMoveEnd() {
+    _lastMoveUpdate = null; // Reset on move end
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
         ?._setLast(
