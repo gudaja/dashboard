@@ -190,7 +190,7 @@ class _DashboardStackState<T extends DashboardItem>
     // Check if slot dimensions changed and invalidate widget positions if needed
     final newSlotEdge = widget.dashboardController.slotEdge;
     final newVerticalSlotEdge = widget.dashboardController.verticalSlotEdge;
-    
+
     if (slotEdge != newSlotEdge || verticalSlotEdge != newVerticalSlotEdge) {
       print('DEBUG: Slot dimensions changed, clearing widgets cache');
       _widgetsMap.clear();
@@ -598,6 +598,8 @@ class _DashboardStackState<T extends DashboardItem>
         // Only call setState if other widgets were affected
         // Don't rebuild for just the editing widget - it uses transform feedback
         if (differences.isNotEmpty) {
+          print(
+              'DEBUG: setState called due to resize affecting other widgets: ${differences.length}');
           setState(() {
             _widgetsMap.remove(_editing!.id);
             for (var r in differences) {
@@ -612,32 +614,44 @@ class _DashboardStackState<T extends DashboardItem>
         }
       }
     } else {
-      var resizeMoveResult = _editing!._transformUpdate(
-          local - _moveStartOffset!, pixels - _startScrollPixels!, holdOffset);
+      // OPTIMALIZACJA: Podczas zwykłego drag'u NIGDY nie wywołuj setState
+      // Używaj tylko ValueNotifier dla wizualnej transformacji
+      // Snap'owanie będzie wykonane tylko w _onMoveEnd()
 
-      if (resizeMoveResult != null && resizeMoveResult.isChanged) {
-        // Real position change - element snapped to new grid position
-        _moveStartOffset = _moveStartOffset! + resizeMoveResult.startDifference;
+      // Aktualizuj tylko pozycję wizualną bez snap'owania do grida
+      var newTransform =
+          local - _moveStartOffset! + Offset(0, pixels - _startScrollPixels!);
 
-        // For transform changes, only setState for position update
-        // Don't invalidate cache unless absolutely necessary
-        setState(() {
-          _widgetsMap.remove(_editing!.id);
-          // Only invalidate cache if this move might affect other widgets
-          // For most moves to empty spaces, this is not needed
-        });
-
-        if (_editing!._endIndex > (e)) {
-          widget.shouldCalculateNewDimensions();
-        }
-      }
-      // If resizeMoveResult is null, it's just visual transform - no rebuild needed
+      // TYLKO wizualna transformacja - brak snap'owania do grida
+      // Brak wywołania _transformUpdate() - to znacznie redukuje repaint'y
+      _editing!._transform.value = newTransform;
+      
       // Visual feedback is handled by AnimatedBuilder listening to _transform ValueNotifier
+      // Snap'owanie do pozycji grida będzie wykonane tylko w _onMoveEnd()
     }
   }
 
   void _onMoveEnd() {
     _lastMoveUpdate = null; // Reset on move end
+    
+    // SNAP'OWANIE DO GRIDA + AUTO-RESIZE - wykonywane tylko na końcu drag'u
+    if (_editing != null && !_editingResize) {
+      // Oblicz różnicę scroll od początku drag'u
+      final scrollDifference = pixels - (_startScrollPixels ?? pixels);
+      final currentTransform = _editing!._transform.value;
+      
+      // Sprawdź finalną pozycję i snap'uj do grida z auto-resize (wymuszony snap)
+      var resizeMoveResult = _editing!._transformUpdate(
+          currentTransform, scrollDifference, holdOffset, forceSnap: true);
+      
+      if (resizeMoveResult != null && resizeMoveResult.isChanged) {
+        print('DEBUG: Final snap to grid with auto-resize');
+        setState(() {
+          _widgetsMap.remove(_editing!.id);
+        });
+      }
+    }
+    
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
         ?._setLast(_editing!._transform.value, _editing!._resizePosition.value)

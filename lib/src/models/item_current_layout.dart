@@ -866,7 +866,8 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   }
 
   _ResizeMoveResult? _transformUpdate(
-      Offset offsetDifference, double scrollDifference, Offset holdOffset) {
+      Offset offsetDifference, double scrollDifference, Offset holdOffset,
+      {bool forceSnap = false}) {
     if (_onTransformProcess) return null;
 
     // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
@@ -879,6 +880,20 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     _onTransformProcess = true;
 
     var newTransform = offsetDifference + Offset(0, scrollDifference);
+
+    // OPTYMALIZACJA: Sprawdź czy transform przekroczył próg snap'owania
+    // Wprowadź "martwy obszar" - snap tylko gdy przekroczy 30% wielkości slotu
+    final snapThreshold = 0.3; // 30% slotu
+    final snapThresholdX = _slotEdge * snapThreshold;
+    final snapThresholdY = _verticalSlotEdge * snapThreshold;
+
+    // Oblicz przesunięcie względem aktualnej pozycji grida
+    final currentGridX = _layoutController.getColumnPosition(startX);
+    final currentGridY = startY * _verticalSlotEdge;
+    final transformFromGrid = Offset(
+        newTransform.dx -
+            (currentGridX - _layoutController.getColumnPosition(origin.startX)),
+        newTransform.dy - ((startY - origin.startY) * _verticalSlotEdge));
 
     var on = newTransform + holdOffset;
 
@@ -898,6 +913,19 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var newStartY =
         ((newTransform.dy / _verticalSlotEdge).round() + origin.startY)
             .clamp(0, 4294967296);
+
+    // OPTYMALIZACJA: Nie snap'uj jeśli przesunięcie jest mniejsze niż próg
+    // Tylko aktualizuj ValueNotifier bez snappingu do grida (CHYBA ŻE forceSnap)
+    if (!forceSnap &&
+        newStartX == startX &&
+        newStartY == startY &&
+        transformFromGrid.dx.abs() < snapThresholdX &&
+        transformFromGrid.dy.abs() < snapThresholdY) {
+      // Zwykły drag bez snappingu - tylko aktualizuj transform
+      _transform.value = newTransform;
+      _onTransformProcess = false;
+      return null; // Brak zmiany pozycji w gridzie
+    }
 
     var haveLeft = newStartX > 0;
     var haveRight = newStartX < _layoutController.slotCount - 1;

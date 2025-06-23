@@ -8,7 +8,7 @@ import 'package:flutter/rendering.dart';
 ///
 void main() {
   ///
-  debugRepaintRainbowEnabled = true;
+  // debugRepaintRainbowEnabled = true;
   // debugPrintMarkNeedsPaintStacks = true;
   runApp(const MyApp());
 }

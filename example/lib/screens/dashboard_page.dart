@@ -210,28 +210,28 @@ class _DashboardPageState extends State<DashboardPage> {
                 shrinkToPlace: false,
                 slideToTop: false,
                 absorbPointer: false,
-                slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withDimensionsFunction((context, item,
-                        x, y, editing, slotWidth, slotHeight, virtualConfig) {
-                  // Show disabled columns in red using config
-                  final isDisabled =
-                      virtualConfig?.isColumnDisabled(x) ?? false;
+                // slotBackgroundBuilder:
+                //     SlotBackgroundBuilder.withDimensionsFunction((context, item,
+                //         x, y, editing, slotWidth, slotHeight, virtualConfig) {
+                //   // Show disabled columns in red using config
+                //   final isDisabled =
+                //       virtualConfig?.isColumnDisabled(x) ?? false;
 
-                  // Calculate dynamic border radius (5% of slot width, max 10px)
-                  final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
+                //   // Calculate dynamic border radius (5% of slot width, max 10px)
+                //   final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
 
-                  return isDisabled
-                      ? null
-                      : Container(
-                          decoration: BoxDecoration(
-                            border:
-                                Border.all(color: Colors.black12, width: 0.5),
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            color: null,
-                          ),
-                          child: null,
-                        );
-                }),
+                //   return isDisabled
+                //       ? null
+                //       : Container(
+                //           decoration: BoxDecoration(
+                //             border:
+                //                 Border.all(color: Colors.black12, width: 0.5),
+                //             borderRadius: BorderRadius.circular(borderRadius),
+                //             color: null,
+                //           ),
+                //           child: null,
+                //         );
+                // }),
                 padding: const EdgeInsets.all(8),
                 horizontalSpace: 8,
                 verticalSpace: 8,
@@ -261,6 +261,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     paintBackgroundLines: false,
                     autoScroll: true,
                     resizeCursorSide: 5,
+                    fillEditingBackground: false,
                     curve: Curves.easeOut,
                     duration: const Duration(milliseconds: 200),
                     resizeHandleBuilder: (context, item, isEditing) {

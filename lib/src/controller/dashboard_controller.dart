@@ -252,7 +252,9 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     if (value != _isEditing) {
       _isEditing = value;
       print('DEBUG: isEditing setter notifyListeners() called - value: $value');
-      notifyListeners();
+      // OPTYMALIZACJA: Nie wywołuj notifyListeners podczas przełączania w tryb edycji
+      // Dashboard jest już przebudowywany przez setState w dashboard_page.dart
+      // notifyListeners();
     }
   }
 
