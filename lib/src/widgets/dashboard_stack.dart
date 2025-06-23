@@ -102,8 +102,8 @@ class _DashboardStackState<T extends DashboardItem>
     );
   }
 
-  late double slotEdge;
-  late double verticalSlotEdge;
+  double slotEdge = 0.0;
+  double verticalSlotEdge = 0.0;
   final Map<String, List> _widgetsMap = <String, List>{};
 
   void addWidget(String id) {
@@ -187,8 +187,18 @@ class _DashboardStackState<T extends DashboardItem>
       widget.dashboardController._rebuild = false;
     }
 
-    slotEdge = widget.dashboardController.slotEdge;
-    verticalSlotEdge = widget.dashboardController.verticalSlotEdge;
+    // Check if slot dimensions changed and invalidate widget positions if needed
+    final newSlotEdge = widget.dashboardController.slotEdge;
+    final newVerticalSlotEdge = widget.dashboardController.verticalSlotEdge;
+    
+    if (slotEdge != newSlotEdge || verticalSlotEdge != newVerticalSlotEdge) {
+      print('DEBUG: Slot dimensions changed, clearing widgets cache');
+      _widgetsMap.clear();
+      _invalidateStaticCache();
+    }
+
+    slotEdge = newSlotEdge;
+    verticalSlotEdge = newVerticalSlotEdge;
     var startPixels = (viewportOffset.pixels) - widget.cacheExtend;
     var startY = (startPixels / verticalSlotEdge).floor();
 

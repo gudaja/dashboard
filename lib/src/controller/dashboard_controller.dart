@@ -1000,6 +1000,11 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     }
 
     _clearColumnCache();
+    
+    // Invalidate position cache dla wszystkich layout'ów po zmianie rozmiaru
+    _layouts?.forEach((key, layout) {
+      layout._invalidatePositionCache();
+    });
   }
 
   late bool animateEverytime;
