@@ -856,6 +856,10 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   int? _exTrying = -1;
   bool _swapping = false;
 
+  // Śledzenie ostatniej sprawdzonej pozycji grida
+  int? _lastCheckedGridX;
+  int? _lastCheckedGridY;
+
   void _removeSwap() {
     if (_swapping) {
       _layoutController.editSession!._swapChanges.forEach((key, value) {
@@ -898,6 +902,18 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var newStartY =
         ((newTransform.dy / _verticalSlotEdge).round() + origin.startY)
             .clamp(0, 4294967296);
+
+    // Sprawdź czy pozycja grida się zmieniła
+    if (newStartX == _lastCheckedGridX && newStartY == _lastCheckedGridY) {
+      // Pozycja grida się nie zmieniła - tylko aktualizuj transform
+      _transform.value = newTransform;
+      _onTransformProcess = false;
+      return null;
+    }
+
+    // Aktualizuj ostatnią sprawdzoną pozycję grida
+    _lastCheckedGridX = newStartX;
+    _lastCheckedGridY = newStartY;
 
     var haveLeft = newStartX > 0;
     var haveRight = newStartX < _layoutController.slotCount - 1;
@@ -1038,6 +1054,10 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
   void save() {
     // Invalidate position cache when layout changes
     _invalidatePositionCache();
+
+    // Reset śledzenia pozycji grida gdy element zostanie przeniesiony
+    _lastCheckedGridX = null;
+    _lastCheckedGridY = null;
 
     var layout = ItemLayout(
         startX: startX,

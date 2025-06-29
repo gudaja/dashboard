@@ -190,7 +190,7 @@ class _DashboardStackState<T extends DashboardItem>
     // Check if slot dimensions changed and invalidate widget positions if needed
     final newSlotEdge = widget.dashboardController.slotEdge;
     final newVerticalSlotEdge = widget.dashboardController.verticalSlotEdge;
-    
+
     if (slotEdge != newSlotEdge || verticalSlotEdge != newVerticalSlotEdge) {
       print('DEBUG: Slot dimensions changed, clearing widgets cache');
       _widgetsMap.clear();
