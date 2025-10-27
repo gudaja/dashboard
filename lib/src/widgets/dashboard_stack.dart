@@ -138,6 +138,13 @@ class _DashboardStackState<T extends DashboardItem>
   late int startIndex, endIndex;
 
   List<Widget> _buildBackground() {
+    // Cache background widgets if indices haven't changed
+    if (_cachedBackgroundWidgets != null &&
+        _lastBackgroundStartIndex == startIndex &&
+        _lastBackgroundEndIndex == endIndex) {
+      return _cachedBackgroundWidgets!;
+    }
+
     final res = <Widget>[];
 
     int i = startIndex;
@@ -165,22 +172,26 @@ class _DashboardStackState<T extends DashboardItem>
         top: y * verticalSlotEdge + t,
         width: w,
         height: h,
-        child: Builder(
-          builder: (c) {
-            return widget.slotBackground!._build(context, x, y);
-          },
+        child: RepaintBoundary(
+          child: Builder(
+            builder: (c) {
+              return widget.slotBackground!._build(context, x, y);
+            },
+          ),
         ),
       ));
       i++;
     }
+
+    _cachedBackgroundWidgets = res;
+    _lastBackgroundStartIndex = startIndex;
+    _lastBackgroundEndIndex = endIndex;
 
     return res;
   }
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: Dashboard Stack build() called');
-
     if (widget.dashboardController._rebuild) {
       _widgetsMap.clear();
       _invalidateStaticCache();
@@ -192,7 +203,6 @@ class _DashboardStackState<T extends DashboardItem>
     final newVerticalSlotEdge = widget.dashboardController.verticalSlotEdge;
 
     if (slotEdge != newSlotEdge || verticalSlotEdge != newVerticalSlotEdge) {
-      print('DEBUG: Slot dimensions changed, clearing widgets cache');
       _widgetsMap.clear();
       _invalidateStaticCache();
     }
@@ -366,18 +376,19 @@ class _DashboardStackState<T extends DashboardItem>
   List<Widget>? _cachedStaticWidgets;
   String? _lastEditingId;
 
+  // Cache for background grid
+  List<Widget>? _cachedBackgroundWidgets;
+  int? _lastBackgroundStartIndex;
+  int? _lastBackgroundEndIndex;
+
   List<Widget> _buildStaticWidgets() {
     final currentEditingId = widget.dashboardController.editSession?.editing.id;
 
     // Use cache if editing widget hasn't changed
     if (_cachedStaticWidgets != null && _lastEditingId == currentEditingId) {
-      print(
-          'DEBUG: Using cached static widgets (${_cachedStaticWidgets!.length} widgets)');
       return _cachedStaticWidgets!;
     }
 
-    print(
-        'DEBUG: Rebuilding static widgets cache for editing: $currentEditingId');
     _cachedStaticWidgets = _widgetsMap.entries
         .where((element) => element.value[2] != currentEditingId)
         .map((e) {
@@ -385,16 +396,15 @@ class _DashboardStackState<T extends DashboardItem>
     }).toList();
 
     _lastEditingId = currentEditingId;
-    print('DEBUG: Built ${_cachedStaticWidgets!.length} static widgets');
     return _cachedStaticWidgets!;
   }
 
   void _invalidateStaticCache() {
-    if (_cachedStaticWidgets != null) {
-      print('DEBUG: Invalidating static widgets cache');
-    }
     _cachedStaticWidgets = null;
     _lastEditingId = null;
+    _cachedBackgroundWidgets = null;
+    _lastBackgroundStartIndex = null;
+    _lastBackgroundEndIndex = null;
   }
 
   Widget _buildEditingOverlay() {

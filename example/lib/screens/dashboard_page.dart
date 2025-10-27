@@ -251,7 +251,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 itemStyle: ItemStyle(
                     color: Colors.transparent,
                     clipBehavior: Clip.antiAliasWithSaveLayer,
-                    elevation: 5,
+                    elevation: 3, // Zmniejszone z 5 do 3 dla lepszej wydajności
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(itemBorderRadius))),
                 physics: const RangeMaintainingScrollPhysics()
@@ -262,6 +262,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     autoScroll: true,
                     resizeCursorSide: 5,
                     curve: Curves.easeOut,
+                    fillEditingBackground: true,
                     duration: const Duration(milliseconds: 200),
                     resizeHandleBuilder: (context, item, isEditing) {
                       return Container(
