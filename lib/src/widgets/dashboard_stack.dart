@@ -138,10 +138,14 @@ class _DashboardStackState<T extends DashboardItem>
   late int startIndex, endIndex;
 
   List<Widget> _buildBackground() {
-    // Cache background widgets if indices haven't changed
+    final isEditing = widget.dashboardController.isEditing;
+
+    // Cache background widgets if indices, scroll position and edit mode haven't changed
     if (_cachedBackgroundWidgets != null &&
         _lastBackgroundStartIndex == startIndex &&
-        _lastBackgroundEndIndex == endIndex) {
+        _lastBackgroundEndIndex == endIndex &&
+        _lastBackgroundPixels == pixels &&
+        _lastIsEditing == isEditing) {
       return _cachedBackgroundWidgets!;
     }
 
@@ -186,6 +190,8 @@ class _DashboardStackState<T extends DashboardItem>
     _cachedBackgroundWidgets = res;
     _lastBackgroundStartIndex = startIndex;
     _lastBackgroundEndIndex = endIndex;
+    _lastBackgroundPixels = pixels;
+    _lastIsEditing = isEditing;
 
     return res;
   }
@@ -380,6 +386,8 @@ class _DashboardStackState<T extends DashboardItem>
   List<Widget>? _cachedBackgroundWidgets;
   int? _lastBackgroundStartIndex;
   int? _lastBackgroundEndIndex;
+  double? _lastBackgroundPixels;
+  bool? _lastIsEditing;
 
   List<Widget> _buildStaticWidgets() {
     final currentEditingId = widget.dashboardController.editSession?.editing.id;
@@ -405,6 +413,8 @@ class _DashboardStackState<T extends DashboardItem>
     _cachedBackgroundWidgets = null;
     _lastBackgroundStartIndex = null;
     _lastBackgroundEndIndex = null;
+    _lastBackgroundPixels = null;
+    _lastIsEditing = null;
   }
 
   Widget _buildEditingOverlay() {

@@ -262,7 +262,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     autoScroll: true,
                     resizeCursorSide: 5,
                     curve: Curves.easeOut,
-                    fillEditingBackground: true,
+                    fillEditingBackground:
+                        true, // Zachowaj delikatne linie siatki podczas edycji
                     duration: const Duration(milliseconds: 200),
                     resizeHandleBuilder: (context, item, isEditing) {
                       return Container(
