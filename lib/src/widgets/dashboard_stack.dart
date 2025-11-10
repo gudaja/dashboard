@@ -51,6 +51,7 @@ class _DashboardStackState<T extends DashboardItem>
   @override
   void didUpdateWidget(covariant _DashboardStack<T> old) {
     _widgetsMap.clear();
+    _invalidateStaticCache(); // Inwaliduj cache po usunięciu elementu
     super.didUpdateWidget(old);
   }
 
@@ -65,6 +66,7 @@ class _DashboardStackState<T extends DashboardItem>
   @override
   void didChangeDependencies() {
     _widgetsMap.clear();
+    _invalidateStaticCache(); // Inwaliduj cache przy zmianie zależności
     super.didChangeDependencies();
   }
 
