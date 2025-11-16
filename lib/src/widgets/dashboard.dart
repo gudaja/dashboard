@@ -466,6 +466,15 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     return LayoutBuilder(builder: (context, constrains) {
       Unbounded.check(Axis.vertical, constrains);
       if (_withDelegate) {
+        // Sprawdzenie czy _snap nie jest null przed użyciem
+        if (_snap == null) {
+          _building = false;
+          return widget.loadingPlaceholder ??
+              const Center(
+                child: CircularProgressIndicator(),
+              );
+        }
+
         if (_snap!.connectionState == ConnectionState.none) {
           _building = false;
           return widget.errorPlaceholder
