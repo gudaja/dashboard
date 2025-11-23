@@ -343,12 +343,12 @@ class _DashboardStackState<T extends DashboardItem>
                 _onMoveStart(panStart.localPosition);
               }
             : null,
-        onPanUpdate: widget.editModeSettings.panEnabled &&
-                edit != null &&
-                (edit.id?.isNotEmpty ?? false)
+        onPanUpdate: widget.editModeSettings.panEnabled
             ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
+                if (widget.dashboardController.editSession != null) {
+                  setSpeed(u.localPosition);
+                  _onMoveUpdate(u.localPosition);
+                }
               }
             : null,
         onPanEnd: widget.editModeSettings.panEnabled
@@ -361,12 +361,12 @@ class _DashboardStackState<T extends DashboardItem>
                 _onMoveStart(longPressStart.localPosition);
               }
             : null,
-        onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled &&
-                edit != null &&
-                (edit.id?.isNotEmpty ?? false)
+        onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled
             ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
+                if (widget.dashboardController.editSession != null) {
+                  setSpeed(u.localPosition);
+                  _onMoveUpdate(u.localPosition);
+                }
               }
             : null,
         onLongPressEnd: widget.editModeSettings.longPressEnabled
