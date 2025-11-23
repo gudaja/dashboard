@@ -270,10 +270,9 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var bottomPad = viewportDelegate.mainAxisSpace / 2;
 
     // Calculate total width considering virtual columns
-    double totalWidth = 0.0;
-    for (int i = 0; i < width; i++) {
-      totalWidth += _layoutController.getColumnWidth(startX + i);
-    }
+    final startXPosition = _layoutController.getColumnPosition(startX);
+    final endXPosition = _layoutController.getColumnPosition(startX + width);
+    final totalWidth = endXPosition - startXPosition;
 
     _cachedPosition = _ItemCurrentPosition(
         height: height * verticalSlotEdge - topPad - bottomPad,
@@ -281,9 +280,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         y: ((startY * (verticalSlotEdge))) +
             viewportDelegate.padding.top +
             topPad,
-        x: _layoutController.getColumnPosition(startX) +
-            viewportDelegate.padding.left +
-            leftPad);
+        x: startXPosition + viewportDelegate.padding.left + leftPad);
 
     // Cache the parameters used to calculate this position
     _cachedSlotEdge = slotEdge;
@@ -358,6 +355,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     required double scrollDifference,
     required void Function(String id) onChange,
   }) {
+    print("RESIZE MOVE (heavy calculation)");
     // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
     final now = DateTime.now().millisecondsSinceEpoch;
     if (_lastResizeUpdate != null && now - _lastResizeUpdate! < 16) {

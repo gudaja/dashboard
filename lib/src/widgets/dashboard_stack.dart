@@ -340,15 +340,16 @@ class _DashboardStackState<T extends DashboardItem>
       result = GestureDetector(
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
+                print("PAN START");
                 _onMoveStart(panStart.localPosition);
               }
             : null,
-        onPanUpdate: widget.editModeSettings.panEnabled &&
-                edit != null &&
-                (edit.id?.isNotEmpty ?? false)
+        onPanUpdate: widget.editModeSettings.panEnabled
             ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
+                if (widget.dashboardController.editSession != null) {
+                  setSpeed(u.localPosition);
+                  _onMoveUpdate(u.localPosition);
+                }
               }
             : null,
         onPanEnd: widget.editModeSettings.panEnabled
@@ -358,15 +359,16 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onLongPressStart: widget.editModeSettings.longPressEnabled
             ? (longPressStart) {
+                print("LONG PRESS START");
                 _onMoveStart(longPressStart.localPosition);
               }
             : null,
-        onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled &&
-                edit != null &&
-                (edit.id?.isNotEmpty ?? false)
+        onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled
             ? (u) {
-                setSpeed(u.localPosition);
-                _onMoveUpdate(u.localPosition);
+                if (widget.dashboardController.editSession != null) {
+                  setSpeed(u.localPosition);
+                  _onMoveUpdate(u.localPosition);
+                }
               }
             : null,
         onLongPressEnd: widget.editModeSettings.longPressEnabled
@@ -475,6 +477,7 @@ class _DashboardStackState<T extends DashboardItem>
   Offset holdOffset = Offset.zero;
 
   void _onMoveStart(Offset local) {
+    print("## START");
     // Oblicz pozycję względną (bez padding)
     var holdGlobal = Offset(local.dx - viewportDelegate.padding.left,
         local.dy - viewportDelegate.padding.top);
@@ -550,6 +553,7 @@ class _DashboardStackState<T extends DashboardItem>
       }
       if (directions.isNotEmpty) {
         _holdDirections = directions;
+        print("RESIZE START");
       } else {
         _holdDirections = null;
       }
@@ -592,6 +596,8 @@ class _DashboardStackState<T extends DashboardItem>
     if (_editing == null) {
       return;
     }
+
+    print("RESIZE UPDATE: ${local.dx}, ${local.dy}");
 
     // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -659,6 +665,7 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void _onMoveEnd() {
+    print("RESIZE END");
     _lastMoveUpdate = null; // Reset on move end
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
