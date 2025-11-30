@@ -892,6 +892,32 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
             on.dx + _layoutController.getColumnPosition(origin.startX))
         .clamp(0, _layoutController.slotCount - 1);
 
+    // Jeśli holdX wskazuje na wyłączoną kolumnę, znajdź najbliższą aktywną
+    if (_layoutController.isColumnDisabled(holdX)) {
+      // Spróbuj znaleźć najbliższą aktywną kolumnę
+      final prevEnabled = _layoutController.virtualColumnsConfig
+          ?.getPreviousEnabledColumn(holdX);
+      final nextEnabled = _layoutController.virtualColumnsConfig
+          ?.getNextEnabledColumn(holdX, _layoutController.slotCount);
+
+      if (prevEnabled != null && nextEnabled != null) {
+        // Wybierz bliższą
+        final currentPos =
+            on.dx + _layoutController.getColumnPosition(origin.startX);
+        final prevDist =
+            (currentPos - _layoutController.getColumnPosition(prevEnabled))
+                .abs();
+        final nextDist =
+            (_layoutController.getColumnPosition(nextEnabled) - currentPos)
+                .abs();
+        holdX = prevDist < nextDist ? prevEnabled : nextEnabled;
+      } else if (prevEnabled != null) {
+        holdX = prevEnabled;
+      } else if (nextEnabled != null) {
+        holdX = nextEnabled;
+      }
+    }
+
     var holdY = ((on.dy / _verticalSlotEdge).round() + origin.startY)
         .clamp(0, 4294967296);
 
@@ -902,6 +928,14 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var newStartY =
         ((newTransform.dy / _verticalSlotEdge).round() + origin.startY)
             .clamp(0, 4294967296);
+
+    // Jeśli newStartX wskazuje na wyłączoną kolumnę, zostań przy poprzedniej pozycji
+    if (_layoutController.isColumnDisabled(newStartX)) {
+      // Nie zmieniaj pozycji grida, tylko aktualizuj transform (płynne przeciąganie)
+      _transform.value = newTransform;
+      _onTransformProcess = false;
+      return null;
+    }
 
     // Sprawdź czy pozycja grida się zmieniła
     if (newStartX == _lastCheckedGridX && newStartY == _lastCheckedGridY) {
