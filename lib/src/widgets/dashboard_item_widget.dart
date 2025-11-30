@@ -291,17 +291,27 @@ class _DashboardItemWidgetState<T extends DashboardItem>
       widget.itemCurrentLayout._change = false;
     }
     if (!onEditMode && !widget.layoutController.animateEverytime) {
-      var cp = widget.itemGlobalPosition;
-      return Positioned(
-          left: cp.x,
-          top: cp.y - widget.offset.pixels,
-          width: cp.width,
-          height: cp.height,
-          child: RepaintBoundary(child: result));
+      // ZAWSZE nasłuchuj zmian offsetu scrollowania, nawet w trybie nie-edycji
+      return AnimatedBuilder(
+        animation: widget.offset,
+        child: RepaintBoundary(child: result),
+        builder: (context, child) {
+          var cp = widget.itemGlobalPosition;
+          return Positioned(
+            left: cp.x,
+            top: cp.y - widget.offset.pixels,
+            width: cp.width,
+            height: cp.height,
+            child: child!,
+          );
+        },
+      );
     }
 
     return AnimatedBuilder(
       animation: Listenable.merge([
+        // Zawsze nasłuchuj zmian offsetu scrollowania
+        widget.offset,
         // Nasłuchuj tylko jeśli to jest obecnie edytowany widget
         if (widget.layoutController.editSession?.editing.id == widget.id) ...[
           widget.itemCurrentLayout._resizePosition,
