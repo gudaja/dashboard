@@ -205,100 +205,101 @@ class _DashboardPageState extends State<DashboardPage> {
             ? const Center(
                 child: CircularProgressIndicator(),
               )
-            : Dashboard<ColoredDashboardItem>(
-                scrollController: scrollController,
-                shrinkToPlace: false,
-                slideToTop: false,
-                absorbPointer: false,
-                slotBackgroundBuilder:
-                    SlotBackgroundBuilder.withDimensionsFunction((context, item,
-                        x, y, editing, slotWidth, slotHeight, virtualConfig) {
-                  // Show disabled columns in red using config
-                  final isDisabled =
-                      virtualConfig?.isColumnDisabled(x) ?? false;
-
-                  // Calculate dynamic border radius (5% of slot width, max 10px)
-                  final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
-
-                  return isDisabled
-                      ? null
-                      : Container(
-                          decoration: BoxDecoration(
-                            border:
-                                Border.all(color: Colors.black12, width: 0.5),
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            color: null,
-                          ),
-                          child: null,
-                        );
-                }),
-                padding: const EdgeInsets.all(8),
-                horizontalSpace: 8,
-                verticalSpace: 8,
-                slotAspectRatio: 1,
-                animateEverytime: false,
-                cacheExtend: 250,
+            : MobileDashboardWrapper<ColoredDashboardItem>(
                 dashboardItemController: itemController,
                 slotCount: slot!,
+                columnsPerPage: 6,
+                // Pass virtual columns config so pages split at disabled columns
                 virtualColumnsConfig: const VirtualColumnsConfig.visible(
                   disabledColumns: [6, 13],
                   disabledColumnWidth: 0.03,
                 ),
-                errorPlaceholder: (e, s) {
-                  return Text("$e , $s");
-                },
-                emptyPlaceholder: const Center(child: Text("Empty")),
-                itemStyle: ItemStyle(
-                    color: Colors.transparent,
-                    clipBehavior: Clip.antiAliasWithSaveLayer,
-                    elevation: 3, // Zmniejszone z 5 do 3 dla lepszej wydajności
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(itemBorderRadius))),
-                physics: const RangeMaintainingScrollPhysics()
-                    .applyTo(ClampingScrollPhysics()),
-                editModeSettings: EditModeSettings(
-                    draggableOutside: false,
-                    paintBackgroundLines: false,
-                    autoScroll: true,
-                    resizeCursorSide: 5,
-                    curve: Curves.easeOut,
-                    fillEditingBackground:
-                        true, // Zachowaj delikatne linie siatki podczas edycji
-                    duration: const Duration(milliseconds: 200),
-                    resizeHandleBuilder: (context, item, isEditing) {
-                      return Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 4,
-                              offset: Offset(2, 2),
+                mobileConfig: const MobileCarouselConfig(
+                  mobileBreakpoint: 600,
+                  showDots: true,
+                  showArrows: true,
+                  activeDotColor: Color(0xFF4285F4),
+                  arrowColor: Color(0xFF4285F4),
+                ),
+                dashboardBuilder:
+                    (controller, pageSlotCount, startColumn, isMobile) =>
+                        Dashboard<ColoredDashboardItem>(
+                  scrollController: isMobile ? null : scrollController,
+                  shrinkToPlace: false,
+                  slideToTop: false,
+                  absorbPointer: false,
+                  slotBackgroundBuilder:
+                      SlotBackgroundBuilder.withDimensionsFunction((context,
+                          item,
+                          x,
+                          y,
+                          editing,
+                          slotWidth,
+                          slotHeight,
+                          virtualConfig) {
+                    // Show disabled columns in red using config
+                    final isDisabled =
+                        virtualConfig?.isColumnDisabled(x) ?? false;
+
+                    // Calculate dynamic border radius (5% of slot width, max 10px)
+                    final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
+
+                    return isDisabled
+                        ? null
+                        : Container(
+                            decoration: BoxDecoration(
+                              border:
+                                  Border.all(color: Colors.black12, width: 0.5),
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              color: null,
                             ),
-                          ],
+                            child: null,
+                          );
+                  }),
+                  padding: const EdgeInsets.all(8),
+                  horizontalSpace: 8,
+                  verticalSpace: 8,
+                  slotAspectRatio: 1,
+                  animateEverytime: false,
+                  cacheExtend: 250,
+                  dashboardItemController: controller,
+                  slotCount: pageSlotCount,
+                  // Virtual columns only for desktop view (full dashboard)
+                  virtualColumnsConfig: isMobile
+                      ? null
+                      : const VirtualColumnsConfig.visible(
+                          disabledColumns: [6, 13],
+                          disabledColumnWidth: 0.03,
                         ),
-                        child: Transform.rotate(
-                          angle: 3.14159 / 2, // 180 stopni
-                          child: const Icon(
-                            Icons.open_in_full,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      );
-                    },
-                    deleteHandleBuilder: (context, item, isEditing, onDelete) {
-                      return GestureDetector(
-                        onTap: onDelete,
-                        child: Container(
+                  errorPlaceholder: (e, s) {
+                    return Text("$e , $s");
+                  },
+                  emptyPlaceholder: const Center(child: Text("Empty")),
+                  itemStyle: ItemStyle(
+                      color: Colors.transparent,
+                      clipBehavior: Clip.antiAliasWithSaveLayer,
+                      elevation:
+                          3, // Zmniejszone z 5 do 3 dla lepszej wydajności
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(itemBorderRadius))),
+                  physics: const RangeMaintainingScrollPhysics()
+                      .applyTo(ClampingScrollPhysics()),
+                  editModeSettings: EditModeSettings(
+                      draggableOutside: false,
+                      paintBackgroundLines: false,
+                      autoScroll: true,
+                      resizeCursorSide: 5,
+                      curve: Curves.easeOut,
+                      fillEditingBackground:
+                          true, // Zachowaj delikatne linie siatki podczas edycji
+                      duration: const Duration(milliseconds: 200),
+                      resizeHandleBuilder: (context, item, isEditing) {
+                        return Container(
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            color: Colors.redAccent,
+                            color: Colors.red,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                             boxShadow: const [
@@ -309,36 +310,66 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.white,
-                            size: 16,
+                          child: Transform.rotate(
+                            angle: 3.14159 / 2, // 180 stopni
+                            child: const Icon(
+                              Icons.open_in_full,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
-                        ),
+                        );
+                      },
+                      deleteHandleBuilder:
+                          (context, item, isEditing, onDelete) {
+                        return GestureDetector(
+                          onTap: onDelete,
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(2, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        );
+                      },
+                      backgroundStyle: const EditModeBackgroundStyle(
+                          lineColor: Colors.black38,
+                          lineWidth: 0.5,
+                          dualLineHorizontal: false,
+                          dualLineVertical: false)),
+                  itemBuilder: (ColoredDashboardItem item) {
+                    if (item.data != null) {
+                      return DataWidget(
+                        item: item,
                       );
-                    },
-                    backgroundStyle: const EditModeBackgroundStyle(
-                        lineColor: Colors.black38,
-                        lineWidth: 0.5,
-                        dualLineHorizontal: false,
-                        dualLineVertical: false)),
-                itemBuilder: (ColoredDashboardItem item) {
-                  if (item.data != null) {
-                    return DataWidget(
-                      item: item,
-                    );
-                  }
+                    }
 
-                  return ItemDisplayWidget(
-                    item: item,
-                    isEditing: itemController.isEditing,
-                    onDelete: () {
-                      itemController.delete(item.identifier);
-                    },
-                    borderRadius: itemBorderRadius,
-                  );
-                },
-              ),
+                    return ItemDisplayWidget(
+                      item: item,
+                      isEditing: itemController.isEditing,
+                      onDelete: () {
+                        itemController.delete(item.identifier);
+                      },
+                      borderRadius: itemBorderRadius,
+                    );
+                  },
+                ), // Dashboard
+              ), // dashboardBuilder
       ),
     );
   }

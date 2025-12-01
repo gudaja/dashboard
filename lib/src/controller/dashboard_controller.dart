@@ -146,12 +146,20 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   ///
   late Map<String, T> _items;
 
-  /// Get all items.
+  /// Get all item identifiers.
   ///
   /// The returned list is unmodifiable. A change negative affects
   /// state management and causes conflicts.
   List<String> get items =>
       List.unmodifiable(_items.values.map((e) => e.identifier));
+
+  /// Get all items with their current layout data.
+  ///
+  /// The returned list is unmodifiable. A change negative affects
+  /// state management and causes conflicts.
+  ///
+  /// Use this to access full item objects with layout information.
+  List<T> get allItems => List.unmodifiable(_items.values);
 
   Duration? _timeout;
 
@@ -1000,7 +1008,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     }
 
     _clearColumnCache();
-    
+
     // Invalidate position cache dla wszystkich layout'ów po zmianie rozmiaru
     _layouts?.forEach((key, layout) {
       layout._invalidatePositionCache();

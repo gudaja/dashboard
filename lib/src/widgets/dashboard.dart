@@ -240,9 +240,12 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       widget.dashboardItemController._loadItems(widget.slotCount);
       widget.dashboardItemController._asyncSnap!.addListener(() {
         if (mounted) {
-          if (!_building) {
-            setState(() {});
-          }
+          // Use addPostFrameCallback to avoid setState during build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_building) {
+              setState(() {});
+            }
+          });
         }
       });
     }
