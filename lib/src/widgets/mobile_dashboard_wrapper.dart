@@ -333,14 +333,24 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     final endColumn = _pageBreaks.getPageEndColumn(pageIndex);
     final pageColumns = endColumn - startColumn;
 
+    // Dashboard has internal padding (usually 8px on each side)
+    // We need to account for this in our calculations
+    const dashboardPadding = 8.0;
+
+    // The visible content area (excluding padding on both sides)
+    final contentWidth = viewportWidth - (dashboardPadding * 2);
+
     // Calculate the section width ratio based on this page's columns
     final sectionWidthRatio = pageColumns / widget.slotCount;
 
-    // Full dashboard width (scaled to show section at full viewport width)
-    final fullDashboardWidth = viewportWidth / sectionWidthRatio;
+    // Full dashboard content width (scaled to show section at full content width)
+    final fullContentWidth = contentWidth / sectionWidthRatio;
 
-    // Width of one slot in the full dashboard
-    final slotWidth = fullDashboardWidth / widget.slotCount;
+    // Full dashboard width including padding
+    final fullDashboardWidth = fullContentWidth + (dashboardPadding * 2);
+
+    // Width of one slot in the full dashboard (based on content, not padding)
+    final slotWidth = fullContentWidth / widget.slotCount;
 
     // Offset to show the current section (startColumn position)
     final offsetX = startColumn * slotWidth;
