@@ -309,23 +309,31 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                 PointerDeviceKind.trackpad,
               },
             ),
-            child: PageView.builder(
-              controller: _pageController,
-              physics: widget.mobileConfig.swipeEnabled
-                  ? const ClampingScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              pageSnapping: widget.mobileConfig.pageSnapping,
-              itemCount: _totalPages,
-              onPageChanged: (page) {
-                setState(() {
-                  _currentPage = page;
-                });
-                widget.onPageChanged?.call(page);
-              },
-              itemBuilder: (context, pageIndex) {
-                return _buildPageWithClippedDashboard(
-                  pageIndex,
-                  constraints.maxWidth,
+            child: ListenableBuilder(
+              listenable: widget.dashboardItemController,
+              builder: (context, _) {
+                // Automatycznie wyłącz swipe gdy tryb edycji jest aktywny
+                final isEditMode = widget.dashboardItemController.isEditing;
+
+                return PageView.builder(
+                  controller: _pageController,
+                  physics: (widget.mobileConfig.swipeEnabled && !isEditMode)
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  pageSnapping: widget.mobileConfig.pageSnapping,
+                  itemCount: _totalPages,
+                  onPageChanged: (page) {
+                    setState(() {
+                      _currentPage = page;
+                    });
+                    widget.onPageChanged?.call(page);
+                  },
+                  itemBuilder: (context, pageIndex) {
+                    return _buildPageWithClippedDashboard(
+                      pageIndex,
+                      constraints.maxWidth,
+                    );
+                  },
                 );
               },
             ),
