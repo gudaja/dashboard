@@ -4,6 +4,7 @@ part of '../dashboard_base.dart';
 class MobileCarouselConfig {
   const MobileCarouselConfig({
     this.mobileBreakpoint = 600.0,
+    this.showHeader = true,
     this.showDots = true,
     this.showArrows = true,
     this.dotColor = Colors.grey,
@@ -20,10 +21,13 @@ class MobileCarouselConfig {
   /// Width threshold below which mobile view is activated
   final double mobileBreakpoint;
 
+  /// Show section header with "Sekcja X z Y" and navigation arrows
+  final bool showHeader;
+
   /// Show page indicator dots
   final bool showDots;
 
-  /// Show navigation arrows on sides
+  /// Show navigation arrows on sides (in header)
   final bool showArrows;
 
   /// Inactive dot color
@@ -257,41 +261,42 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   Widget _buildMobileCarousel(BoxConstraints constraints) {
     return Column(
       children: [
-        // Page header showing current section
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (widget.mobileConfig.showArrows && _currentPage > 0)
-                IconButton(
-                  onPressed: () => _goToPage(_currentPage - 1),
-                  icon: Icon(
-                    Icons.chevron_left,
-                    color: widget.mobileConfig.arrowColor,
+        // Page header showing current section (optional)
+        if (widget.mobileConfig.showHeader)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.mobileConfig.showArrows && _currentPage > 0)
+                  IconButton(
+                    onPressed: () => _goToPage(_currentPage - 1),
+                    icon: Icon(
+                      Icons.chevron_left,
+                      color: widget.mobileConfig.arrowColor,
+                    ),
+                    iconSize: widget.mobileConfig.arrowSize,
                   ),
-                  iconSize: widget.mobileConfig.arrowSize,
-                ),
-              Text(
-                'Sekcja ${_currentPage + 1} z $_totalPages',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (widget.mobileConfig.showArrows &&
-                  _currentPage < _totalPages - 1)
-                IconButton(
-                  onPressed: () => _goToPage(_currentPage + 1),
-                  icon: Icon(
-                    Icons.chevron_right,
-                    color: widget.mobileConfig.arrowColor,
+                Text(
+                  'Sekcja ${_currentPage + 1} z $_totalPages',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
-                  iconSize: widget.mobileConfig.arrowSize,
                 ),
-            ],
+                if (widget.mobileConfig.showArrows &&
+                    _currentPage < _totalPages - 1)
+                  IconButton(
+                    onPressed: () => _goToPage(_currentPage + 1),
+                    icon: Icon(
+                      Icons.chevron_right,
+                      color: widget.mobileConfig.arrowColor,
+                    ),
+                    iconSize: widget.mobileConfig.arrowSize,
+                  ),
+              ],
+            ),
           ),
-        ),
 
         // Main carousel - each page clips and translates the full dashboard
         Expanded(

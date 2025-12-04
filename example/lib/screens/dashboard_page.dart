@@ -216,10 +216,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 mobileConfig: const MobileCarouselConfig(
                   mobileBreakpoint: 600,
+                  showHeader: false, // Ukrywa "Sekcja X z Y" i strzałki
                   showDots: true,
-                  showArrows: true,
                   activeDotColor: Color(0xFF4285F4),
-                  arrowColor: Color(0xFF4285F4),
                 ),
                 dashboardBuilder:
                     (controller, pageSlotCount, startColumn, isMobile) =>
