@@ -418,10 +418,14 @@ class _DashboardPageState extends State<DashboardPage> {
       itemController.add(ColoredDashboardItem(
           width: res[0],
           height: res[1],
+          minWidth: res[2],
+          minHeight: res[3],
+          maxWidth: res[4] == 0 ? null : res[4],
+          maxHeight: res[5] == 0 ? null : res[5],
+          color: res[6],
           startX: 0,
           startY: 0,
-          identifier: newId,
-          data: "new_item"));
+          identifier: newId));
     }
   }
 }
