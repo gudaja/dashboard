@@ -103,6 +103,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   MyItemStorage storage = MyItemStorage();
 
+  // Mobile page tracking
+  int _currentMobilePage = 0;
+  static const double _mobileBreakpoint = 600;
+  static const _virtualColumnsConfig = VirtualColumnsConfig.visible(
+    disabledColumns: [6, 13],
+    disabledColumnWidth: 0.03,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -210,16 +218,16 @@ class _DashboardPageState extends State<DashboardPage> {
                 slotCount: slot!,
                 columnsPerPage: 6,
                 // Pass virtual columns config so pages split at disabled columns
-                virtualColumnsConfig: const VirtualColumnsConfig.visible(
-                  disabledColumns: [6, 13],
-                  disabledColumnWidth: 0.03,
-                ),
+                virtualColumnsConfig: _virtualColumnsConfig,
                 mobileConfig: const MobileCarouselConfig(
-                  mobileBreakpoint: 600,
+                  mobileBreakpoint: _mobileBreakpoint,
                   showHeader: false, // Ukrywa "Sekcja X z Y" i strzałki
                   showDots: true,
                   activeDotColor: Color(0xFF4285F4),
                 ),
+                onPageChanged: (page) {
+                  _currentMobilePage = page;
+                },
                 dashboardBuilder:
                     (controller, pageSlotCount, startColumn, isMobile) =>
                         Dashboard<ColoredDashboardItem>(
@@ -264,12 +272,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   dashboardItemController: controller,
                   slotCount: pageSlotCount,
                   // Virtual columns only for desktop view (full dashboard)
-                  virtualColumnsConfig: isMobile
-                      ? null
-                      : const VirtualColumnsConfig.visible(
-                          disabledColumns: [6, 13],
-                          disabledColumnWidth: 0.03,
-                        ),
+                  virtualColumnsConfig: isMobile ? null : _virtualColumnsConfig,
                   errorPlaceholder: (e, s) {
                     return Text("$e , $s");
                   },
@@ -415,17 +418,41 @@ class _DashboardPageState extends State<DashboardPage> {
     if (res != null) {
       final newId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      itemController.add(ColoredDashboardItem(
-          width: res[0],
-          height: res[1],
-          minWidth: res[2],
-          minHeight: res[3],
-          maxWidth: res[4] == 0 ? null : res[4],
-          maxHeight: res[5] == 0 ? null : res[5],
-          color: res[6],
-          startX: 0,
-          startY: 0,
-          identifier: newId));
+      // Calculate startX and column range based on current mobile page
+      int startX = 0;
+      int? minColumn;
+      int? maxColumn;
+      final screenWidth = MediaQuery.of(context).size.width;
+      if (screenWidth < _mobileBreakpoint) {
+        // Mobile mode - add to current page with column restrictions
+        final pageBreaks = MobilePageBreaks.fromVirtualColumns(
+          _virtualColumnsConfig,
+          slot!,
+        );
+        startX = pageBreaks.getPageStartColumn(
+          _currentMobilePage,
+          _virtualColumnsConfig,
+        );
+        minColumn = startX;
+        maxColumn = pageBreaks.getPageEndColumn(_currentMobilePage);
+      }
+
+      itemController.add(
+        ColoredDashboardItem(
+            width: res[0],
+            height: res[1],
+            minWidth: res[2],
+            minHeight: res[3],
+            maxWidth: res[4] == 0 ? null : res[4],
+            maxHeight: res[5] == 0 ? null : res[5],
+            color: res[6],
+            startX: startX,
+            startY: 0,
+            identifier: newId),
+        mountToTop: false,
+        minColumn: minColumn,
+        maxColumn: maxColumn,
+      );
     }
   }
 }

@@ -70,11 +70,17 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   void add(T item,
       {bool mountToTop = true,
       Duration duration = const Duration(milliseconds: 200),
-      Curve curve = Curves.easeInOut}) {
+      Curve curve = Curves.easeInOut,
+      int? minColumn,
+      int? maxColumn}) {
     if (_isAttached) {
       _items[item.identifier] = item;
-      _layoutController!
-          .add(item, mountToTop: mountToTop, duration: duration, curve: curve);
+      _layoutController!.add(item,
+          mountToTop: mountToTop,
+          duration: duration,
+          curve: curve,
+          minColumn: minColumn,
+          maxColumn: maxColumn);
       itemStorageDelegate?._onItemsAdded(
           [_getItemWithLayout(item.identifier)], _layoutController!.slotCount);
     } else {
@@ -401,14 +407,18 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     bool mountToTop = true,
     required Duration duration,
     required Curve curve,
+    int? minColumn,
+    int? maxColumn,
   }) {
     _layouts![item.identifier] = _ItemCurrentLayout(item.layoutData);
-    this.mountToTop(
+    this.mountToTopInRange(
         item.identifier,
         mountToTop
             ? 0
             : getIndex(
-                [_adjustToPosition(item.layoutData), item.layoutData.startY]));
+                [_adjustToPosition(item.layoutData), item.layoutData.startY]),
+        minColumn: minColumn,
+        maxColumn: maxColumn);
     notifyListeners();
 
     // TODO: scroll to item
@@ -703,6 +713,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
   ///
   bool mountToTop(String id, [int start = 0]) {
+    return mountToTopInRange(id, start);
+  }
+
+  /// Mount item to top with optional column range restriction
+  bool mountToTopInRange(String id, int start,
+      {int? minColumn, int? maxColumn}) {
     try {
       var itemCurrent = _layouts![id]!;
 
@@ -710,10 +726,30 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
       var i = start;
       while (true) {
+        var coords = getIndexCoordinate(i);
+        var currentColumn = coords[0];
+
+        // Skip if outside column range
+        if (minColumn != null && currentColumn < minColumn) {
+          i++;
+          continue;
+        }
+        if (maxColumn != null && currentColumn >= maxColumn) {
+          // Move to next row, first column in range
+          var nextRow = coords[1] + 1;
+          i = getIndex([minColumn ?? 0, nextRow]);
+          continue;
+        }
+
         var nLayout = tryMount(i, itemCurrent.origin);
         if (nLayout != null) {
-          _indexItem(nLayout, id);
-          return true;
+          // Verify result is within column range
+          if ((minColumn == null || nLayout.startX >= minColumn) &&
+              (maxColumn == null ||
+                  nLayout.startX + nLayout.width <= maxColumn)) {
+            _indexItem(nLayout, id);
+            return true;
+          }
         }
 
         if (i > 1000000) {

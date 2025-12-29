@@ -225,20 +225,26 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
 
 class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     with TickerProviderStateMixin {
+  VoidCallback? _layoutListener;
+  VoidCallback? _asyncSnapListener;
+
   ///
   @override
   void initState() {
     _layoutController = _DashboardLayoutController<T>();
-    _layoutController.addListener(() {
-      setState(() {});
-    });
+    _layoutListener = () {
+      if (mounted) {
+        setState(() {});
+      }
+    };
+    _layoutController.addListener(_layoutListener!);
 
     widget.dashboardItemController._attach(_layoutController);
     if (_withDelegate) {
       // widget.dashboardItemController._asyncSnap =
       //     ValueNotifier(const AsyncSnapshot.waiting());
       widget.dashboardItemController._loadItems(widget.slotCount);
-      widget.dashboardItemController._asyncSnap!.addListener(() {
+      _asyncSnapListener = () {
         if (mounted) {
           // Use addPostFrameCallback to avoid setState during build
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -247,9 +253,23 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
             }
           });
         }
-      });
+      };
+      widget.dashboardItemController._asyncSnap!
+          .addListener(_asyncSnapListener!);
     }
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    if (_layoutListener != null) {
+      _layoutController.removeListener(_layoutListener!);
+    }
+    if (_asyncSnapListener != null) {
+      widget.dashboardItemController._asyncSnap
+          ?.removeListener(_asyncSnapListener!);
+    }
+    super.dispose();
   }
 
   GlobalKey myWidgetKey = GlobalKey();
