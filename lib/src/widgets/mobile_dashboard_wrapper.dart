@@ -1,9 +1,15 @@
 part of '../dashboard_base.dart';
 
+/// Enum for device type based on screen width
+enum DeviceType { mobile, tablet, desktop }
+
 /// Configuration for mobile carousel view
 class MobileCarouselConfig {
   const MobileCarouselConfig({
     this.mobileBreakpoint = 600.0,
+    this.tabletBreakpoint = 900.0,
+    this.visibleSectionsOnMobile = 1,
+    this.visibleSectionsOnTablet = 2,
     this.showHeader = true,
     this.showDots = true,
     this.showArrows = true,
@@ -18,66 +24,41 @@ class MobileCarouselConfig {
     this.swipeEnabled = true,
   });
 
-  /// Width threshold below which mobile view is activated
   final double mobileBreakpoint;
-
-  /// Show section header with "Sekcja X z Y" and navigation arrows
+  final double tabletBreakpoint;
+  final int visibleSectionsOnMobile;
+  final int visibleSectionsOnTablet;
   final bool showHeader;
-
-  /// Show page indicator dots
   final bool showDots;
-
-  /// Show navigation arrows on sides (in header)
   final bool showArrows;
-
-  /// Inactive dot color
   final Color dotColor;
-
-  /// Active dot color
   final Color activeDotColor;
-
-  /// Arrow buttons color
   final Color arrowColor;
-
-  /// Inactive dot size
   final double dotSize;
-
-  /// Active dot size
   final double activeDotSize;
-
-  /// Spacing between dots
   final double dotsSpacing;
-
-  /// Arrow icon size
   final double arrowSize;
-
-  /// Whether pages should snap to position
   final bool pageSnapping;
-
-  /// Whether swipe gesture is enabled
   final bool swipeEnabled;
+
+  DeviceType getDeviceType(double width) {
+    if (width < mobileBreakpoint) return DeviceType.mobile;
+    if (width < tabletBreakpoint) return DeviceType.tablet;
+    return DeviceType.desktop;
+  }
 }
 
 /// Defines how to split columns into pages for mobile view
 class MobilePageBreaks {
-  const MobilePageBreaks({
-    required this.breakColumns,
-  });
+  const MobilePageBreaks({required this.breakColumns});
 
-  /// Columns where page breaks occur (exclusive end of each page)
-  /// For example, [6, 13, 20] means:
-  /// - Page 0: columns 0-5 (before column 6)
-  /// - Page 1: columns 7-12 (between 6 and 13, skipping disabled 6)
-  /// - Page 2: columns 14-19 (between 13 and 20, skipping disabled 13)
   final List<int> breakColumns;
 
-  /// Create breaks from VirtualColumnsConfig - pages split at disabled columns
   factory MobilePageBreaks.fromVirtualColumns(
     VirtualColumnsConfig? config,
     int totalSlotCount,
   ) {
     if (config == null || config.disabledColumns.isEmpty) {
-      // No virtual columns - just use total as single page
       return MobilePageBreaks(breakColumns: [totalSlotCount]);
     }
 
@@ -94,24 +75,18 @@ class MobilePageBreaks {
 
   int get pageCount => breakColumns.length;
 
-  /// Get start column for a page (first non-disabled column)
   int getPageStartColumn(int pageIndex, VirtualColumnsConfig? config) {
     if (pageIndex == 0) return 0;
     if (pageIndex >= breakColumns.length) return breakColumns.last;
-
-    // Start after the previous break column (which is a disabled column)
     final prevBreak = breakColumns[pageIndex - 1];
-    // Skip the disabled column itself
     return prevBreak + 1;
   }
 
-  /// Get end column for a page (exclusive)
   int getPageEndColumn(int pageIndex) {
     if (pageIndex >= breakColumns.length) return breakColumns.last;
     return breakColumns[pageIndex];
   }
 
-  /// Get number of visible columns in a page
   int getPageColumnCount(int pageIndex, VirtualColumnsConfig? config) {
     final start = getPageStartColumn(pageIndex, config);
     final end = getPageEndColumn(pageIndex);
@@ -119,11 +94,7 @@ class MobilePageBreaks {
   }
 }
 
-/// A wrapper that shows Dashboard in carousel mode on mobile devices
-///
-/// Shows full Dashboard functionality but divided into "pages" based on
-/// virtual column separators (disabled columns). Each page shows a section
-/// between two disabled columns with full drag/resize capabilities.
+/// A wrapper that shows Dashboard with sliding viewport on mobile/tablet devices
 class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
   const MobileDashboardWrapper({
     super.key,
@@ -136,12 +107,6 @@ class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
     this.onPageChanged,
   });
 
-  /// Builder for the Dashboard widget
-  /// Parameters:
-  /// - controller: The dashboard item controller
-  /// - slotCount: Number of slots for this view
-  /// - startColumn: Starting column offset (0 in desktop, varies in mobile)
-  /// - isMobile: Whether we're in mobile view
   final Widget Function(
     DashboardItemController<T> controller,
     int slotCount,
@@ -149,24 +114,11 @@ class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
     bool isMobile,
   ) dashboardBuilder;
 
-  /// The dashboard item controller
   final DashboardItemController<T> dashboardItemController;
-
-  /// Total number of grid slots/columns
   final int slotCount;
-
-  /// How many grid columns each carousel page shows in mobile view
-  /// (used when no virtualColumnsConfig is provided)
   final int columnsPerPage;
-
-  /// Virtual columns configuration - if provided, pages will be split
-  /// at disabled columns instead of using columnsPerPage
   final VirtualColumnsConfig? virtualColumnsConfig;
-
-  /// Configuration for mobile carousel appearance
   final MobileCarouselConfig mobileConfig;
-
-  /// Callback when carousel page changes
   final void Function(int page)? onPageChanged;
 
   @override
@@ -175,15 +127,34 @@ class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
 }
 
 class _MobileDashboardWrapperState<T extends DashboardItem>
-    extends State<MobileDashboardWrapper<T>> {
-  late PageController _pageController;
+    extends State<MobileDashboardWrapper<T>>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  // Current page (source of truth for position)
   int _currentPage = 0;
+
+  // Animation: from which page to which page
+  int _animationStartPage = 0;
+  int _animationEndPage = 0;
+
+  // Drag: progress as fraction of page width (can be negative or > 1)
+  double _dragProgress = 0.0;
+  bool _isDragging = false;
+
   late MobilePageBreaks _pageBreaks;
+  DeviceType _currentDeviceType = DeviceType.desktop;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animationController.addListener(() {
+      setState(() {});
+    });
     _updatePageBreaks();
   }
 
@@ -204,7 +175,6 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
         widget.slotCount,
       );
     } else {
-      // No virtual columns - create regular breaks based on columnsPerPage
       final breaks = <int>[];
       for (int i = widget.columnsPerPage;
           i <= widget.slotCount;
@@ -220,48 +190,167 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
-  int get _totalPages => _pageBreaks.pageCount;
+  int get _totalSections => _pageBreaks.pageCount;
 
-  void _goToPage(int page) {
-    if (page >= 0 && page < _totalPages) {
-      _pageController.animateToPage(
-        page,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+  int _getTotalPages(DeviceType deviceType) {
+    final visibleSections = deviceType == DeviceType.mobile
+        ? widget.mobileConfig.visibleSectionsOnMobile
+        : widget.mobileConfig.visibleSectionsOnTablet;
+    final pages = _totalSections - (visibleSections - 1);
+    return pages > 0 ? pages : 1;
+  }
+
+  /// Get number of columns for sections from startSection to endSection (inclusive)
+  int _getColumnsForSections(int startSection, int endSection) {
+    int columns = 0;
+    for (int i = startSection; i <= endSection && i < _totalSections; i++) {
+      columns += _pageBreaks.getPageColumnCount(i, widget.virtualColumnsConfig);
+      if (i < endSection && i < _totalSections - 1) {
+        columns += 1; // disabled column
+      }
     }
+    return columns;
+  }
+
+  /// Get start column for page
+  int _getStartColumnForPage(int page) {
+    return _pageBreaks.getPageStartColumn(page, widget.virtualColumnsConfig);
+  }
+
+  /// Calculate pixel offset for a given page
+  double _getOffsetForPage(int page, double slotWidth) {
+    if (page <= 0) return 0;
+    final startColumn = _getStartColumnForPage(page);
+    return startColumn * slotWidth;
+  }
+
+  void _animateToPage(int page, int totalPages) {
+    page = page.clamp(0, totalPages - 1);
+    if (page == _currentPage && !_isDragging) return;
+
+    _animationStartPage = _currentPage;
+    _animationEndPage = page;
+    _isDragging = false;
+    _dragProgress = 0.0;
+
+    _animationController.forward(from: 0).then((_) {
+      if (_currentPage != page) {
+        _currentPage = page;
+        widget.onPageChanged?.call(page);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile =
-            constraints.maxWidth < widget.mobileConfig.mobileBreakpoint;
+        final deviceType =
+            widget.mobileConfig.getDeviceType(constraints.maxWidth);
 
-        if (isMobile) {
-          return _buildMobileCarousel(constraints);
-        } else {
-          // Desktop: full dashboard with all columns
-          return widget.dashboardBuilder(
-            widget.dashboardItemController,
-            widget.slotCount,
-            0,
-            false,
-          );
+        if (_currentDeviceType != deviceType) {
+          _currentDeviceType = deviceType;
+          final maxPage = _getTotalPages(deviceType) - 1;
+          if (_currentPage > maxPage) {
+            _currentPage = maxPage;
+          }
+          // Reset animation state on device type change
+          _animationStartPage = _currentPage;
+          _animationEndPage = _currentPage;
+          _dragProgress = 0.0;
+          _isDragging = false;
+        }
+
+        switch (deviceType) {
+          case DeviceType.mobile:
+          case DeviceType.tablet:
+            return _buildSlidingDashboard(constraints, deviceType);
+          case DeviceType.desktop:
+            return widget.dashboardBuilder(
+              widget.dashboardItemController,
+              widget.slotCount,
+              0,
+              false,
+            );
         }
       },
     );
   }
 
-  Widget _buildMobileCarousel(BoxConstraints constraints) {
+  Widget _buildSlidingDashboard(
+      BoxConstraints constraints, DeviceType deviceType) {
+    final totalPages = _getTotalPages(deviceType);
+    final visibleSections = deviceType == DeviceType.mobile
+        ? widget.mobileConfig.visibleSectionsOnMobile
+        : widget.mobileConfig.visibleSectionsOnTablet;
+
+    // Calculate visible columns for current view
+    final visibleColumns = _getColumnsForSections(0, visibleSections - 1);
+
+    // Slot width based on visible columns fitting in viewport
+    const padding = 8.0;
+    final contentWidth = constraints.maxWidth - (padding * 2);
+    final slotWidth = contentWidth / visibleColumns;
+
+    // Full dashboard width
+    final fullDashboardWidth = widget.slotCount * slotWidth + (padding * 2);
+
+    // Calculate current offset based on state
+    double currentOffset;
+    if (_animationController.isAnimating) {
+      // During animation: interpolate between start and end pages
+      final startOffset = _getOffsetForPage(_animationStartPage, slotWidth);
+      final endOffset = _getOffsetForPage(_animationEndPage, slotWidth);
+      final t = Curves.easeOut.transform(_animationController.value);
+      currentOffset = startOffset + (endOffset - startOffset) * t;
+    } else if (_isDragging) {
+      // During drag: current page offset + drag progress
+      final pageOffset = _getOffsetForPage(_currentPage, slotWidth);
+      // Calculate how many pixels is one "page step"
+      final nextPageOffset = _getOffsetForPage(
+        (_currentPage + 1).clamp(0, totalPages - 1),
+        slotWidth,
+      );
+      final prevPageOffset = _getOffsetForPage(
+        (_currentPage - 1).clamp(0, totalPages - 1),
+        slotWidth,
+      );
+
+      if (_dragProgress >= 0) {
+        // Dragging forward (to next page)
+        final stepSize = nextPageOffset - pageOffset;
+        currentOffset = pageOffset + _dragProgress * stepSize;
+      } else {
+        // Dragging backward (to prev page)
+        final stepSize = pageOffset - prevPageOffset;
+        currentOffset = pageOffset + _dragProgress * stepSize;
+      }
+
+      // Clamp to valid range
+      final maxOffset = _getOffsetForPage(totalPages - 1, slotWidth);
+      currentOffset = currentOffset.clamp(0.0, maxOffset);
+    } else {
+      // Static: just current page
+      currentOffset = _getOffsetForPage(_currentPage, slotWidth);
+    }
+
+    // Header text
+    String headerText;
+    if (visibleSections == 1) {
+      headerText = 'Sekcja ${_currentPage + 1} z $_totalSections';
+    } else {
+      final firstSection = _currentPage + 1;
+      final lastSection =
+          (_currentPage + visibleSections).clamp(1, _totalSections);
+      headerText = 'Sekcje $firstSection-$lastSection z $_totalSections';
+    }
+
     return Column(
       children: [
-        // Page header showing current section (optional)
         if (widget.mobileConfig.showHeader)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -270,158 +359,145 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
               children: [
                 if (widget.mobileConfig.showArrows && _currentPage > 0)
                   IconButton(
-                    onPressed: () => _goToPage(_currentPage - 1),
-                    icon: Icon(
-                      Icons.chevron_left,
-                      color: widget.mobileConfig.arrowColor,
-                    ),
+                    onPressed: () =>
+                        _animateToPage(_currentPage - 1, totalPages),
+                    icon: Icon(Icons.chevron_left,
+                        color: widget.mobileConfig.arrowColor),
                     iconSize: widget.mobileConfig.arrowSize,
                   ),
                 Text(
-                  'Sekcja ${_currentPage + 1} z $_totalPages',
+                  headerText,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                      fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 if (widget.mobileConfig.showArrows &&
-                    _currentPage < _totalPages - 1)
+                    _currentPage < totalPages - 1)
                   IconButton(
-                    onPressed: () => _goToPage(_currentPage + 1),
-                    icon: Icon(
-                      Icons.chevron_right,
-                      color: widget.mobileConfig.arrowColor,
-                    ),
+                    onPressed: () =>
+                        _animateToPage(_currentPage + 1, totalPages),
+                    icon: Icon(Icons.chevron_right,
+                        color: widget.mobileConfig.arrowColor),
                     iconSize: widget.mobileConfig.arrowSize,
                   ),
               ],
             ),
           ),
-
-        // Main carousel - each page clips and translates the full dashboard
         Expanded(
-          child: ScrollConfiguration(
-            // Enable mouse drag scrolling on desktop/web
-            behavior: ScrollConfiguration.of(context).copyWith(
-              dragDevices: {
-                PointerDeviceKind.touch,
-                PointerDeviceKind.mouse,
-                PointerDeviceKind.trackpad,
-              },
-            ),
-            child: ListenableBuilder(
-              listenable: widget.dashboardItemController,
-              builder: (context, _) {
-                // Automatycznie wyłącz swipe gdy tryb edycji jest aktywny
-                final isEditMode = widget.dashboardItemController.isEditing;
+          child: ListenableBuilder(
+            listenable: widget.dashboardItemController,
+            builder: (context, _) {
+              final isEditMode = widget.dashboardItemController.isEditing;
 
-                return PageView.builder(
-                  controller: _pageController,
-                  physics: (widget.mobileConfig.swipeEnabled && !isEditMode)
-                      ? const ClampingScrollPhysics()
-                      : const NeverScrollableScrollPhysics(),
-                  pageSnapping: widget.mobileConfig.pageSnapping,
-                  itemCount: _totalPages,
-                  onPageChanged: (page) {
-                    setState(() {
-                      _currentPage = page;
-                    });
-                    widget.onPageChanged?.call(page);
-                  },
-                  itemBuilder: (context, pageIndex) {
-                    return _buildPageWithClippedDashboard(
-                      pageIndex,
-                      constraints.maxWidth,
-                    );
-                  },
-                );
-              },
-            ),
+              return GestureDetector(
+                onHorizontalDragStart:
+                    (widget.mobileConfig.swipeEnabled && !isEditMode)
+                        ? (details) {
+                            _animationController.stop();
+                            _isDragging = true;
+                            _dragProgress = 0.0;
+                          }
+                        : null,
+                onHorizontalDragUpdate:
+                    (widget.mobileConfig.swipeEnabled && !isEditMode)
+                        ? (details) {
+                            setState(() {
+                              // Convert pixel delta to page fraction
+                              // Negative delta.dx = dragging left = moving to next page
+                              _dragProgress -=
+                                  details.delta.dx / constraints.maxWidth;
+                            });
+                          }
+                        : null,
+                onHorizontalDragEnd: (widget.mobileConfig.swipeEnabled &&
+                        !isEditMode)
+                    ? (details) {
+                        final velocity = details.primaryVelocity ?? 0;
+                        int targetPage;
+
+                        if (velocity.abs() > 500) {
+                          // Fast swipe
+                          targetPage = velocity < 0
+                              ? _currentPage + 1
+                              : _currentPage - 1;
+                        } else {
+                          // Slow drag - snap based on progress
+                          if (_dragProgress > 0.3) {
+                            targetPage = _currentPage + 1;
+                          } else if (_dragProgress < -0.3) {
+                            targetPage = _currentPage - 1;
+                          } else {
+                            targetPage = _currentPage;
+                          }
+                        }
+
+                        // Animate from current visual position
+                        _animationStartPage = _currentPage;
+                        _animationEndPage = targetPage.clamp(0, totalPages - 1);
+                        _currentPage = _animationEndPage;
+                        _isDragging = false;
+                        _dragProgress = 0.0;
+
+                        if (_animationStartPage != _animationEndPage) {
+                          _animationController.forward(from: 0).then((_) {
+                            widget.onPageChanged?.call(_currentPage);
+                          });
+                        } else {
+                          // Snap back to current page
+                          _animationController.forward(from: 0);
+                        }
+                      }
+                    : null,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topLeft,
+                    maxWidth: fullDashboardWidth,
+                    minWidth: fullDashboardWidth,
+                    child: Transform.translate(
+                      offset: Offset(-currentOffset, 0),
+                      child: widget.dashboardBuilder(
+                        widget.dashboardItemController,
+                        widget.slotCount,
+                        0,
+                        true,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
-
-        // Page indicator dots
-        if (widget.mobileConfig.showDots && _totalPages > 1)
+        if (widget.mobileConfig.showDots && totalPages > 1)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: _buildDotsIndicator(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPageWithClippedDashboard(int pageIndex, double viewportWidth) {
-    final startColumn =
-        _pageBreaks.getPageStartColumn(pageIndex, widget.virtualColumnsConfig);
-    final endColumn = _pageBreaks.getPageEndColumn(pageIndex);
-    final pageColumns = endColumn - startColumn;
-
-    // Dashboard has internal padding (usually 8px on each side)
-    // We need to account for this in our calculations
-    const dashboardPadding = 8.0;
-
-    // The visible content area (excluding padding on both sides)
-    final contentWidth = viewportWidth - (dashboardPadding * 2);
-
-    // Calculate the section width ratio based on this page's columns
-    final sectionWidthRatio = pageColumns / widget.slotCount;
-
-    // Full dashboard content width (scaled to show section at full content width)
-    final fullContentWidth = contentWidth / sectionWidthRatio;
-
-    // Full dashboard width including padding
-    final fullDashboardWidth = fullContentWidth + (dashboardPadding * 2);
-
-    // Width of one slot in the full dashboard (based on content, not padding)
-    final slotWidth = fullContentWidth / widget.slotCount;
-
-    // Offset to show the current section (startColumn position)
-    final offsetX = startColumn * slotWidth;
-
-    return ClipRect(
-      child: OverflowBox(
-        alignment: Alignment.topLeft,
-        maxWidth: fullDashboardWidth,
-        minWidth: fullDashboardWidth,
-        child: Transform.translate(
-          offset: Offset(-offsetX, 0),
-          child: widget.dashboardBuilder(
-            widget.dashboardItemController,
-            widget.slotCount,
-            startColumn,
-            true,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDotsIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(_totalPages, (index) {
-        final isActive = index == _currentPage;
-        return GestureDetector(
-          onTap: () => _goToPage(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: EdgeInsets.symmetric(
-                horizontal: widget.mobileConfig.dotsSpacing / 2),
-            width: isActive
-                ? widget.mobileConfig.activeDotSize
-                : widget.mobileConfig.dotSize,
-            height: isActive
-                ? widget.mobileConfig.activeDotSize
-                : widget.mobileConfig.dotSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isActive
-                  ? widget.mobileConfig.activeDotColor
-                  : widget.mobileConfig.dotColor,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(totalPages, (index) {
+                final isActive = index == _currentPage;
+                return GestureDetector(
+                  onTap: () => _animateToPage(index, totalPages),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: EdgeInsets.symmetric(
+                        horizontal: widget.mobileConfig.dotsSpacing / 2),
+                    width: isActive
+                        ? widget.mobileConfig.activeDotSize
+                        : widget.mobileConfig.dotSize,
+                    height: isActive
+                        ? widget.mobileConfig.activeDotSize
+                        : widget.mobileConfig.dotSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActive
+                          ? widget.mobileConfig.activeDotColor
+                          : widget.mobileConfig.dotColor,
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
-        );
-      }),
+      ],
     );
   }
 }
