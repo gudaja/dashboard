@@ -11,9 +11,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Użyj lokalnego runnera lub systemowego flutter-pi
 if [ -x "$SCRIPT_DIR/flutter-pi" ]; then
-    "$SCRIPT_DIR/flutter-pi" --release "$SCRIPT_DIR"
+    "$SCRIPT_DIR/flutter-pi" --release -d"217,136" "$SCRIPT_DIR"
 elif command -v flutter-pi &> /dev/null; then
-    flutter-pi --release "$SCRIPT_DIR" -d"217,136"
+    flutter-pi --release -d"217,136" "$SCRIPT_DIR" 
 else
     echo "Błąd: flutter-pi nie znaleziony!"
     echo ""
