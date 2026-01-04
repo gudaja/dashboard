@@ -32,7 +32,7 @@ class ColoredDashboardItem extends DashboardItem {
   Map<String, dynamic> toMap() {
     var sup = super.toMap();
     if (color != null) {
-      sup["color"] = color?.toARGB32();
+      sup["color"] = color?.value;
     }
     if (data != null) {
       sup["data"] = data;
