@@ -296,7 +296,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       draggableOutside: false,
                       paintBackgroundLines: false,
                       autoScroll: true,
-                      resizeCursorSide: 5,
+                      resizeCursorSide: 5, // Zwiększone dla ekranu dotykowego
+                      longPressEnabled:
+                          false, // Wyłącz longPress - tylko pan dla dotyku
                       curve: Curves.easeOut,
                       fillEditingBackground:
                           true, // Zachowaj delikatne linie siatki podczas edycji

@@ -93,6 +93,27 @@ docker create --name $CONTAINER_NAME \
         echo 'Pliki znajdują się w: build/flutter_assets/'
     " > /dev/null
 
+# Generuj plik build_info.dart z aktualną datą i godziną
+echo -e "${BLUE}Generowanie informacji o buildzie...${NC}"
+BUILD_DATE=$(date +%Y-%m-%d)
+BUILD_TIME=$(date +%H:%M:%S)
+VERSION=$(grep "version:" ./${APP_DIR}/pubspec.yaml | head -1 | sed 's/version: //' | sed 's/+.*//')
+
+cat > ./${APP_DIR}/lib/build_info.dart << EOF
+// Ten plik jest automatycznie generowany przez build_flutter_pi.sh
+// NIE EDYTUJ RĘCZNIE
+
+class BuildInfo {
+  static const String version = '${VERSION}';
+  static const String buildDate = '${BUILD_DATE}';
+  static const String buildTime = '${BUILD_TIME}';
+  
+  static String get fullVersion => '\$version (\$buildDate \$buildTime)';
+}
+EOF
+
+echo -e "${GREEN}Build info: v${VERSION} (${BUILD_DATE} ${BUILD_TIME})${NC}"
+
 echo -e "${BLUE}Kopiowanie plików źródłowych do kontenera...${NC}"
 # Kopiuj bibliotekę dashboard (główny projekt) do /dashboard_lib/
 docker cp ./lib $CONTAINER_NAME:/dashboard_lib/

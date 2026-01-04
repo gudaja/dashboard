@@ -340,6 +340,7 @@ class _DashboardStackState<T extends DashboardItem>
       result = GestureDetector(
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
+                print('>>> PAN START at ${panStart.localPosition}');
                 _onMoveStart(panStart.localPosition);
               }
             : null,
@@ -353,11 +354,14 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onPanEnd: widget.editModeSettings.panEnabled
             ? (e) {
+                print('>>> PAN END');
                 _onMoveEnd();
               }
             : null,
         onLongPressStart: widget.editModeSettings.longPressEnabled
             ? (longPressStart) {
+                print(
+                    '>>> LONG PRESS START at ${longPressStart.localPosition}');
                 _onMoveStart(longPressStart.localPosition);
               }
             : null,
@@ -371,6 +375,7 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onLongPressEnd: widget.editModeSettings.longPressEnabled
             ? (e) {
+                print('>>> LONG PRESS END');
                 _onMoveEnd();
               }
             : null,
@@ -487,6 +492,12 @@ class _DashboardStackState<T extends DashboardItem>
     var e = widget.dashboardController
         ._indexesTree[widget.dashboardController.getIndex([x, y])];
 
+    print('=== _onMoveStart ===');
+    print('Touch local: $local');
+    print('Touch holdGlobal: $holdGlobal');
+    print('Grid position: x=$x, y=$y');
+    print('Element ID: $e');
+
     if (e is String) {
       var directions = <AxisDirection>[];
       _editing = widget.dashboardController._layouts![e]!;
@@ -502,7 +513,13 @@ class _DashboardStackState<T extends DashboardItem>
           height: current.height,
           width: current.width);
 
+      print(
+          'Item bounds: x=${itemGlobal.x}, y=${itemGlobal.y}, w=${itemGlobal.width}, h=${itemGlobal.height}');
+      print('Item endX=${itemGlobal.endX}, endY=${itemGlobal.endY}');
+      print('resizeCursorSide: ${widget.editModeSettings.resizeCursorSide}');
+
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
+        print('Touch outside item bounds - ignoring');
         _editing = null;
         return;
       }
@@ -510,44 +527,59 @@ class _DashboardStackState<T extends DashboardItem>
       // Sprawdź czy kliknięcie jest na przycisku skalowania (bottom-right)
       bool onResizeButton = false;
       if (widget.editModeSettings.resizeHandleBuilder != null) {
-        // Przycisk ma 30x30px i jest na pozycji bottom: 5, right: 5
-        // Więc zajmuje obszar od (width-35, height-35) do (width-5, height-5)
-        double buttonLeft = itemGlobal.endX - 35;
-        double buttonTop = itemGlobal.endY - 35;
-        double buttonRight = itemGlobal.endX - 5;
-        double buttonBottom = itemGlobal.endY - 5;
+        // Powiększony obszar detekcji dla ekranu dotykowego (50x50px)
+        // Przycisk wizualnie jest mniejszy, ale strefa dotykowa większa
+        double buttonLeft = itemGlobal.endX - 50;
+        double buttonTop = itemGlobal.endY - 50;
+        double buttonRight = itemGlobal.endX;
+        double buttonBottom = itemGlobal.endY;
 
         onResizeButton = holdGlobal.dx >= buttonLeft &&
             holdGlobal.dx <= buttonRight &&
             holdGlobal.dy >= buttonTop &&
             holdGlobal.dy <= buttonBottom;
+
+        print(
+            'Resize button zone: left=$buttonLeft, top=$buttonTop, right=$buttonRight, bottom=$buttonBottom');
+        print('onResizeButton: $onResizeButton');
       }
 
       // Lewa krawędź
-      if (itemGlobal.x + widget.editModeSettings.resizeCursorSide >
-          holdGlobal.dx) {
+      double leftEdge = itemGlobal.x + widget.editModeSettings.resizeCursorSide;
+      if (leftEdge > holdGlobal.dx) {
         directions.add(AxisDirection.left);
+        print(
+            'Detected LEFT edge (holdX ${holdGlobal.dx} < leftEdge $leftEdge)');
       }
 
       // Górna krawędź
-      if ((itemGlobal.y) + widget.editModeSettings.resizeCursorSide >
-          holdGlobal.dy) {
+      double topEdge = itemGlobal.y + widget.editModeSettings.resizeCursorSide;
+      if (topEdge > holdGlobal.dy) {
         directions.add(AxisDirection.up);
+        print('Detected UP edge (holdY ${holdGlobal.dy} < topEdge $topEdge)');
       }
 
       // Prawa krawędź
-      if (itemGlobal.endX - widget.editModeSettings.resizeCursorSide <
-              holdGlobal.dx ||
-          onResizeButton) {
+      double rightEdge =
+          itemGlobal.endX - widget.editModeSettings.resizeCursorSide;
+      if (rightEdge < holdGlobal.dx || onResizeButton) {
         directions.add(AxisDirection.right);
+        print(
+            'Detected RIGHT edge (holdX ${holdGlobal.dx} > rightEdge $rightEdge OR onResizeButton=$onResizeButton)');
       }
 
       // Dolna krawędź
-      if ((itemGlobal.endY) - widget.editModeSettings.resizeCursorSide <
-              holdGlobal.dy ||
-          onResizeButton) {
+      double bottomEdge =
+          itemGlobal.endY - widget.editModeSettings.resizeCursorSide;
+      if (bottomEdge < holdGlobal.dy || onResizeButton) {
         directions.add(AxisDirection.down);
+        print(
+            'Detected DOWN edge (holdY ${holdGlobal.dy} > bottomEdge $bottomEdge OR onResizeButton=$onResizeButton)');
       }
+
+      print('Detected directions: $directions');
+      print('Mode: ${directions.isEmpty ? "MOVE" : "RESIZE"}');
+
       if (directions.isNotEmpty) {
         _holdDirections = directions;
       } else {
