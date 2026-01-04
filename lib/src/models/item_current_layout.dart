@@ -1114,16 +1114,9 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         maxHeight: maxHeight,
         minHeight: minHeight);
 
-    // Sprawdź czy to obecnie edytowany element
-    final isCurrentlyEditing = _layoutController.editSession?.editing.id == id;
-
-    if (_layoutController.isEditing && !isCurrentlyEditing) {
-      // Batch changes dla innych elementów podczas edycji
-      _layoutController._batchPendingLayout(id, layout);
-    } else {
-      // Natychmiastowa aktualizacja dla obecnie edytowanego elementu i poza edycją
-      _layoutController._reIndexItem(layout, id);
-    }
+    // Zawsze natychmiast aktualizuj indeksy żeby sideItems() działało poprawnie
+    // podczas ciągłego resize (nakładanie widgetów)
+    _layoutController._reIndexItem(layout, id);
     _change = true;
   }
 
