@@ -523,20 +523,22 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         // Sprawdź czy nowa pozycja nie jest na zablokowanej kolumnie
         final newLayout = ItemLayout(
             startX: startX - 1, startY: startY, width: width, height: height);
-        if (!_layoutController.canPlaceAt(newLayout)) {
-          return null; // Nie można przesunąć - zablokowana kolumna
+        if (_layoutController.canPlaceAt(newLayout)) {
+          _startX = startX - 1;
+          return _Moving(reverseDir, false);
         }
-        _startX = startX - 1;
-        return _Moving(reverseDir, false);
+        // Nie można przesunąć - spróbuj zmniejszyć zamiast tego
+        // (kontynuuj do sekcji resize poniżej)
       } else if (direction == AxisDirection.right) {
         // Sprawdź czy nowa pozycja nie jest na zablokowanej kolumnie
         final newLayout = ItemLayout(
             startX: startX + 1, startY: startY, width: width, height: height);
-        if (!_layoutController.canPlaceAt(newLayout)) {
-          return null; // Nie można przesunąć - zablokowana kolumna
+        if (_layoutController.canPlaceAt(newLayout)) {
+          _startX = startX + 1;
+          return _Moving(reverseDir, true);
         }
-        _startX = startX + 1;
-        return _Moving(reverseDir, true);
+        // Nie można przesunąć - spróbuj zmniejszyć zamiast tego
+        // (kontynuuj do sekcji resize poniżej)
       } else if (direction == AxisDirection.up) {
         _startY = startY - 1;
         return _Moving(reverseDir, false);
@@ -546,6 +548,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       }
     }
 
+    // Próba zmniejszenia widgeta (gdy przesunięcie niemożliwe lub są sąsiedzi)
     var resize = _Resizing(reverseDir, false);
     if (reverseDir == AxisDirection.up) {
       if (minHeight < height) {
