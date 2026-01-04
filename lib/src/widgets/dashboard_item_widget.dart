@@ -312,8 +312,9 @@ class _DashboardItemWidgetState<T extends DashboardItem>
       animation: Listenable.merge([
         // Zawsze nasłuchuj zmian offsetu scrollowania
         widget.offset,
-        // Nasłuchuj tylko jeśli to jest obecnie edytowany widget
-        if (widget.layoutController.editSession?.editing.id == widget.id) ...[
+        // W trybie edycji zawsze nasłuchuj _transform i _resizePosition
+        // żeby reagować natychmiast gdy drag się zaczyna
+        if (onEditMode) ...[
           widget.itemCurrentLayout._resizePosition,
           widget.itemCurrentLayout._transform,
         ],
