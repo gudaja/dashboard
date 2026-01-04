@@ -227,6 +227,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     with TickerProviderStateMixin {
   VoidCallback? _layoutListener;
   VoidCallback? _asyncSnapListener;
+  VoidCallback? _editingListener;
 
   ///
   @override
@@ -240,6 +241,18 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     _layoutController.addListener(_layoutListener!);
 
     widget.dashboardItemController._attach(_layoutController);
+
+    // Listener na zmianę trybu edycji żeby od razu blokować/odblokować scroll
+    _editingListener = () {
+      if (mounted) {
+        print(
+            'DEBUG: _editingListener called, isEditing: ${widget.dashboardItemController.isEditing}');
+        setState(() {});
+      }
+    };
+    // Nasłuchuj na _layoutController bo to tam jest notifyListeners()
+    _layoutController.addListener(_editingListener!);
+
     if (_withDelegate) {
       // widget.dashboardItemController._asyncSnap =
       //     ValueNotifier(const AsyncSnapshot.waiting());
@@ -268,6 +281,9 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     if (_asyncSnapListener != null) {
       widget.dashboardItemController._asyncSnap
           ?.removeListener(_asyncSnapListener!);
+    }
+    if (_editingListener != null) {
+      _layoutController.removeListener(_editingListener!);
     }
     super.dispose();
   }
@@ -440,9 +456,6 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   final GlobalKey<_DashboardStackState<T>> _stateKey =
       GlobalKey<_DashboardStackState<T>>();
 
-  final GlobalKey<ScrollableState> _scrollableKey =
-      GlobalKey<ScrollableState>();
-
   bool scrollable = true;
 
   int? _reloadFor;
@@ -528,13 +541,20 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   Widget dashboardWidget(BoxConstraints constrains) {
     // W trybie edycji całkowicie wyłącz scrollowanie żeby resize działał
     final isEditing = widget.dashboardItemController.isEditing;
+    print(
+        'DEBUG: dashboardWidget build, isEditing: $isEditing, scrollable: $scrollable');
     final effectivePhysics = isEditing
         ? const NeverScrollableScrollPhysics()
         : (scrollable ? widget.physics : const NeverScrollableScrollPhysics());
 
+    // Zmiana key wymusza przebudowanie Scrollable z nowymi physics
+    final scrollableKey = isEditing
+        ? const ValueKey('scrollable_editing')
+        : const ValueKey('scrollable_normal');
+
     return Scrollable(
         physics: effectivePhysics,
-        key: _scrollableKey,
+        key: scrollableKey,
         controller: widget.scrollController,
         semanticChildCount: widget.dashboardItemController._items.length,
         dragStartBehavior: widget.dragStartBehavior ?? DragStartBehavior.start,
