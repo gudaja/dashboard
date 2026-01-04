@@ -338,6 +338,8 @@ class _DashboardStackState<T extends DashboardItem>
 
     if (widget.dashboardController.isEditing) {
       result = GestureDetector(
+        // Opaque behavior żeby przechwytywać gesty przed Scrollable
+        behavior: HitTestBehavior.opaque,
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
                 print('>>> PAN START at ${panStart.localPosition}');

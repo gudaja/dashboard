@@ -395,9 +395,23 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       _maxExtend += widget.padding.vertical;
     }
 
-    // if (_maxExtend > 0) {
-    offset.applyContentDimensions(0, _maxExtend.clamp(0, double.maxFinite));
-    // }
+    final maxExtent = _maxExtend.clamp(0.0, double.maxFinite);
+
+    // Skoryguj pozycję scrollowania jeśli jest poza nowym zakresem
+    // żeby uniknąć błędu "content was temporarily scrolled forward"
+    if (offset.hasPixels && offset.pixels > maxExtent && maxExtent > 0) {
+      // Użyj jumpTo na ScrollPosition żeby bezpiecznie zmienić pozycję
+      if (offset is ScrollPosition) {
+        (offset as ScrollPosition).jumpTo(maxExtent);
+      }
+    }
+
+    try {
+      offset.applyContentDimensions(0, maxExtent);
+    } catch (e) {
+      // Ignoruj błąd gdy wymiary się zmieniają podczas scrollowania
+      print('Warning: applyContentDimensions error (ignored): $e');
+    }
 
     // Oblicz wymiary grida
     final gridDimensions = GridDimensions(
@@ -512,9 +526,14 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   bool _moving = false;
 
   Widget dashboardWidget(BoxConstraints constrains) {
+    // W trybie edycji całkowicie wyłącz scrollowanie żeby resize działał
+    final isEditing = widget.dashboardItemController.isEditing;
+    final effectivePhysics = isEditing
+        ? const NeverScrollableScrollPhysics()
+        : (scrollable ? widget.physics : const NeverScrollableScrollPhysics());
+
     return Scrollable(
-        physics:
-            scrollable ? widget.physics : const NeverScrollableScrollPhysics(),
+        physics: effectivePhysics,
         key: _scrollableKey,
         controller: widget.scrollController,
         semanticChildCount: widget.dashboardItemController._items.length,
@@ -536,13 +555,15 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
               _setNewOffset(o, constrains);
             },
             onScrollStateChange: (st) {
-              SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
-                _moving = !st;
-
+              // Natychmiastowa zmiana scrollable żeby zablokować scroll podczas edycji
+              if (scrollable != st) {
                 setState(() {
                   scrollable = st;
+                  _moving = !st;
                 });
+              }
 
+              SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
                 if (!_moving) {
                   return;
                 }
