@@ -520,9 +520,21 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
     if (side != null && side.isEmpty) {
       if (direction == AxisDirection.left) {
+        // Sprawdź czy nowa pozycja nie jest na zablokowanej kolumnie
+        final newLayout = ItemLayout(
+            startX: startX - 1, startY: startY, width: width, height: height);
+        if (!_layoutController.canPlaceAt(newLayout)) {
+          return null; // Nie można przesunąć - zablokowana kolumna
+        }
         _startX = startX - 1;
         return _Moving(reverseDir, false);
       } else if (direction == AxisDirection.right) {
+        // Sprawdź czy nowa pozycja nie jest na zablokowanej kolumnie
+        final newLayout = ItemLayout(
+            startX: startX + 1, startY: startY, width: width, height: height);
+        if (!_layoutController.canPlaceAt(newLayout)) {
+          return null; // Nie można przesunąć - zablokowana kolumna
+        }
         _startX = startX + 1;
         return _Moving(reverseDir, true);
       } else if (direction == AxisDirection.up) {
