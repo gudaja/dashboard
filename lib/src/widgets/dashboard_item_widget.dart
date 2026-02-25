@@ -222,17 +222,20 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
     Widget result = widget.child;
 
-    if (onEditMode) {
-      if (widget.layoutController.absorbPointer) {
-        result = AbsorbPointer(child: result);
-      }
-      result = MouseRegion(
-        cursor: cursor,
-        onHover: _hover,
-        onExit: _exit,
+    // WAŻNE: MouseRegion i AbsorbPointer są ZAWSZE obecne w drzewie widgetów —
+    // tylko ich parametry zmieniają się między trybem edycji i nie-edycji.
+    // Gdyby były dodawane warunkowo, widget.child zmieniałby pozycję w drzewie
+    // przy każdym przełączeniu trybu → Flutter demontowałby i remontował
+    // widget.child od zera → miganie obrazów i utrata stanu.
+    result = MouseRegion(
+      cursor: onEditMode ? cursor : MouseCursor.defer,
+      onHover: onEditMode ? _hover : null,
+      onExit: onEditMode ? _exit : null,
+      child: AbsorbPointer(
+        absorbing: onEditMode && widget.layoutController.absorbPointer,
         child: result,
-      );
-    }
+      ),
+    );
 
     var currentEdit = widget.layoutController.editSession?.editing.id ==
         widget.itemCurrentLayout.id;
@@ -291,10 +294,12 @@ class _DashboardItemWidgetState<T extends DashboardItem>
       widget.itemCurrentLayout._change = false;
     }
     if (!onEditMode && !widget.layoutController.animateEverytime) {
-      // ZAWSZE nasłuchuj zmian offsetu scrollowania, nawet w trybie nie-edycji
+      // WAŻNE: child = result (nie RepaintBoundary(child: result))
+      // żeby zachować spójną strukturę drzewa z ścieżką edit-mode.
+      // RepaintBoundary jest w builder output — tak samo jak w trybie edycji.
       return AnimatedBuilder(
         animation: widget.offset,
-        child: RepaintBoundary(child: result),
+        child: result,
         builder: (context, child) {
           var cp = widget.itemGlobalPosition;
           return Positioned(
@@ -302,7 +307,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
             top: cp.y - widget.offset.pixels,
             width: cp.width,
             height: cp.height,
-            child: child!,
+            child: RepaintBoundary(child: child!),
           );
         },
       );
