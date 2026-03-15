@@ -143,6 +143,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   bool _isDragging = false;
 
   double _lastSlotWidth = 0.0;
+  double _lastResolvedWidth = 0.0;
 
   late MobilePageBreaks _pageBreaks;
   DeviceType _currentDeviceType = DeviceType.desktop;
@@ -223,10 +224,14 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     return _pageBreaks.getPageStartColumn(page, widget.virtualColumnsConfig);
   }
 
-  /// Calculate pixel offset for a given page
-  double _getOffsetForPage(int page, double slotWidth) {
+  /// Calculate pixel offset for a given page using actual column positions
+  double _getOffsetForPage(int page, double slotWidth, double resolvedWidth) {
     if (page <= 0) return 0;
     final startColumn = _getStartColumnForPage(page);
+    if (widget.virtualColumnsConfig != null) {
+      return widget.virtualColumnsConfig!
+          .getColumnPosition(startColumn, slotWidth, resolvedWidth);
+    }
     return startColumn * slotWidth;
   }
 
@@ -234,8 +239,10 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     page = page.clamp(0, totalPages - 1);
     if (page == _currentPage && !_isDragging) return;
 
-    _animationStartOffset = _getOffsetForPage(_currentPage, _lastSlotWidth);
-    _animationEndOffset = _getOffsetForPage(page, _lastSlotWidth);
+    _animationStartOffset =
+        _getOffsetForPage(_currentPage, _lastSlotWidth, _lastResolvedWidth);
+    _animationEndOffset =
+        _getOffsetForPage(page, _lastSlotWidth, _lastResolvedWidth);
     _isDragging = false;
     _dragProgress = 0.0;
 
@@ -297,10 +304,32 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     const padding = 8.0;
     final contentWidth = constraints.maxWidth - (padding * 2);
     final slotWidth = contentWidth / visibleColumns;
-    _lastSlotWidth = slotWidth;
 
-    // Full dashboard width
-    final fullDashboardWidth = widget.slotCount * slotWidth + (padding * 2);
+    // Compute the Dashboard's resolved content width (after its internal padding)
+    // so that enabled columns get exactly `slotWidth` width inside the Dashboard.
+    // With virtual columns, disabled columns take a percentage of the total,
+    // so we solve: enabledSlotEdge = resolvedWidth * (1 - numDisabled * dcw) / numEnabled = slotWidth
+    double resolvedWidth;
+    final vc = widget.virtualColumnsConfig;
+    if (vc != null && vc.disabledColumns.isNotEmpty && vc.disabledColumnWidth != null) {
+      final numDisabled = vc.disabledColumns.length;
+      final numEnabled = widget.slotCount - numDisabled;
+      final dcw = vc.disabledColumnWidth!;
+      final denominator = 1.0 - numDisabled * dcw;
+      if (denominator > 0 && numEnabled > 0) {
+        resolvedWidth = slotWidth * numEnabled / denominator;
+      } else {
+        resolvedWidth = widget.slotCount * slotWidth;
+      }
+    } else {
+      resolvedWidth = widget.slotCount * slotWidth;
+    }
+
+    _lastSlotWidth = slotWidth;
+    _lastResolvedWidth = resolvedWidth;
+
+    // Full dashboard width = resolved content + Dashboard padding on both sides
+    final fullDashboardWidth = resolvedWidth + (padding * 2);
 
     // Calculate current offset based on state
     double currentOffset;
@@ -311,15 +340,18 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
           (_animationEndOffset - _animationStartOffset) * t;
     } else if (_isDragging) {
       // During drag: current page offset + drag progress
-      final pageOffset = _getOffsetForPage(_currentPage, slotWidth);
+      final pageOffset =
+          _getOffsetForPage(_currentPage, slotWidth, resolvedWidth);
       // Calculate how many pixels is one "page step"
       final nextPageOffset = _getOffsetForPage(
         (_currentPage + 1).clamp(0, totalPages - 1),
         slotWidth,
+        resolvedWidth,
       );
       final prevPageOffset = _getOffsetForPage(
         (_currentPage - 1).clamp(0, totalPages - 1),
         slotWidth,
+        resolvedWidth,
       );
 
       if (_dragProgress >= 0) {
@@ -333,11 +365,13 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
       }
 
       // Clamp to valid range
-      final maxOffset = _getOffsetForPage(totalPages - 1, slotWidth);
+      final maxOffset =
+          _getOffsetForPage(totalPages - 1, slotWidth, resolvedWidth);
       currentOffset = currentOffset.clamp(0.0, maxOffset);
     } else {
       // Static: just current page
-      currentOffset = _getOffsetForPage(_currentPage, slotWidth);
+      currentOffset =
+          _getOffsetForPage(_currentPage, slotWidth, resolvedWidth);
     }
 
     // Header text
@@ -433,15 +467,17 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                         }
 
                         // Calculate current visual offset before resetting drag
-                        final pageOffset =
-                            _getOffsetForPage(_currentPage, slotWidth);
+                        final pageOffset = _getOffsetForPage(
+                            _currentPage, slotWidth, resolvedWidth);
                         final nextPageOffset = _getOffsetForPage(
                           (_currentPage + 1).clamp(0, totalPages - 1),
                           slotWidth,
+                          resolvedWidth,
                         );
                         final prevPageOffset = _getOffsetForPage(
                           (_currentPage - 1).clamp(0, totalPages - 1),
                           slotWidth,
+                          resolvedWidth,
                         );
                         double visualOffset;
                         if (_dragProgress >= 0) {
@@ -453,16 +489,16 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                           visualOffset =
                               pageOffset + _dragProgress * stepSize;
                         }
-                        final maxOffset =
-                            _getOffsetForPage(totalPages - 1, slotWidth);
+                        final maxOffset = _getOffsetForPage(
+                            totalPages - 1, slotWidth, resolvedWidth);
                         visualOffset =
                             visualOffset.clamp(0.0, maxOffset);
 
                         final clampedTarget =
                             targetPage.clamp(0, totalPages - 1);
                         _animationStartOffset = visualOffset;
-                        _animationEndOffset =
-                            _getOffsetForPage(clampedTarget, slotWidth);
+                        _animationEndOffset = _getOffsetForPage(
+                            clampedTarget, slotWidth, resolvedWidth);
                         _currentPage = clampedTarget;
                         _isDragging = false;
                         _dragProgress = 0.0;
