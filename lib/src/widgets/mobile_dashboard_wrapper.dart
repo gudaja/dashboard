@@ -134,13 +134,15 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   // Current page (source of truth for position)
   int _currentPage = 0;
 
-  // Animation: from which page to which page
-  int _animationStartPage = 0;
-  int _animationEndPage = 0;
+  // Animation: from which offset to which offset (in pixels)
+  double _animationStartOffset = 0.0;
+  double _animationEndOffset = 0.0;
 
   // Drag: progress as fraction of page width (can be negative or > 1)
   double _dragProgress = 0.0;
   bool _isDragging = false;
+
+  double _lastSlotWidth = 0.0;
 
   late MobilePageBreaks _pageBreaks;
   DeviceType _currentDeviceType = DeviceType.desktop;
@@ -232,8 +234,8 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     page = page.clamp(0, totalPages - 1);
     if (page == _currentPage && !_isDragging) return;
 
-    _animationStartPage = _currentPage;
-    _animationEndPage = page;
+    _animationStartOffset = _getOffsetForPage(_currentPage, _lastSlotWidth);
+    _animationEndOffset = _getOffsetForPage(page, _lastSlotWidth);
     _isDragging = false;
     _dragProgress = 0.0;
 
@@ -259,8 +261,8 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
             _currentPage = maxPage;
           }
           // Reset animation state on device type change
-          _animationStartPage = _currentPage;
-          _animationEndPage = _currentPage;
+          _animationStartOffset = 0.0;
+          _animationEndOffset = 0.0;
           _dragProgress = 0.0;
           _isDragging = false;
         }
@@ -295,6 +297,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     const padding = 8.0;
     final contentWidth = constraints.maxWidth - (padding * 2);
     final slotWidth = contentWidth / visibleColumns;
+    _lastSlotWidth = slotWidth;
 
     // Full dashboard width
     final fullDashboardWidth = widget.slotCount * slotWidth + (padding * 2);
@@ -302,11 +305,10 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     // Calculate current offset based on state
     double currentOffset;
     if (_animationController.isAnimating) {
-      // During animation: interpolate between start and end pages
-      final startOffset = _getOffsetForPage(_animationStartPage, slotWidth);
-      final endOffset = _getOffsetForPage(_animationEndPage, slotWidth);
+      // During animation: interpolate between start and end offsets
       final t = Curves.easeOut.transform(_animationController.value);
-      currentOffset = startOffset + (endOffset - startOffset) * t;
+      currentOffset = _animationStartOffset +
+          (_animationEndOffset - _animationStartOffset) * t;
     } else if (_isDragging) {
       // During drag: current page offset + drag progress
       final pageOffset = _getOffsetForPage(_currentPage, slotWidth);
@@ -430,21 +432,44 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                           }
                         }
 
-                        // Animate from current visual position
-                        _animationStartPage = _currentPage;
-                        _animationEndPage = targetPage.clamp(0, totalPages - 1);
-                        _currentPage = _animationEndPage;
+                        // Calculate current visual offset before resetting drag
+                        final pageOffset =
+                            _getOffsetForPage(_currentPage, slotWidth);
+                        final nextPageOffset = _getOffsetForPage(
+                          (_currentPage + 1).clamp(0, totalPages - 1),
+                          slotWidth,
+                        );
+                        final prevPageOffset = _getOffsetForPage(
+                          (_currentPage - 1).clamp(0, totalPages - 1),
+                          slotWidth,
+                        );
+                        double visualOffset;
+                        if (_dragProgress >= 0) {
+                          final stepSize = nextPageOffset - pageOffset;
+                          visualOffset =
+                              pageOffset + _dragProgress * stepSize;
+                        } else {
+                          final stepSize = pageOffset - prevPageOffset;
+                          visualOffset =
+                              pageOffset + _dragProgress * stepSize;
+                        }
+                        final maxOffset =
+                            _getOffsetForPage(totalPages - 1, slotWidth);
+                        visualOffset =
+                            visualOffset.clamp(0.0, maxOffset);
+
+                        final clampedTarget =
+                            targetPage.clamp(0, totalPages - 1);
+                        _animationStartOffset = visualOffset;
+                        _animationEndOffset =
+                            _getOffsetForPage(clampedTarget, slotWidth);
+                        _currentPage = clampedTarget;
                         _isDragging = false;
                         _dragProgress = 0.0;
 
-                        if (_animationStartPage != _animationEndPage) {
-                          _animationController.forward(from: 0).then((_) {
-                            widget.onPageChanged?.call(_currentPage);
-                          });
-                        } else {
-                          // Snap back to current page
-                          _animationController.forward(from: 0);
-                        }
+                        _animationController.forward(from: 0).then((_) {
+                          widget.onPageChanged?.call(_currentPage);
+                        });
                       }
                     : null,
                 child: ClipRect(
