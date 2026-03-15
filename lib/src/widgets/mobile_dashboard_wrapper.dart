@@ -207,16 +207,19 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     return pages > 0 ? pages : 1;
   }
 
-  /// Get number of columns for sections from startSection to endSection (inclusive)
-  int _getColumnsForSections(int startSection, int endSection) {
-    int columns = 0;
+  /// Get number of enabled and disabled columns for sections from startSection to endSection (inclusive)
+  ({int enabled, int disabled}) _getColumnsForSections(
+      int startSection, int endSection) {
+    int enabled = 0;
+    int disabled = 0;
     for (int i = startSection; i <= endSection && i < _totalSections; i++) {
-      columns += _pageBreaks.getPageColumnCount(i, widget.virtualColumnsConfig);
+      enabled +=
+          _pageBreaks.getPageColumnCount(i, widget.virtualColumnsConfig);
       if (i < endSection && i < _totalSections - 1) {
-        columns += 1; // disabled column
+        disabled += 1;
       }
     }
-    return columns;
+    return (enabled: enabled, disabled: disabled);
   }
 
   /// Get start column for page
@@ -297,31 +300,36 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
         ? widget.mobileConfig.visibleSectionsOnMobile
         : widget.mobileConfig.visibleSectionsOnTablet;
 
-    // Calculate visible columns for current view
-    final visibleColumns = _getColumnsForSections(0, visibleSections - 1);
+    // Calculate visible enabled and disabled columns for current view
+    final visibleCols = _getColumnsForSections(0, visibleSections - 1);
 
-    // Slot width based on visible columns fitting in viewport
+    // Slot width based on visible columns fitting in viewport.
+    // Disabled columns take a percentage of the total resolved width, not slotWidth,
+    // so we must solve for slotWidth accounting for their actual size.
     const padding = 8.0;
     final contentWidth = constraints.maxWidth - (padding * 2);
-    final slotWidth = contentWidth / visibleColumns;
 
-    // Compute the Dashboard's resolved content width (after its internal padding)
-    // so that enabled columns get exactly `slotWidth` width inside the Dashboard.
-    // With virtual columns, disabled columns take a percentage of the total,
-    // so we solve: enabledSlotEdge = resolvedWidth * (1 - numDisabled * dcw) / numEnabled = slotWidth
-    double resolvedWidth;
     final vc = widget.virtualColumnsConfig;
-    if (vc != null && vc.disabledColumns.isNotEmpty && vc.disabledColumnWidth != null) {
-      final numDisabled = vc.disabledColumns.length;
-      final numEnabled = widget.slotCount - numDisabled;
-      final dcw = vc.disabledColumnWidth!;
-      final denominator = 1.0 - numDisabled * dcw;
-      if (denominator > 0 && numEnabled > 0) {
-        resolvedWidth = slotWidth * numEnabled / denominator;
-      } else {
-        resolvedWidth = widget.slotCount * slotWidth;
-      }
+    final totalDisabled = vc?.disabledColumns.length ?? 0;
+    final totalEnabled = widget.slotCount - totalDisabled;
+    final dcw = vc?.disabledColumnWidth ?? 0.0;
+
+    double slotWidth;
+    double resolvedWidth;
+
+    if (totalDisabled > 0 && dcw > 0 && totalEnabled > 0) {
+      // Ratio of disabled column width to enabled column width:
+      // disabledColWidth = dcw * resolvedWidth
+      // enabledSlotWidth = resolvedWidth * (1 - totalDisabled * dcw) / totalEnabled
+      // ratio = disabledColWidth / enabledSlotWidth = dcw * totalEnabled / (1 - totalDisabled * dcw)
+      final disabledToEnabledRatio =
+          dcw * totalEnabled / (1.0 - totalDisabled * dcw);
+      final effectiveVisibleSlots =
+          visibleCols.enabled + visibleCols.disabled * disabledToEnabledRatio;
+      slotWidth = contentWidth / effectiveVisibleSlots;
+      resolvedWidth = slotWidth * totalEnabled / (1.0 - totalDisabled * dcw);
     } else {
+      slotWidth = contentWidth / (visibleCols.enabled + visibleCols.disabled);
       resolvedWidth = widget.slotCount * slotWidth;
     }
 
