@@ -15,5 +15,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  # Widened from ^6.0.0: flutter_lints 6.x requires Dart ^3.8.0, while the
+  # consuming project is pinned to Flutter 3.27.4 (Dart 3.6.2), which made this
+  # package's own test suite unresolvable. The range still picks 6.x on newer
+  # SDKs. Dev-only dependency: consumers never resolve it.
+  flutter_lints: ">=5.0.0 <7.0.0"
 

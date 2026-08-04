@@ -245,8 +245,6 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     // Listener na zmianę trybu edycji żeby od razu blokować/odblokować scroll
     _editingListener = () {
       if (mounted) {
-        print(
-            'DEBUG: _editingListener called, isEditing: ${widget.dashboardItemController.isEditing}');
         setState(() {});
       }
     };
@@ -285,6 +283,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     if (_editingListener != null) {
       _layoutController.removeListener(_editingListener!);
     }
+    widget.dashboardItemController._detach(_layoutController);
     super.dispose();
   }
 
@@ -426,7 +425,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       offset.applyContentDimensions(0, maxExtent);
     } catch (e) {
       // Ignoruj błąd gdy wymiary się zmieniają podczas scrollowania
-      print('Warning: applyContentDimensions error (ignored): $e');
+      debugPrint('Warning: applyContentDimensions error (ignored): $e');
     }
 
     // Oblicz wymiary grida
@@ -541,8 +540,6 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   Widget dashboardWidget(BoxConstraints constrains) {
     // W trybie edycji całkowicie wyłącz scrollowanie żeby resize działał
     final isEditing = widget.dashboardItemController.isEditing;
-    print(
-        'DEBUG: dashboardWidget build, isEditing: $isEditing, scrollable: $scrollable');
     final effectivePhysics = isEditing
         ? const NeverScrollableScrollPhysics()
         : (scrollable ? widget.physics : const NeverScrollableScrollPhysics());

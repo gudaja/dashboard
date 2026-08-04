@@ -50,8 +50,25 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   bool get isEditing => _layoutController?.isEditing ?? false;
 
   /// Change editing status.
+  ///
+  /// Listeners of this controller are notified when the value actually
+  /// changes, so widgets outside the [Dashboard] itself (for example a swipe
+  /// wrapper that must stop swiping while the layout is edited) can react to
+  /// entering and leaving edit mode.
+  ///
+  /// If no [Dashboard] is currently mounted the call is a no-op. Edit mode is
+  /// a property of a live grid, and once the grid is disposed the controller
+  /// no longer refers to it. Unlike [add] or [delete] - which throw
+  /// "Not Attached", because silently dropping them would lose data - dropping
+  /// a UI mode flag has no persistent consequence, and the getter already
+  /// reports `false` in that state.
   set isEditing(bool value) {
-    _layoutController!.isEditing = value;
+    final layoutController = _layoutController;
+    if (layoutController == null || layoutController.isEditing == value) {
+      return;
+    }
+    layoutController.isEditing = value;
+    notifyListeners();
   }
 
   /// Add new item to Dashboard.
@@ -220,6 +237,20 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   void _attach(_DashboardLayoutController layoutController) {
     _layoutController = layoutController;
   }
+
+  /// Called by a [Dashboard] when the grid that mounted [layoutController]
+  /// is disposed.
+  ///
+  /// The reference is dropped only when the leaving grid is the one currently
+  /// attached. Flutter inflates an incoming widget before it unmounts the
+  /// outgoing one, so during a grid swap the new grid has already attached
+  /// itself by the time the old grid is disposed; clearing unconditionally
+  /// would detach the live grid instead of the dead one.
+  void _detach(_DashboardLayoutController layoutController) {
+    if (identical(_layoutController, layoutController)) {
+      _layoutController = null;
+    }
+  }
 }
 
 ///
@@ -265,7 +296,6 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   set isEditing(bool value) {
     if (value != _isEditing) {
       _isEditing = value;
-      print('DEBUG: isEditing setter notifyListeners() called - value: $value');
       notifyListeners();
     }
   }
@@ -325,14 +355,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     if (editSession!.isEqual) {
       cancelEditSession();
       editSession = null;
-      print('DEBUG: saveEditSession notifyListeners() called - isEqual case');
       if (!hasPendingChanges) {
         notifyListeners(); // Wywołaj tylko jeśli nie było batched changes
       }
     } else {
       //Notify storage
       editSession = null;
-      print('DEBUG: saveEditSession notifyListeners() called - storage case');
       if (!hasPendingChanges) {
         notifyListeners(); // Wywołaj tylko jeśli nie było batched changes
       }

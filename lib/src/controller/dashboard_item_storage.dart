@@ -10,7 +10,8 @@ part of '../dashboard_base.dart';
 /// If [layoutsBySlotCount] the delegate store and request new layout
 /// by slotCount.
 ///
-/// Cached items can be get with [itemsFor].
+/// Cached items can be get with [itemsFor] and dropped with
+/// [invalidateCache].
 ///
 /// [getAllItems] will call if necessary. If your item getter is not Future,
 /// do not override as [async], because if you use unnecessary Future, layout
@@ -32,6 +33,28 @@ abstract class DashboardItemStorageDelegate<T extends DashboardItem> {
   /// Item list for given slotCount
   Map<String, T>? itemsFor(int slotCount) {
     return _items[slotCount] == null ? null : Map.from(_items[slotCount]!);
+  }
+
+  /// Drop the in-memory layout cache kept by this delegate.
+  ///
+  /// Only meaningful when [cacheItems] is true. While a slotCount has a cache
+  /// entry, [getAllItems] is never called again for it, so a layout that
+  /// changed outside of the [Dashboard] that filled the cache - saved by a
+  /// second grid, or edited on another screen - stays invisible until the
+  /// process restarts. Re-mounting the widget does not help: the cache lives
+  /// on the delegate, not on the widget.
+  ///
+  /// With [slotCount] given only that slotCount is dropped, so layouts of
+  /// other slot counts keep their cache; with null every cached slotCount is
+  /// dropped. [slotCount] is normalised exactly like [getAllItems] normalises
+  /// it, therefore when [layoutsBySlotCount] is false all layouts share one
+  /// bucket and any [slotCount] value clears it.
+  void invalidateCache([int? slotCount]) {
+    if (slotCount == null) {
+      _items.clear();
+    } else {
+      _items.remove(layoutsBySlotCount ? slotCount : -1);
+    }
   }
 
   /// If [cacheItems] the delegate store layouts from memory.

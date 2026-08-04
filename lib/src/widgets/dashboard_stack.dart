@@ -342,7 +342,6 @@ class _DashboardStackState<T extends DashboardItem>
         behavior: HitTestBehavior.opaque,
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
-                print('>>> PAN START at ${panStart.localPosition}');
                 _onMoveStart(panStart.localPosition);
               }
             : null,
@@ -356,14 +355,11 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onPanEnd: widget.editModeSettings.panEnabled
             ? (e) {
-                print('>>> PAN END');
                 _onMoveEnd();
               }
             : null,
         onLongPressStart: widget.editModeSettings.longPressEnabled
             ? (longPressStart) {
-                print(
-                    '>>> LONG PRESS START at ${longPressStart.localPosition}');
                 _onMoveStart(longPressStart.localPosition);
               }
             : null,
@@ -377,7 +373,6 @@ class _DashboardStackState<T extends DashboardItem>
             : null,
         onLongPressEnd: widget.editModeSettings.longPressEnabled
             ? (e) {
-                print('>>> LONG PRESS END');
                 _onMoveEnd();
               }
             : null,
@@ -494,12 +489,6 @@ class _DashboardStackState<T extends DashboardItem>
     var e = widget.dashboardController
         ._indexesTree[widget.dashboardController.getIndex([x, y])];
 
-    print('=== _onMoveStart ===');
-    print('Touch local: $local');
-    print('Touch holdGlobal: $holdGlobal');
-    print('Grid position: x=$x, y=$y');
-    print('Element ID: $e');
-
     if (e is String) {
       var directions = <AxisDirection>[];
       _editing = widget.dashboardController._layouts![e]!;
@@ -515,13 +504,7 @@ class _DashboardStackState<T extends DashboardItem>
           height: current.height,
           width: current.width);
 
-      print(
-          'Item bounds: x=${itemGlobal.x}, y=${itemGlobal.y}, w=${itemGlobal.width}, h=${itemGlobal.height}');
-      print('Item endX=${itemGlobal.endX}, endY=${itemGlobal.endY}');
-      print('resizeCursorSide: ${widget.editModeSettings.resizeCursorSide}');
-
       if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
-        print('Touch outside item bounds - ignoring');
         _editing = null;
         return;
       }
@@ -540,25 +523,18 @@ class _DashboardStackState<T extends DashboardItem>
             holdGlobal.dx <= buttonRight &&
             holdGlobal.dy >= buttonTop &&
             holdGlobal.dy <= buttonBottom;
-
-        print(
-            'Resize button zone: left=$buttonLeft, top=$buttonTop, right=$buttonRight, bottom=$buttonBottom');
-        print('onResizeButton: $onResizeButton');
       }
 
       // Lewa krawędź
       double leftEdge = itemGlobal.x + widget.editModeSettings.resizeCursorSide;
       if (leftEdge > holdGlobal.dx) {
         directions.add(AxisDirection.left);
-        print(
-            'Detected LEFT edge (holdX ${holdGlobal.dx} < leftEdge $leftEdge)');
       }
 
       // Górna krawędź
       double topEdge = itemGlobal.y + widget.editModeSettings.resizeCursorSide;
       if (topEdge > holdGlobal.dy) {
         directions.add(AxisDirection.up);
-        print('Detected UP edge (holdY ${holdGlobal.dy} < topEdge $topEdge)');
       }
 
       // Prawa krawędź
@@ -566,8 +542,6 @@ class _DashboardStackState<T extends DashboardItem>
           itemGlobal.endX - widget.editModeSettings.resizeCursorSide;
       if (rightEdge < holdGlobal.dx || onResizeButton) {
         directions.add(AxisDirection.right);
-        print(
-            'Detected RIGHT edge (holdX ${holdGlobal.dx} > rightEdge $rightEdge OR onResizeButton=$onResizeButton)');
       }
 
       // Dolna krawędź
@@ -575,12 +549,7 @@ class _DashboardStackState<T extends DashboardItem>
           itemGlobal.endY - widget.editModeSettings.resizeCursorSide;
       if (bottomEdge < holdGlobal.dy || onResizeButton) {
         directions.add(AxisDirection.down);
-        print(
-            'Detected DOWN edge (holdY ${holdGlobal.dy} > bottomEdge $bottomEdge OR onResizeButton=$onResizeButton)');
       }
-
-      print('Detected directions: $directions');
-      print('Mode: ${directions.isEmpty ? "MOVE" : "RESIZE"}');
 
       if (directions.isNotEmpty) {
         _holdDirections = directions;
