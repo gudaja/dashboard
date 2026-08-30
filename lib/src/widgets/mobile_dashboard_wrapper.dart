@@ -10,6 +10,7 @@ class MobileCarouselConfig {
     this.tabletBreakpoint = 900.0,
     this.visibleSectionsOnMobile = 1,
     this.visibleSectionsOnTablet = 2,
+    this.sectionStepOnTablet,
     this.showHeader = true,
     this.showDots = true,
     this.showArrows = true,
@@ -28,6 +29,25 @@ class MobileCarouselConfig {
   final double tabletBreakpoint;
   final int visibleSectionsOnMobile;
   final int visibleSectionsOnTablet;
+
+  /// How many sections one page advances by on a tablet-width viewport.
+  ///
+  /// `null` means one section per page, which is what this widget has always
+  /// done and therefore stays the default: a consumer that does not set the
+  /// field sees exactly the behaviour of the previous release. With more than
+  /// one section visible, a step of 1 makes consecutive pages overlap — with
+  /// [visibleSectionsOnTablet] `= 2` page 0 shows S1+S2 and page 1 shows
+  /// S2+S3, so S2 is on both. Setting the step to the number of visible
+  /// sections pages the viewport section-block by section-block instead.
+  ///
+  /// The last page is clamped so the viewport is never left half empty: with
+  /// 3 sections, 2 visible and a step of 2 there are 2 pages — S1+S2 and
+  /// S2+S3 (page 1 starts at section 1, not at section 2). With 4 sections the
+  /// same settings give 2 disjoint pages: S1+S2 and S3+S4.
+  ///
+  /// Only the tablet layout is configurable; the mobile layout, which shows a
+  /// single section, always advances one section at a time.
+  final int? sectionStepOnTablet;
   final bool showHeader;
   final bool showDots;
   final bool showArrows;
@@ -45,6 +65,43 @@ class MobileCarouselConfig {
     if (width < mobileBreakpoint) return DeviceType.mobile;
     if (width < tabletBreakpoint) return DeviceType.tablet;
     return DeviceType.desktop;
+  }
+
+  /// How many sections are visible at once on [deviceType].
+  int _visibleSectionsFor(DeviceType deviceType) =>
+      deviceType == DeviceType.mobile
+          ? visibleSectionsOnMobile
+          : visibleSectionsOnTablet;
+
+  /// How many sections one page advances by on [deviceType].
+  ///
+  /// Never below 1 — a step of 0 would make every page start at section 0.
+  int _sectionStepFor(DeviceType deviceType) => deviceType == DeviceType.mobile
+      ? 1
+      : max(1, sectionStepOnTablet ?? 1);
+
+  /// Number of pages needed to walk [totalSections] sections on [deviceType].
+  ///
+  /// One page for as long as everything fits, then one more page per `step`
+  /// sections left over: `ceil((sections - visible) / step) + 1`.
+  @visibleForTesting
+  int totalPagesFor(DeviceType deviceType, int totalSections) {
+    final visible = _visibleSectionsFor(deviceType);
+    if (totalSections <= visible) return 1;
+    final step = _sectionStepFor(deviceType);
+    return ((totalSections - visible + step - 1) ~/ step) + 1;
+  }
+
+  /// Index of the first section shown on [page].
+  ///
+  /// `page * step`, clamped to the last full viewport
+  /// (`totalSections - visible`) so the final page shows a full set of
+  /// sections instead of running past the end. See [sectionStepOnTablet].
+  @visibleForTesting
+  int sectionForPage(DeviceType deviceType, int totalSections, int page) {
+    final lastStart = totalSections - _visibleSectionsFor(deviceType);
+    if (lastStart <= 0) return 0;
+    return max(0, min(page * _sectionStepFor(deviceType), lastStart));
   }
 }
 
@@ -199,13 +256,16 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
 
   int get _totalSections => _pageBreaks.pageCount;
 
-  int _getTotalPages(DeviceType deviceType) {
-    final visibleSections = deviceType == DeviceType.mobile
-        ? widget.mobileConfig.visibleSectionsOnMobile
-        : widget.mobileConfig.visibleSectionsOnTablet;
-    final pages = _totalSections - (visibleSections - 1);
-    return pages > 0 ? pages : 1;
-  }
+  int _getTotalPages(DeviceType deviceType) =>
+      widget.mobileConfig.totalPagesFor(deviceType, _totalSections);
+
+  /// First section shown on [page] for the device type currently laid out.
+  ///
+  /// With the default step of 1 this is the page index itself, which is what
+  /// the whole widget assumed before [MobileCarouselConfig.sectionStepOnTablet]
+  /// existed.
+  int _sectionForPage(int page) => widget.mobileConfig
+      .sectionForPage(_currentDeviceType, _totalSections, page);
 
   /// Get number of enabled and disabled columns for sections from startSection to endSection (inclusive)
   ({int enabled, int disabled}) _getColumnsForSections(
@@ -224,7 +284,8 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
 
   /// Get start column for page
   int _getStartColumnForPage(int page) {
-    return _pageBreaks.getPageStartColumn(page, widget.virtualColumnsConfig);
+    return _pageBreaks.getPageStartColumn(
+        _sectionForPage(page), widget.virtualColumnsConfig);
   }
 
   /// Calculate pixel offset for a given page using actual column positions
@@ -382,15 +443,16 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
           _getOffsetForPage(_currentPage, slotWidth, resolvedWidth);
     }
 
-    // Header text
+    // Header text. Page index and section index part ways as soon as the step
+    // is bigger than 1, so the header is written from the section.
+    final firstSection = _sectionForPage(_currentPage);
     String headerText;
     if (visibleSections == 1) {
-      headerText = 'Sekcja ${_currentPage + 1} z $_totalSections';
+      headerText = 'Sekcja ${firstSection + 1} z $_totalSections';
     } else {
-      final firstSection = _currentPage + 1;
       final lastSection =
-          (_currentPage + visibleSections).clamp(1, _totalSections);
-      headerText = 'Sekcje $firstSection-$lastSection z $_totalSections';
+          (firstSection + visibleSections).clamp(1, _totalSections);
+      headerText = 'Sekcje ${firstSection + 1}-$lastSection z $_totalSections';
     }
 
     return Column(

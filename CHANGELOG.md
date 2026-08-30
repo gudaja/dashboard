@@ -4,6 +4,24 @@
 > wydania `0.0.6` — plik nie był prowadzony na bieżąco, a `pubspec.yaml`
 > deklarował `0.0.5` bez ani jednego wpisu za `0.0.3+1`.
 
+## 0.0.7
+
+* **`MobileCarouselConfig.sectionStepOnTablet`** — how many sections one page of
+  the tablet carousel advances by. The wrapper has always stepped one section at
+  a time, so with `visibleSectionsOnTablet: 2` page 0 showed S1+S2 and page 1
+  showed S2+S3: the middle section appeared on both pages, and a three-section
+  layout needed two swipes to reveal one new section. Setting the step to the
+  number of visible sections pages the viewport block by block instead, with the
+  last page clamped to the last full viewport so it is never half empty (3
+  sections, 2 visible, step 2 → pages S1+S2 and S2+S3; 4 sections → the disjoint
+  S1+S2 and S3+S4).
+* The field is **`int?` and defaults to `null` = 1**, which is exactly the old
+  arithmetic, so a consumer that does not set it sees no change. Page count and
+  first-section-of-page are now `MobileCarouselConfig.totalPagesFor` /
+  `sectionForPage` (`@visibleForTesting`), and the carousel header is written
+  from the section index rather than from the page index — with a step of 1 the
+  two are the same number, which is why nothing moved before.
+
 ## 0.0.6
 
 Cykl życia kontrolera i cache delegata — zmiany wymuszone przez konsumenta,
