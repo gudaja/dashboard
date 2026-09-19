@@ -372,6 +372,230 @@ void main() {
     await tester.pumpAndSettle();
     expect(inTree(tester), contains('i02'));
   });
+
+  // =========================================================================
+  // Luki pokrycia zgłoszone przez fazę C (A3) — cztery tezy, których nie
+  // pinował ŻADEN test w obu repozytoriach, każda zweryfikowana mutacją.
+  // =========================================================================
+
+  testWidgets(
+      'T-PV2-08 · warstwa tła jedzie DOKŁADNIE za offsetem i nie powstaje '
+      'ani razu', (WidgetTester tester) async {
+    await pumpGrid(tester);
+    final position = axis(tester);
+
+    double topOf(String key) => tester.getRect(find.byKey(ValueKey(key))).top;
+
+    // Trzy offsety w obrębie JEDNEGO pasma (±500 px). Kontrakt (ii) §2.1(b)
+    // planu brzmi „piksel w piksel ta sama pozycja każdego slotu", a jedynym
+    // dowodem na dziś był diff wizualny z telefonu (kryterium 2 fazy B): mutacja
+    // F3 fazy C — `AnimatedBuilder` zdjęty, `top` znowu z `− pixels` — ZAMRAŻA
+    // całą kratkę slotów (zmierzone: `bg_0_3.top` 310,0 przy `pixels` 0, 40
+    // i 120 zamiast 310/270/190) i przechodzi całą suitę forka oraz benchmark
+    // aplikacji.
+    final tops = <double, double>{};
+    final gaps = <double, double>{};
+    backgroundCalls = 0;
+    for (final pixels in <double>[0, 40, 120]) {
+      position.jumpTo(pixels);
+      await tester.pump();
+      tops[pixels] = topOf('bg_0_3');
+      // Odstęp między slotem tła i KAFELKIEM w tym samym wierszu: obie warstwy
+      // mają jechać jak jedna, więc różnica jest stała przy każdym offsecie.
+      gaps[pixels] = topOf('bg_0_2') -
+          tester.getRect(find.byKey(const ValueKey('tile_i01'))).top;
+    }
+
+    expect(backgroundCalls, 0,
+        reason:
+            'w obrębie pasma warstwa nie powstaje ani razu — gdyby powstała, '
+            'poniższe pozycje byłyby zgodne „przez przypadek"');
+    expect(tops[0]! - tops[40]!, closeTo(40, 0.01),
+        reason: 'przewinięcie o 40 px przesuwa slot o 40 px '
+            '(zmierzono: ${tops[0]} → ${tops[40]})');
+    expect(tops[40]! - tops[120]!, closeTo(80, 0.01),
+        reason: 'i o 80 px przy przewinięciu o 80 px '
+            '(zmierzono: ${tops[40]} → ${tops[120]})');
+    expect(gaps[40], closeTo(gaps[0]!, 0.01),
+        reason: 'kratka slotów i kafelki jadą jak JEDNA warstwa '
+            '(zmierzono odstępy: $gaps)');
+    expect(gaps[120], closeTo(gaps[0]!, 0.01),
+        reason: 'także po 120 px: $gaps');
+    expect(topOf('bg_0_4') - topOf('bg_0_3'), closeTo(slotHeight, 0.01),
+        reason: 'a wiersz slotów ma dokładnie wysokość slotu');
+  });
+
+  testWidgets(
+      'T-PV2-09 · nowy `itemBuilder` unieważnia cache zamontowanych elementów',
+      (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(surface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final controller = DashboardItemController<DashboardItem>(items: items());
+    var built = 0;
+
+    // Ten sam kontroler i ten sam układ; zmienia się TYLKO domknięcie
+    // `itemBuilder`. Tak wygląda zmiana motywu u konsumenta: `CockpitGrid`
+    // tworzy builder na nowo w swoim `dashboardBuilder`, i to jest jedyna droga,
+    // którą zamontowany kafelek dowiaduje się o nowej treści. Mutacja M-b1b fazy
+    // C (zdjęcie `itemBuilder` z `_parametersChangedFrom`) przechodziła suitę
+    // forka ORAZ całą suitę aplikacji — kafelki zamarzłyby z treścią z chwili
+    // budowy i nikt by tego nie zauważył.
+    Widget tree(String marker) => MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: surface.width,
+              height: surface.height,
+              child: Dashboard<DashboardItem>(
+                dashboardItemController: controller,
+                slotCount: slotCount,
+                slotHeight: slotHeight,
+                itemStyle: const ItemStyle(
+                  color: Colors.transparent,
+                  type: MaterialType.transparency,
+                ),
+                editModeSettings: _editModeSettings,
+                itemBuilder: (item) {
+                  built++;
+                  return Text('$marker:${item.identifier}');
+                },
+              ),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(tree('A'));
+    await tester.pumpAndSettle();
+    expect(find.text('A:i00'), findsOneWidget);
+
+    built = 0;
+    await tester.pumpWidget(tree('B'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('B:i00'), findsOneWidget,
+        reason: 'zamontowany element pokazuje treść z NOWEGO buildera');
+    expect(find.text('A:i00'), findsNothing,
+        reason: 'i nie zostaje przy starej');
+    expect(built, greaterThan(0),
+        reason: 'nowy builder został naprawdę zawołany (zmierzono: $built)');
+  });
+
+  testWidgets(
+      'T-PV2-10 · `delete()` po przewinięciu: element znika, a start edycji '
+      'nie rzuca', (WidgetTester tester) async {
+    final controller = await pumpGrid(tester);
+
+    axis(tester).jumpTo(1500);
+    await tester.pump();
+
+    final band = inTree(tester);
+    expect(band, isNot(contains('i00')), reason: 'i00 jest już poza pasmem');
+    final inBand = band.first;
+
+    // `delete()` jest JEDYNĄ ścieżką, w której element wychodzi z mapy BEZ
+    // jednoczesnego dodania innego: przewinięcie robi oba naraz, a dodanie
+    // bumpuje rewizję, więc warstwa statyczna i tak powstaje z aktualnej mapy.
+    // Dlatego ani F2 (rewizja tylko w `addWidget`), ani M-b3 (zamiatanie
+    // martwych kluczy wyłączone) nie czerwieniły niczego w obu repozytoriach.
+    // Zmierzone konsekwencje: usunięty element ZOSTAJE na ekranie, a przy
+    // wyłączonym zamiataniu `delete()` + start sesji edycji rzuca „Null check
+    // operator used on a null value".
+    controller.delete('i00');
+    await tester.pump();
+    controller.delete(inBand);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(inTree(tester), isNot(contains(inBand)),
+        reason: 'usunięty element wychodzi z drzewa '
+            '(w drzewie: ${inTree(tester)})');
+    expect(inTree(tester), isNotEmpty, reason: 'i nie zabiera reszty');
+
+    // Pełny dowód: start sesji edycji przebudowuje warstwę statyczną z MAPY,
+    // więc martwy klucz rzuciłby dopiero tutaj.
+    controller.isEditing = true;
+    await tester.pumpAndSettle();
+
+    final alive = inTree(tester).first;
+    final rect = tester.getRect(find.byKey(ValueKey('tile_$alive')));
+    final gesture = await tester.startGesture(rect.center);
+    await gesture.moveBy(const Offset(40, 0));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull,
+        reason: 'start sesji edycji po `delete()` nie ma prawa rzucić');
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+      'T-PV2-11 · wiersz-widmo nad viewportem wchodzi w ekran i NIE jest '
+      'obcinany', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(surface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // Geometria z sondy fazy C: padding 8 i odstęp 4 dają wierszowi `y = −1`
+    // `top = −90` przy wysokości 96, czyli **6 px W EKRANIE** — pasmo zaczyna
+    // się nad viewportem (`floor(−500/100) = −5`), a `v0.0.7` te 6 px malował,
+    // bo tnie wyłącznie ZEWNĘTRZNY `Stack`. Mutacja F8 (domyślny
+    // `Clip.hardEdge` na wewnętrznym `Stack`u warstwy) uciełaby je i ZMIENIŁA
+    // wygląd — dlatego dartdoc nazywa `Clip.none` obowiązkowym, a żaden test
+    // tego nie widział.
+    final controller = DashboardItemController<DashboardItem>(items: items());
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: surface.width,
+          height: surface.height,
+          child: Dashboard<DashboardItem>(
+            dashboardItemController: controller,
+            slotCount: slotCount,
+            slotHeight: slotHeight,
+            padding: const EdgeInsets.all(8),
+            horizontalSpace: 4,
+            verticalSpace: 4,
+            itemStyle: const ItemStyle(
+              color: Colors.transparent,
+              type: MaterialType.transparency,
+            ),
+            editModeSettings: _editModeSettings,
+            slotBackgroundBuilder:
+                SlotBackgroundBuilder.withFunction<DashboardItem>(
+                    (context, item, x, y, editing) {
+              return Container(key: ValueKey('bg_${x}_$y'));
+            }),
+            itemBuilder: (item) => Text(item.identifier),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final ghost = find.byKey(const ValueKey('bg_0_-1'));
+    expect(ghost, findsOneWidget,
+        reason:
+            'pasmo zaczyna się nad viewportem, więc wiersz −1 JEST zbudowany');
+
+    final rect = tester.getRect(ghost);
+    final screen = Rect.fromLTWH(0, 0, surface.width, surface.height);
+    expect(rect.top, lessThan(0), reason: 'wiersz −1 startuje nad ekranem');
+    expect(rect.bottom, greaterThan(0),
+        reason: 'ale wchodzi w ekran (zmierzono ${rect.bottom} px)');
+    expect(rect.overlaps(screen), isTrue);
+
+    // Druga połowa tezy — ta, którą czerwieni F8: pudełko wewnętrznego `Stack`a
+    // warstwy jest UKŁADEM WSPÓŁRZĘDNYCH, nie viewportem. Sprawdzamy to na
+    // najbliższym `Stack`u nad slotem, bo obcięcia nie widać w prostokątach:
+    // `Clip.hardEdge` zabiera piksele przy MALOWANIU, a render boks zostaje.
+    final layer = tester.widget<Stack>(
+      find.ancestor(of: ghost, matching: find.byType(Stack)).first,
+    );
+    expect(layer.clipBehavior, Clip.none,
+        reason:
+            'warstwa tła nie obcina slotów pasma — granicą widoczności jest '
+            'zewnętrzny `Stack` siatki');
+  });
 }
 
 /// Ustawienia trybu edycji tworzone RAZ — patrz komentarz przy `grid`.
