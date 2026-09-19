@@ -39,7 +39,17 @@ abstract class SlotBackgroundBuilder<T extends DashboardItem> {
 
   DashboardItemController<T>? _itemController;
 
-  Widget _build(BuildContext context, int x, int y) {
+  /// The background of the slot at `[x, y]`, or `null` when it draws nothing.
+  ///
+  /// `null` used to become an empty `Container()`, so a slot the consumer did not
+  /// want still cost a widget — plus the `Positioned` > `RepaintBoundary` >
+  /// `Builder` the stack wrapped it in. A cockpit standing on a wallpaper answers
+  /// `null` for EVERY slot, i.e. it paid the full price of a layer that draws
+  /// nothing at all; the stack now skips such a slot entirely.
+  ///
+  /// [buildBackground] — the public half of this pair — has always been able to
+  /// answer `null`, so nothing outside the package changes.
+  Widget? _build(BuildContext context, int x, int y) {
     final layoutController = _itemController!._layoutController!;
     final i = layoutController._indexesTree[layoutController.getIndex([x, y])];
 
@@ -49,8 +59,7 @@ abstract class SlotBackgroundBuilder<T extends DashboardItem> {
       item = layoutController.itemController._items[i] as T;
     }
 
-    return buildBackground(context, item, x, y, layoutController._isEditing) ??
-        Container();
+    return buildBackground(context, item, x, y, layoutController._isEditing);
   }
 
   /// Build background widget.
