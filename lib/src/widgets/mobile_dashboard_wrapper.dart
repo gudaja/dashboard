@@ -231,6 +231,12 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   /// built again — deliberately conservative. On top of that, EVERY notification
   /// of the item controller drops the cache (see [_dropGridCache]), so the only
   /// rebuilds the cache swallows are the ones this widget causes itself.
+  ///
+  /// `isMobile` is in the key although the only call site passes `true` (the
+  /// desktop branch calls `dashboardBuilder` directly, without the cache): it
+  /// stays as a guard, because a cache keyed by less than the ARGUMENTS it was
+  /// built from is exactly the defect this key exists to prevent, and a second
+  /// call site would otherwise inherit a stale desktop grid.
   Widget? _cachedGrid;
   Widget Function(DashboardItemController<T>, int, int, bool)?
       _cachedGridBuilder;
