@@ -12,6 +12,24 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## 0.0.10
+
+**An empty slot-background layer no longer collapses the grid.**
+
+* `0.0.8` returned a bare, NON-positioned `SizedBox.shrink()` from the
+  slot-background layer when the builder answered `null` for every slot. A
+  non-positioned child sizes a `Stack`, so under loose constraints the grid's
+  `Stack` became 0×0 and its `Clip.hardEdge` cut every item away — the items
+  stayed in the tree with their render boxes at the right coordinates, which is
+  why no test that looked for them noticed. Seen by the consumer as a read-only
+  cockpit on a wallpaper (no slot frames there by design) showing the wallpaper
+  and not a single tile on a desktop window; the carousel below 900 px hands the
+  grid tight constraints and was not affected.
+* The empty layer is now `Positioned.fill(child: SizedBox.shrink())`: two
+  widgets instead of one (`T-PV2-05` updated), and the stack sizes itself as it
+  does with no background builder at all. `T-PV2-12` pins the size under loose
+  constraints.
+
 ## 0.0.9
 
 Wave **PV**, stage e of the consumer's plan: **paging the carousel no longer

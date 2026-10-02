@@ -242,8 +242,11 @@ class _DashboardStackState<T extends DashboardItem>
   /// `Stack` still clips with `Clip.hardEdge`.
   Widget _buildBackgroundLayer() {
     final slots = _buildBackgroundSlots();
+    // POSITIONED even when empty: a non-positioned child sizes the grid's
+    // `Stack`, and under loose constraints a bare `SizedBox.shrink()` made it
+    // 0×0 — its `Clip.hardEdge` then cut away every item (`T-PV2-12`).
     if (slots.isEmpty) {
-      return const SizedBox.shrink();
+      return const Positioned.fill(child: SizedBox.shrink());
     }
 
     return AnimatedBuilder(

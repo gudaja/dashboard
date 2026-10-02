@@ -277,11 +277,16 @@ void main() {
       reason: 'wariant rysujący ma jeden widget tła na slot',
     );
 
-    // `null` kosztuje DOKŁADNIE jeden widget — puste `SizedBox.shrink` warstwy.
-    // Do tej fali kosztował `Positioned` > `RepaintBoundary` > `Builder` >
-    // `Container` na każdy slot, bo `SlotBackgroundBuilder._build` zamieniał
-    // `null` na `Container()`.
-    expect(widgetsWithNullBuilder, widgetsWithoutBuilder + 1,
+    // `null` kosztuje DOKŁADNIE dwa widgety — pustą warstwę. Do fali PV
+    // kosztował `Positioned` > `RepaintBoundary` > `Builder` > `Container` na
+    // każdy slot, bo `SlotBackgroundBuilder._build` zamieniał `null` na
+    // `Container()`.
+    //
+    // Two, not one, since 0.0.10: the empty layer is a
+    // `Positioned.fill(child: SizedBox.shrink())`, because a bare non-positioned
+    // `SizedBox.shrink()` sized the grid's `Stack` to 0×0 under loose
+    // constraints and clipped every item away (`T-PV2-12`).
+    expect(widgetsWithNullBuilder, widgetsWithoutBuilder + 2,
         reason: 'zmierzono: bez buildera $widgetsWithoutBuilder, '
             'z `null` $widgetsWithNullBuilder');
     expect(widgetsWithBackground, greaterThan(widgetsWithNullBuilder + slots),
@@ -595,6 +600,53 @@ void main() {
         reason:
             'warstwa tła nie obcina slotów pasma — granicą widoczności jest '
             'zewnętrzny `Stack` siatki');
+  });
+
+  testWidgets(
+      'T-PV2-12 · tło, które nie buduje ŻADNEGO slotu, nie zwija siatki do '
+      '0×0 przy luźnych więzach', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(surface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // The consumer's read-only cockpit on a wallpaper answers `null` for every
+    // slot. `v0.0.8` turned an empty layer into a NON-positioned
+    // `SizedBox.shrink()`; under loose constraints (a `Scaffold` body, the
+    // consumer's desktop branch) the grid's `Stack` then sized itself to that
+    // child — 0×0 — and its `Clip.hardEdge` cut every item away while their
+    // render boxes kept their coordinates. Hence a question about the SIZE of
+    // the stack, not about finding the items.
+    final controller = DashboardItemController<DashboardItem>(items: items());
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Dashboard<DashboardItem>(
+          dashboardItemController: controller,
+          slotCount: slotCount,
+          slotHeight: slotHeight,
+          itemStyle: const ItemStyle(
+            color: Colors.transparent,
+            type: MaterialType.transparency,
+          ),
+          editModeSettings: _editModeSettings,
+          slotBackgroundBuilder:
+              SlotBackgroundBuilder.withFunction<DashboardItem>(
+                  (context, item, x, y, editing) => null),
+          itemBuilder: (item) => Text(item.identifier),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final grid = find.ancestor(
+      of: find.text('i00'),
+      matching: find.byWidgetPredicate(
+          (w) => w is Stack && w.clipBehavior == Clip.hardEdge),
+    );
+    expect(grid, findsOneWidget);
+    final box = tester.renderObject<RenderBox>(grid);
+    expect(box.constraints.isTight, isFalse,
+        reason: 'the scene must exercise LOOSE constraints');
+    expect(box.size, surface,
+        reason: 'an empty slot-background layer must not size the stack');
   });
 }
 
