@@ -431,6 +431,32 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     // the `applyContentDimensions` below then publishes the new range.
     if (offset.hasPixels && offset.pixels > maxExtent && maxExtent > 0) {
       offset.correctBy(maxExtent - offset.pixels);
+      // `correctBy` notifies no one, and the items position themselves with
+      // their own `AnimatedBuilder` over this offset. A CONTENT change rebuilds
+      // the stack's item list anyway, so they follow; a VIEWPORT size change
+      // with an unchanged key set handed the stack its cached list, and the
+      // items stayed at the old offset — an empty strip the size of the growth
+      // at the bottom until the next scroll event (measured, consumer wave KB
+      // phase B, anomaly A3; `T-KB2-07/08`).
+      //
+      // Two halves. (1) The stack is rebuilt right after this call by the
+      // viewport builder, in the same frame; dropping its cached item list
+      // makes that build place every item at the corrected offset — this
+      // frame, without notifying anybody (`itemBuilder` is not called: the
+      // built children stay in `_widgetsMap`). (2) The controller's listeners
+      // are told once the frame is over, as `jumpTo` used to tell them: never
+      // inside layout (that is what `jumpTo` did, and on a nested position it
+      // also moved the band and started a ballistic simulation), and never
+      // `jumpTo` itself, which would re-enter the scroll machinery. A
+      // post-frame notification ALONE was measured too: the items are right
+      // only one frame later, the first frame still shows the strip.
+      _stateKey.currentState?._cachedStaticWidgets = null;
+      final corrected = offset;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && corrected is ScrollPosition && corrected.hasPixels) {
+          corrected.notifyListeners();
+        }
+      });
     }
 
     try {

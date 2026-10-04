@@ -12,6 +12,33 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## 0.0.12
+
+**The layout-time correction moves the items too when the VIEWPORT grows.**
+
+* `0.0.11` replaced `jumpTo` with `correctBy` in `_setNewOffset`. `correctBy`
+  notifies no one, and the items position themselves with their own
+  `AnimatedBuilder` over the offset. A content change rebuilds the stack's item
+  list anyway, so that case was right; a viewport that GROWS while the grid is
+  scrolled to the end, with no new key entering the cache band, hands the stack
+  its cached item list, and the items stayed at the old offset. Measured by the
+  consumer (wave KB, phase B, anomaly A3): layout editor 1400×600 → 900 left a
+  ~300 px empty strip at the bottom, a phone cockpit under the band 390×600 →
+  844 ~100 px, until the next scroll event; `0.0.10` showed no strip.
+* Fix, in the correction block only: the stack's cached item list is dropped
+  right after `correctBy`, so the stack build that follows in the SAME frame
+  places every item at the corrected offset (no notification, no `itemBuilder`
+  call), and the controller's listeners are notified once, in a post-frame
+  callback — outside layout, never through `jumpTo`. A post-frame notification
+  alone was measured as well: the first frame still showed the strip (304 px in
+  the test), the items were right one frame later.
+* Tests `T-KB2-07` (bare grid, 400×600 → 900) and `T-KB2-08` (under a
+  `NestedScrollView`, band offset unchanged): after ONE frame `pixels ==
+  maxScrollExtent`, the bottom item sits at the bottom edge, zero layout-phase
+  notifications, exactly one notification after the frame. Five items, not ten:
+  with ten the growth pulls a new key into the cache band, the rebuilt list
+  repositions the items by accident, and the test was green on `0.0.11`.
+
 ## 0.0.11
 
 Wave **KB** of the consumer: **the grid can be the inner position of a One UI

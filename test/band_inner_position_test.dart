@@ -473,6 +473,172 @@ void main() {
         reason: 'primary: true bez kontrolera w drzewie = zachowanie v0.0.10 '
             '(zmierzono: $measured)');
   });
+
+  /// Słuchacz, który liczy notyfikacje kontrolera POZA fazą układu (np.
+  /// `SchedulerPhase.postFrameCallbacks`) — tam korekta oddaje słuchaczom
+  /// wiadomość o nowym pixels, którą `jumpTo` z v0.0.10 dawał w środku layoutu.
+  int Function() countNotificationsOutsideLayout(ScrollController controller) {
+    var count = 0;
+    void listener() {
+      if (SchedulerBinding.instance.schedulerPhase !=
+          SchedulerPhase.persistentCallbacks) {
+        count++;
+      }
+    }
+
+    controller.addListener(listener);
+    addTearDown(() => controller.removeListener(listener));
+    return () => count;
+  }
+
+  /// Odstęp dolnej krawędzi kafelka [id] od dolnej krawędzi kadru siatki.
+  double bottomGap(WidgetTester tester, String id) =>
+      tester.getRect(gridScrollable()).bottom -
+      tester.getRect(find.byKey(ValueKey('tile_$id'))).bottom;
+
+  testWidgets(
+      'T-KB2-07 · siatka przewinięta do dołu, viewport ROŚNIE 600 → 900 px '
+      '(maxExtent maleje): po jednej klatce pixels == maxScrollExtent ORAZ bbox '
+      'dolnego kafelka przy dolnej krawędzi (bez pustego pasa), zero '
+      'notyfikacji w fazie układu, zero wyjątków', (WidgetTester tester) async {
+    // Anomalia A3 fazy B: przy ZMIANIE TREŚCI stos przebudowuje się sam, przy
+    // zmianie WYMIARU kadru — nie; kafelki stały na starym pixels (pusty pas
+    // 300 px na dole) do następnego zdarzenia przewijania.
+    //
+    // PIĘĆ elementów (1000 px treści), nie dziesięć: pas `cacheExtend` (500)
+    // musi już trzymać WSZYSTKIE, żeby wzrost kadru nie dołożył klucza. Nowy
+    // klucz w pasie przebudowuje listę kafelków stosu (rewizja `_widgetsMap`)
+    // i przy okazji ustawia je na bieżącym pixels — z dziesięcioma elementami
+    // ten test był ZIELONY na v0.0.11 (zmierzone), czyli maskował A3.
+    await tester.binding.setSurfaceSize(const Size(400, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    final controller = DashboardItemController<DashboardItem>(items: items(5));
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: dashboard(controller, scrollController: scroll),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final position = gridPosition(tester);
+    final maxBefore = position.maxScrollExtent;
+    position.jumpTo(maxBefore);
+    await tester.pumpAndSettle();
+    expect(position.pixels, maxBefore);
+    final gapBefore = bottomGap(tester, 'i04');
+    final topBefore = contentTop(tester, 'i04');
+    // Odstęp to tylko margines kafelka (zmierzone: 4 px), nie rząd.
+    expect(gapBefore, inInclusiveRange(0, 10),
+        reason: 'na końcu zakresu dolny kafelek przy dolnej krawędzi');
+    final layoutNotifications = countLayoutNotifications(scroll);
+    final laterNotifications = countNotificationsOutsideLayout(scroll);
+    final itemsBefore = itemBuilderCalls;
+
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    await tester.pump();
+
+    final expectedMax = maxBefore - 300;
+    expect(tester.getSize(gridScrollable()).height, 900,
+        reason: 'kadr naprawdę urósł');
+    expect(position.maxScrollExtent, moreOrLessEquals(expectedMax),
+        reason: 'zakres krótszy dokładnie o przyrost kadru');
+    expect(position.pixels, moreOrLessEquals(position.maxScrollExtent),
+        reason: 'pixels skorygowane do nowego maxExtent w tej samej klatce');
+
+    // Bbox: kafelek narysowany przy SKORYGOWANYM pixels. Bez notyfikacji
+    // `AnimatedBuilder` kafelka (`dashboard_item_widget.dart:299-313`) trzyma
+    // `top` policzony ze starego pixels: dolny kafelek kończy się 300 px nad
+    // dolną krawędzią, a pod nim jest pusty pas.
+    expect(bottomGap(tester, 'i04'), moreOrLessEquals(gapBefore),
+        reason: 'dolny kafelek przy dolnej krawędzi kadru, bez pustego pasa '
+            '(odstęp ${bottomGap(tester, 'i04')} px)');
+    expect(contentTop(tester, 'i04'), moreOrLessEquals(topBefore),
+        reason: 'kafelek i04 narysowany przy bieżącym pixels');
+
+    expect(layoutNotifications(), 0,
+        reason: 'korekta nadal bez notyfikacji w fazie układu');
+    expect(laterNotifications(), 1,
+        reason: 'słuchacze kontrolera dowiadują się o korekcie RAZ, po klatce');
+    expect(itemBuilderCalls - itemsBefore, 0,
+        reason: 'przestawienie kafelków nie buduje ich treści od nowa');
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+    expect(position.pixels, moreOrLessEquals(expectedMax),
+        reason: 'i nic jej potem nie przesuwa');
+    expect(bottomGap(tester, 'i04'), moreOrLessEquals(gapBefore));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'T-KB2-08 · to samo pod NestedScrollView (kokpit pod pasmem 400×600 → '
+      '400×900): outer offset bez zmian, dolny kafelek przy dolnej krawędzi, '
+      'zero wyjątków', (WidgetTester tester) async {
+    // Pięć elementów — powód jak w T-KB2-07 (pas cache trzyma wszystkie).
+    await tester.binding.setSurfaceSize(const Size(400, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final outer = ScrollController();
+    addTearDown(outer.dispose);
+    final controller = DashboardItemController<DashboardItem>(items: items(5));
+    await tester
+        .pumpWidget(nested(dashboard(controller, primary: true), outer));
+    await tester.pumpAndSettle();
+
+    final inner = tester
+        .state<NestedScrollViewState>(find.byType(NestedScrollView))
+        .innerController;
+
+    // Pasmo zwinięte, siatka do samego dołu — gestem, jak użytkownik.
+    outer.jumpTo(outer.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    await dragGrid(tester, -3000, steps: 30);
+    final position = gridPosition(tester);
+    final maxBefore = position.maxScrollExtent;
+    expect(position.pixels, moreOrLessEquals(maxBefore),
+        reason: 'siatka przewinięta do końca');
+    final outerBefore = outer.offset;
+    expect(outerBefore, bandExtent, reason: 'pasmo zwinięte');
+    final gapBefore = bottomGap(tester, 'i04');
+    final topBefore = contentTop(tester, 'i04');
+    final innerNotifications = countLayoutNotifications(inner);
+    final outerNotifications = countLayoutNotifications(outer);
+    final innerLater = countNotificationsOutsideLayout(inner);
+    final outerLater = countNotificationsOutsideLayout(outer);
+
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    await tester.pump();
+
+    final expectedMax = maxBefore - 300;
+    expect(position.maxScrollExtent, moreOrLessEquals(expectedMax),
+        reason: 'kadr wewnętrzny urósł o 300 px');
+    expect(position.pixels, moreOrLessEquals(expectedMax),
+        reason: 'pozycja wewnętrzna na nowym końcu po jednej klatce');
+    expect(outer.offset, outerBefore, reason: 'korekta siatki nie rusza pasma');
+    expect(bottomGap(tester, 'i04'), moreOrLessEquals(gapBefore),
+        reason: 'dolny kafelek przy dolnej krawędzi, bez pustego pasa '
+            '(odstęp ${bottomGap(tester, 'i04')} px)');
+    expect(contentTop(tester, 'i04'), moreOrLessEquals(topBefore),
+        reason: 'kafelek narysowany przy bieżącym pixels');
+    expect(innerNotifications(), 0,
+        reason: 'kontroler wewnętrzny bez notyfikacji w fazie układu');
+    expect(outerNotifications(), 0,
+        reason: 'kontroler pasma bez notyfikacji w fazie układu');
+    expect(innerLater(), 1,
+        reason: 'kontroler wewnętrzny dowiaduje się o korekcie RAZ, po klatce');
+    expect(outerLater(), 0, reason: 'kontroler pasma nie dowiaduje się wcale');
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+    expect(outer.offset, outerBefore,
+        reason: 'także po wygaszeniu animacji — żadnej balistyki z układu');
+    expect(position.pixels, moreOrLessEquals(expectedMax));
+    expect(bottomGap(tester, 'i04'), moreOrLessEquals(gapBefore));
+    expect(tester.takeException(), isNull);
+  });
 }
 
 /// Styl i ustawienia edycji tworzone RAZ — ta sama tożsamość przy każdej
