@@ -30,6 +30,7 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
       required this.dashboardItemController,
       this.slotCount = 8,
       this.scrollController,
+      this.primary = false,
       this.physics,
       this.dragStartBehavior,
       this.scrollBehavior,
@@ -154,6 +155,18 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget {
 
   /// [Scrollable] widget scrollController.
   final ScrollController? scrollController;
+
+  /// When `true` and [scrollController] is null, the grid scrolls on
+  /// `PrimaryScrollController.maybeOf(context)` — the inner position of an
+  /// enclosing `NestedScrollView` (One UI band), so dragging the grid also
+  /// collapses and expands the band above it.
+  ///
+  /// Default `false`: a bare `Scrollable` never adopts the primary controller
+  /// (`scrollable.dart:590-591`, Flutter 3.47), and the carousel, the layout
+  /// editor and the device-tile tabs rely on that — under a band they must
+  /// keep scrolling on their own position. With `true` and no
+  /// `PrimaryScrollController` above, the grid behaves exactly as with `false`.
+  final bool primary;
 
   /// [Scrollable] widget scrollPhysics.
   final ScrollPhysics? physics;
@@ -412,13 +425,12 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
     final maxExtent = _maxExtend.clamp(0.0, double.maxFinite);
 
-    // Skoryguj pozycję scrollowania jeśli jest poza nowym zakresem
-    // żeby uniknąć błędu "content was temporarily scrolled forward"
+    // Layout-time correction: `jumpTo` here re-entered the scroll machinery
+    // (on a nested position it moved the band and started a ballistic
+    // simulation inside layout). `correctBy` is the API made for this moment;
+    // the `applyContentDimensions` below then publishes the new range.
     if (offset.hasPixels && offset.pixels > maxExtent && maxExtent > 0) {
-      // Użyj jumpTo na ScrollPosition żeby bezpiecznie zmienić pozycję
-      if (offset is ScrollPosition) {
-        (offset as ScrollPosition).jumpTo(maxExtent);
-      }
+      offset.correctBy(maxExtent - offset.pixels);
     }
 
     try {
@@ -552,7 +564,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     return Scrollable(
         physics: effectivePhysics,
         key: scrollableKey,
-        controller: widget.scrollController,
+        controller: widget.scrollController ??
+            (widget.primary ? PrimaryScrollController.maybeOf(context) : null),
         semanticChildCount: widget.dashboardItemController._items.length,
         dragStartBehavior: widget.dragStartBehavior ?? DragStartBehavior.start,
         scrollBehavior: widget.scrollBehavior,

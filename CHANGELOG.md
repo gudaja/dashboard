@@ -12,6 +12,37 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## 0.0.11
+
+Wave **KB** of the consumer: **the grid can be the inner position of a One UI
+band**, and the layout-time scroll correction no longer calls `jumpTo`.
+
+* **`Dashboard.primary`** (opt-in, default `false`). With `true` and no
+  `scrollController`, the grid's `Scrollable` scrolls on
+  `PrimaryScrollController.maybeOf(context)` — the inner controller an enclosing
+  `NestedScrollView` hands its body — so dragging the grid collapses and expands
+  the band above it. A bare `Scrollable` never adopts the primary controller on
+  its own (`scrollable.dart:590-591`, Flutter 3.47), and the default stays that
+  way because every other grid of the consumer (carousel, layout editor,
+  device-tile tabs) must keep scrolling on its own position under a band. With
+  `true` and no `PrimaryScrollController` above, the grid behaves as before.
+* **`correctBy` instead of `jumpTo` when the content shrinks under the
+  offset.** `_setNewOffset` runs during layout (the grid is built from a
+  `LayoutBuilder`), and `jumpTo` there notified every scroll listener in the
+  middle of layout; on a nested position it was `coordinator.jumpTo` — `goIdle`,
+  a jump of the band and `goBallistic(0)`, all inside layout. `correctBy` is the
+  API made for that moment and notifies no one; the `applyContentDimensions`
+  that follows publishes the new range. Measured: after deleting the bottom row
+  of a grid scrolled to the end, `pixels` sits on the new `maxScrollExtent` in
+  the same frame and the items are drawn at the corrected offset (the layout
+  controller's rebuild repositions them, so no extra notification is needed).
+* Tests `T-KB2-01…06` (`test/band_inner_position_test.dart`): adoption under a
+  `NestedScrollView` (band expands and collapses, then the grid scrolls), the
+  correction with zero layout-phase notifications both bare and nested (band
+  offset unchanged), a viewport height oscillating 440↔720 builds neither the
+  slot-background layer nor an item, the default does not adopt, and `primary:
+  true` without a primary controller scrolls exactly like `false`.
+
 ## 0.0.10
 
 **An empty slot-background layer no longer collapses the grid.**
