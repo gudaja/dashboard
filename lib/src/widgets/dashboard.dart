@@ -575,6 +575,9 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
   bool _moving = false;
 
+  /// Whether the previous build handed `Scrollable` a physics that drags.
+  bool? _lastCanDrag;
+
   Widget dashboardWidget(BoxConstraints constrains) {
     // W trybie edycji całkowicie wyłącz scrollowanie żeby resize działał
     final isEditing = widget.dashboardItemController.isEditing;
@@ -582,14 +585,27 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
         ? const NeverScrollableScrollPhysics()
         : (scrollable ? widget.physics : const NeverScrollableScrollPhysics());
 
-    // Zmiana key wymusza przebudowanie Scrollable z nowymi physics
-    final scrollableKey = isEditing
-        ? const ValueKey('scrollable_editing')
-        : const ValueKey('scrollable_normal');
+    // No key that depends on [isEditing]. A key swap remounted the
+    // `Scrollable`, and the fresh `ScrollPosition` started at 0 — toggling edit
+    // mode threw the user back to the top of a scrolled grid. `Scrollable`
+    // handles a physics change in `didUpdateWidget`: a different physics type
+    // rebuilds the position FROM the old one (`absorb`), which keeps `pixels`.
+    //
+    // One catch, and it is why the key existed. This grid applies its scroll
+    // dimensions from `viewportBuilder`, i.e. INSIDE `Scrollable.build`, so the
+    // new position's `setCanDrag` runs after `build` has already captured the
+    // old gesture recognizers — the drag recognizer of the scrollable physics
+    // survives into edit mode and a drag scrolls the pinned grid. One more
+    // build after the frame hands the `RawGestureDetector` the recognizers
+    // `setCanDrag` left behind.
+    final canDrag = effectivePhysics is! NeverScrollableScrollPhysics;
+    if (_lastCanDrag != null && _lastCanDrag != canDrag) {
+      _setOnNextFrame();
+    }
+    _lastCanDrag = canDrag;
 
     return Scrollable(
         physics: effectivePhysics,
-        key: scrollableKey,
         controller: widget.scrollController ??
             (widget.primary ? PrimaryScrollController.maybeOf(context) : null),
         semanticChildCount: widget.dashboardItemController._items.length,

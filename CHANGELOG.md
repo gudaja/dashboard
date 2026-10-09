@@ -12,6 +12,30 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## 0.0.13
+
+**Toggling edit mode keeps the scroll offset, and the layout can be compacted.**
+
+* `Dashboard` keyed its `Scrollable` by `isEditing`, so every toggle remounted
+  it and the fresh `ScrollPosition` started at 0 — the consumer's layout editor
+  jumped back to the top each time its lock was flipped (owner's report,
+  2026-10-09). The key is gone; `Scrollable.didUpdateWidget` swaps the physics
+  and the position is rebuilt FROM the old one, keeping `pixels`.
+* Why the key existed: this grid applies its scroll dimensions from
+  `viewportBuilder`, i.e. inside `Scrollable.build`, so `setCanDrag` of the new
+  position runs after `build` captured the old gesture recognizers and a drag
+  still scrolled the pinned grid. `dashboardWidget` now schedules ONE more build
+  after the frame whenever the physics flips between dragging and
+  `NeverScrollableScrollPhysics` (edit mode and the item-drag `scrollable` flag
+  alike).
+* New `DashboardItemController.compactToTop()`: every item slides straight up
+  until it meets another item or the top edge. `startX`, width and height never
+  change (sections and virtual columns stay intact), items move in reading
+  order, the moved ones reach `onItemsUpdated` in ONE call (none when nothing
+  moved), and the call is a no-op during an edit session or with no grid
+  mounted.
+* Tests: `test/compact_and_edit_toggle_test.dart` (`T-CT-01…06`).
+
 ## 0.0.12
 
 **The layout-time correction moves the items too when the VIEWPORT grows.**

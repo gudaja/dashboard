@@ -161,6 +161,34 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
     return deleteAll(items);
   }
 
+  /// Slides every item straight UP until it meets another item or the top
+  /// edge — vertical gravity, the way a scattered layout is tidied.
+  ///
+  /// Columns never change: an item keeps its `startX`, width and height, so a
+  /// layout split into sections or virtual columns stays within them. Items
+  /// are moved in reading order (top row first), so an item never jumps over
+  /// the one standing above it.
+  ///
+  /// The moved items are reported to
+  /// [DashboardItemStorageDelegate.onItemsUpdated] in ONE call; when nothing
+  /// moved, the delegate is not called at all. Returns the identifiers of the
+  /// moved items.
+  ///
+  /// A no-op (empty list) while an edit session — a drag or a resize — is in
+  /// progress, and when no [Dashboard] is mounted: unlike [add] or [delete]
+  /// nothing is lost by dropping it, because a grid nobody sees has nothing
+  /// scattered to tidy (the same reasoning as the [isEditing] setter).
+  List<String> compactToTop() {
+    final layoutController = _layoutController;
+    if (layoutController == null) return const <String>[];
+    final moved = layoutController.compactVertically();
+    if (moved.isNotEmpty) {
+      itemStorageDelegate?._onItemsUpdated(
+          moved.map(_getItemWithLayout).toList(), layoutController.slotCount);
+    }
+    return moved;
+  }
+
   T _getItemWithLayout(String id) {
     if (!_isAttached) throw Exception("Not Attached");
     return _items[id]!..layoutData = _layoutController!._layouts![id]!.origin;
@@ -788,6 +816,57 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     } on Exception {
       rethrow;
     }
+  }
+
+  /// The engine of [DashboardItemController.compactToTop].
+  ///
+  /// The indexes are rebuilt from scratch in reading order of the CURRENT
+  /// layouts. An item's own position is always free when its turn comes (the
+  /// items placed before it only moved up, and they did not overlap it to
+  /// begin with), so it only has to look at the row right above itself, one
+  /// row at a time.
+  List<String> compactVertically() {
+    if (editSession != null) return const <String>[];
+
+    final order = _layouts!.entries.toList()
+      ..sort((a, b) {
+        final byY = a.value.origin.startY.compareTo(b.value.origin.startY);
+        return byY != 0
+            ? byY
+            : a.value.origin.startX.compareTo(b.value.origin.startX);
+      });
+
+    _startsTree.clear();
+    _endsTree.clear();
+    _indexesTree.clear();
+
+    final moved = <String>[];
+    for (final entry in order) {
+      final origin = entry.value.origin;
+      var y = origin.startY;
+      while (y > 0 && _isRowFree(y - 1, origin.startX, origin.width)) {
+        y--;
+      }
+      _indexItem(
+          y == origin.startY ? origin : origin.copyWithStarts(startY: y),
+          entry.key);
+      if (y != origin.startY) moved.add(entry.key);
+    }
+
+    if (moved.isNotEmpty) {
+      // The stack caches its item widgets and the slot background per layout;
+      // a wholesale move invalidates both, exactly like a fresh attach.
+      _rebuild = true;
+      notifyListeners();
+    }
+    return moved;
+  }
+
+  bool _isRowFree(int y, int startX, int width) {
+    for (var x = startX; x < startX + width; x++) {
+      if (_indexesTree.containsKey(getIndex([x, y]))) return false;
+    }
+    return true;
   }
 
   ///
