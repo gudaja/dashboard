@@ -454,12 +454,7 @@ class _DashboardStackState<T extends DashboardItem>
             ),
           ),
 
-        // Static layer - widgets that don't change during editing
-        ..._buildStaticWidgets(),
-
-        // Dynamic overlay layer - only currently editing widget (on top)
-        if (widget.dashboardController.editSession?.editing != null)
-          _buildEditingOverlay(),
+        _buildItemsLayer(),
 
         if (widget.dashboardController.itemController._items.isEmpty &&
             !widget.dashboardController._isEditing)
@@ -760,6 +755,63 @@ class _DashboardStackState<T extends DashboardItem>
     // The pointer may stand still: without this the item stays where the last
     // event left it while the content moves away under it.
     _onMoveUpdate(_lastLocal! + _dragShift, force: true);
+  }
+
+  /// The items as ONE subtree that the scroll MOVES, like the slot background
+  /// ([_buildBackgroundLayer]).
+  ///
+  /// Every item stands at its CONTENT position and the whole layer is
+  /// translated by a single `AnimatedBuilder` over the viewport offset, in the
+  /// paint phase. Until this every item listened to the offset itself and
+  /// moved its own `Positioned` by `- pixels`: one `AnimatedBuilder` and one
+  /// `Positioned` rebuilt, and the `Stack` laid out again, for every item in
+  /// the band on every frame of a scroll — measured with
+  /// `tool/bench_scroll_frame_test.dart` as 54 rebuilds per frame for a
+  /// 30-item phone cockpit and 825 for 600 items on a desktop.
+  ///
+  /// The edit gestures stay on this stack, the size of the viewport, and not
+  /// on the moving layer: the pointer arithmetic (`_hitAt`, the edge zones,
+  /// the scroll correction of a drag) keeps working in viewport coordinates.
+  ///
+  /// The layer's box has to CONTAIN the items for them to be hit: a `Stack`
+  /// hit-tests only inside its size. It is as tall as the content plus the row
+  /// an item can be dragged into, which changes only when the layout grows or
+  /// shrinks — not with the offset, which would lay it out on every frame.
+  Widget _buildItemsLayer() {
+    return Positioned(
+      left: 0,
+      top: 0,
+      right: 0,
+      height: _itemsLayerHeight(),
+      child: AnimatedBuilder(
+        animation: viewportOffset,
+        child: RepaintBoundary(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Static layer - widgets that don't change during editing
+              ..._buildStaticWidgets(),
+
+              // Dynamic overlay layer - only currently editing widget (on top)
+              if (widget.dashboardController.editSession?.editing != null)
+                _buildEditingOverlay(),
+            ],
+          ),
+        ),
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, -pixels),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  double _itemsLayerHeight() {
+    final lastRow = widget.dashboardController.getIndexCoordinate(
+        widget.dashboardController._endsTree.lastKey() ?? 0)[1];
+    return max(
+        (lastRow + 2) * verticalSlotEdge + viewportDelegate.padding.vertical,
+        height);
   }
 
   // Cache for static widgets

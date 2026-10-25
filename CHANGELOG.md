@@ -26,6 +26,18 @@
   body reaches below it); and once a step moves nothing the steps stop, as on
   a nested position each would still send scroll notifications.
 
+* **The items scroll as one layer.** Every item listened to the scroll offset
+  and moved its own `Positioned` by `- pixels`, so each frame of a scroll
+  rebuilt an `AnimatedBuilder` and a `Positioned` per item in the band and laid
+  the stack out again. The items now stand at their content positions in one
+  layer that a single `AnimatedBuilder` translates, as the slot background
+  already did (upstream does the same in its unmerged `local` branch,
+  `f37e788`). Measured with `tool/bench_scroll_frame_test.dart`, rebuilds per
+  scroll frame: 54.5 → 4.6 for a 30-item phone cockpit, 825 → 129 for 600
+  items on a desktop; frame time of the debug test binding −18% and −42%. The
+  edit gestures stay on the viewport-sized stack, so the pointer arithmetic is
+  unchanged.
+
 ## 1.1.0
 
 **Scrolling while editing, opt-in.** Nothing changes without the new flags.

@@ -293,18 +293,28 @@ class _DashboardItemWidgetState<T extends DashboardItem>
       ex = widget.itemGlobalPosition;
       widget.itemCurrentLayout._change = false;
     }
+    // The item stands at its CONTENT position: the stack moves the whole item
+    // layer by the scroll offset (`_DashboardStackState._buildItemsLayer`), so
+    // no item listens to the offset — except an item being dragged with the
+    // vertical clamp below, which is relative to the viewport.
+    final clampsToViewport = currentEdit &&
+        !widget.editModeSettings.draggableOutside &&
+        !widget.editModeSettings.autoScroll;
+
     if (!onEditMode && !widget.layoutController.animateEverytime) {
       // WAŻNE: child = result (nie RepaintBoundary(child: result))
       // żeby zachować spójną strukturę drzewa z ścieżką edit-mode.
       // RepaintBoundary jest w builder output — tak samo jak w trybie edycji.
+      // The `AnimatedBuilder` stays for the same reason, over a listenable
+      // that never notifies.
       return AnimatedBuilder(
-        animation: widget.offset,
+        animation: _still,
         child: result,
         builder: (context, child) {
           var cp = widget.itemGlobalPosition;
           return Positioned(
             left: cp.x,
-            top: cp.y - widget.offset.pixels,
+            top: cp.y,
             width: cp.width,
             height: cp.height,
             child: RepaintBoundary(child: child!),
@@ -315,8 +325,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
     return AnimatedBuilder(
       animation: Listenable.merge([
-        // Zawsze nasłuchuj zmian offsetu scrollowania
-        widget.offset,
+        if (clampsToViewport) widget.offset,
         // W trybie edycji zawsze nasłuchuj _transform i _resizePosition
         // żeby reagować natychmiast gdy drag się zaczyna
         if (onEditMode) ...[
@@ -445,7 +454,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
         return Positioned(
             left: left,
-            top: top - widget.offset.pixels,
+            top: top,
             width: cp.width,
             height: cp.height,
             child: RepaintBoundary(child: finalChild));
@@ -453,3 +462,7 @@ class _DashboardItemWidgetState<T extends DashboardItem>
     );
   }
 }
+
+/// A listenable that never notifies: the `AnimatedBuilder` of an item that
+/// does not move keeps the tree shape of the one that does.
+final Listenable _still = ValueNotifier<int>(0);
