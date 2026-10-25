@@ -421,6 +421,8 @@ class _DashboardPageState extends State<DashboardPage> {
         builder: (c) {
           return const AddDialog();
         });
+    // The dialog is awaited: the page may be gone by the time it closes.
+    if (!context.mounted) return;
 
     if (res != null) {
       final newId = DateTime.now().millisecondsSinceEpoch.toString();
