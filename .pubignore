@@ -9,7 +9,7 @@ build/
 
 # Not needed by users of the package (pub.dev shows README images from the
 # repository): the demo recordings, their generator and the benchmark.
-documentation/
+documentation/*
 !documentation/virtual_columns.gif
 tool/
 example/build/
