@@ -1,256 +1,151 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:dashboard/dashboard.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter_test/flutter_test.dart';
 
+import 'support/edit_grid.dart';
+
+/// Resizing an item by dragging its edges in edit mode.
+///
+/// Everything here goes through the public API of the package only. Each test
+/// checks the layout the controller holds, the size on screen and the write
+/// that reaches the storage delegate.
 void main() {
-  group('📏 RESIZE TESTS - Clean and organized resize functionality tests', () {
-    group('🔧 Basic Resize Tests', () {
-      testWidgets('Basic resize functionality without virtual columns',
-          (WidgetTester tester) async {
-        final controller = DashboardItemController<DashboardItem>(items: [
-          DashboardItem(
-            identifier: 'basic_widget',
-            width: 2,
-            height: 1,
-            startX: 2,
-            startY: 0,
-            minWidth: 1,
-          ),
-        ]);
+  testWidgets('T-R-01 · prawa krawędź o jeden slot: 2x1 → 3x1',
+      (WidgetTester tester) async {
+    final (controller, delegate) = await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 1, startX: 2, startY: 0),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 600,
-                height: 300,
-                child: Dashboard<DashboardItem>(
-                  itemBuilder: (item) => Container(
-                    color: Colors.blue,
-                    child: Center(
-                      child: Text('Basic Widget',
-                          style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                  dashboardItemController: controller,
-                  slotCount: 6,
-                  slotHeight: 100,
-                  editModeSettings: EditModeSettings(
-                    resizeCursorSide: 20,
-                    longPressEnabled: true,
-                    panEnabled: true,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(slot, 0));
 
-        await tester.pumpAndSettle();
+    expect(layoutOf(controller, 'a'), '2,0 3x1');
+    expect(tester.getRect(tile('a')).left, before.left);
+    expect(tester.getRect(tile('a')).width, before.width + slot);
+    expect(delegate.updated, ['a 2,0 3x1']);
+  });
 
-        final widgetFinder = find.text('Basic Widget');
-        expect(widgetFinder, findsOneWidget);
+  testWidgets('T-R-02 · lewa krawędź o jeden slot: start w lewo, 3x1',
+      (WidgetTester tester) async {
+    final (controller, delegate) = await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 1, startX: 2, startY: 0),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        await tester.longPress(widgetFinder);
-        await tester.pumpAndSettle();
+    await dragInSteps(tester, Offset(before.left + 5, before.center.dy),
+        const Offset(-slot, 0));
 
-        final widgetRect = tester.getRect(widgetFinder);
+    expect(layoutOf(controller, 'a'), '1,0 3x1');
+    expect(tester.getRect(tile('a')).right, before.right);
+    expect(delegate.updated, ['a 1,0 3x1']);
+  });
 
-        // Test resize gestures (all should work without issues)
-        final leftGesture = await tester
-            .startGesture(Offset(widgetRect.left + 5, widgetRect.center.dy));
-        await leftGesture.moveBy(const Offset(-30, 0));
-        await leftGesture.up();
-        await tester.pumpAndSettle();
+  testWidgets('T-R-03 · dolna krawędź o jeden slot: 2x1 → 2x2',
+      (WidgetTester tester) async {
+    final (controller, delegate) = await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 1, startX: 2, startY: 0),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        final rightGesture = await tester
-            .startGesture(Offset(widgetRect.right - 5, widgetRect.center.dy));
-        await rightGesture.moveBy(const Offset(30, 0));
-        await rightGesture.up();
-        await tester.pumpAndSettle();
+    await dragInSteps(tester, Offset(before.center.dx, before.bottom - 5),
+        const Offset(0, slot));
 
-        debugPrint('✅ Basic resize functionality - OK');
-      });
-    });
+    expect(layoutOf(controller, 'a'), '2,0 2x2');
+    expect(tester.getRect(tile('a')).height, before.height + slot);
+    expect(delegate.updated, ['a 2,0 2x2']);
+  });
 
-    group('🏗️ Virtual Columns Resize Tests', () {
-      testWidgets('Virtual columns resize - ALL DIRECTIONS WORK',
-          (WidgetTester tester) async {
-        debugPrint(
-            '🎯 Testing virtual columns resize - all directions should work');
+  testWidgets('T-R-04 · zmniejszanie zatrzymuje się na minWidth',
+      (WidgetTester tester) async {
+    final (controller, _) = await pumpEditGrid(tester, [
+      DashboardItem(
+          identifier: 'a',
+          width: 3,
+          height: 1,
+          startX: 0,
+          startY: 0,
+          minWidth: 2),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        final controller = DashboardItemController<DashboardItem>(items: [
-          DashboardItem(
-            identifier: 'vc_widget',
-            width: 2,
-            height: 1,
-            startX: 3, // Widget starts beyond first column
-            startY: 0,
-            minWidth: 1,
-          ),
-        ]);
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(-2.5 * slot, 0));
 
-        final virtualConfig = VirtualColumnsConfig.visible(
-          disabledColumns: [1, 2],
-          disabledColumnWidth: 0.1, // 10% width each
-        );
+    expect(layoutOf(controller, 'a'), '0,0 2x1');
+  });
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 600,
-                height: 300,
-                child: Dashboard<DashboardItem>(
-                  itemBuilder: (item) => Container(
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      border: Border.all(color: Colors.black, width: 2),
-                    ),
-                    child: Center(
-                      child: Text('Virtual Columns Widget',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ),
-                  ),
-                  dashboardItemController: controller,
-                  slotCount: 6,
-                  slotHeight: 100,
-                  virtualColumnsConfig: virtualConfig,
-                  editModeSettings: EditModeSettings(
-                    resizeCursorSide: 20,
-                    longPressEnabled: true,
-                    panEnabled: true,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
+  testWidgets('T-R-05 · powiększanie zatrzymuje się na maxWidth',
+      (WidgetTester tester) async {
+    final (controller, _) = await pumpEditGrid(tester, [
+      DashboardItem(
+          identifier: 'a',
+          width: 2,
+          height: 1,
+          startX: 0,
+          startY: 0,
+          maxWidth: 3),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        await tester.pumpAndSettle();
-        debugPrint('✅ Virtual columns dashboard loaded');
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(3 * slot, 0));
 
-        final widgetFinder = find.text('Virtual Columns Widget');
-        expect(widgetFinder, findsOneWidget);
+    expect(layoutOf(controller, 'a'), '0,0 3x1');
+  });
 
-        await tester.longPress(widgetFinder);
-        await tester.pumpAndSettle();
-        debugPrint('👆 Edit mode activated');
+  testWidgets(
+      'T-R-06 · szybki ruch palcem od krawędzi (jeden krok > próg dotyku) '
+      'nadal zmienia rozmiar', (WidgetTester tester) async {
+    // With the default DragStartBehavior.start, `onPanStart` reported the
+    // position AFTER the 18 px touch slop: a grab 5 px inside the right edge,
+    // pulled outwards, started outside the item and nothing happened.
+    final (controller, _) = await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 1, startX: 2, startY: 0),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        final originalRect = tester.getRect(widgetFinder);
-        debugPrint('📐 Widget positioned at: $originalRect');
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(slot, 0),
+        steps: 1);
 
-        // Test ALL directions - they all work in real application
-        final leftPoint = Offset(originalRect.left + 5, originalRect.center.dy);
-        final leftGesture = await tester.startGesture(leftPoint);
-        await leftGesture.moveBy(const Offset(-20, 0));
-        await leftGesture.up();
-        await tester.pumpAndSettle();
-        debugPrint('👈 Left edge resize gesture completed');
+    expect(layoutOf(controller, 'a'), '2,0 3x1');
+  });
 
-        final rightPoint =
-            Offset(originalRect.right - 5, originalRect.center.dy);
-        final rightGesture = await tester.startGesture(rightPoint);
-        await rightGesture.moveBy(const Offset(20, 0));
-        await rightGesture.up();
-        await tester.pumpAndSettle();
-        debugPrint('👉 Right edge resize gesture completed');
+  testWidgets('T-R-07 · to samo myszą', (WidgetTester tester) async {
+    final (controller, _) = await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 1, startX: 2, startY: 0),
+    ]);
+    final before = tester.getRect(tile('a'));
 
-        final topPoint = Offset(originalRect.center.dx, originalRect.top + 5);
-        final topGesture = await tester.startGesture(topPoint);
-        await topGesture.moveBy(const Offset(0, -20));
-        await topGesture.up();
-        await tester.pumpAndSettle();
-        debugPrint('👆 Top edge resize gesture completed');
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(slot, 0),
+        kind: PointerDeviceKind.mouse);
 
-        final bottomPoint =
-            Offset(originalRect.center.dx, originalRect.bottom - 5);
-        final bottomGesture = await tester.startGesture(bottomPoint);
-        await bottomGesture.moveBy(const Offset(0, 20));
-        await bottomGesture.up();
-        await tester.pumpAndSettle();
-        debugPrint('👇 Bottom edge resize gesture completed');
+    expect(layoutOf(controller, 'a'), '2,0 3x1');
+  });
 
-        debugPrint('');
-        debugPrint(
-            '🎉 SUCCESS: All resize directions work with virtual columns!');
-        debugPrint('   ✅ Left edge resize - WORKS');
-        debugPrint('   ✅ Right edge resize - WORKS');
-        debugPrint('   ✅ Top edge resize - WORKS');
-        debugPrint('   ✅ Bottom edge resize - WORKS');
-        debugPrint('');
-        debugPrint('🛠️  Implemented fixes:');
-        debugPrint(
-            '   - getColumnFromPosition() method for proper gesture detection');
-        debugPrint('   - adjustResizeOffset() uses real column widths');
-        debugPrint(
-            '   - _clampDifLeft/_clampDifRight use actual column calculations');
-      });
-    });
+  testWidgets(
+      'T-R-08 · rozciąganie na wyłączoną kolumnę jest blokowane, bez zapisu',
+      (WidgetTester tester) async {
+    final (controller, delegate) = await pumpEditGrid(
+      tester,
+      [
+        DashboardItem(
+            identifier: 'a', width: 2, height: 1, startX: 1, startY: 0),
+      ],
+      slotCount: 7,
+      virtualColumnsConfig: const VirtualColumnsConfig.visible(
+          disabledColumns: [3], disabledColumnWidth: 0.05),
+    );
+    final before = tester.getRect(tile('a'));
 
-    group('📏 Resize Scaling Tests', () {
-      testWidgets('Resize with different dashboard scales',
-          (WidgetTester tester) async {
-        for (final slotCount in [4, 6, 8]) {
-          final controller = DashboardItemController<DashboardItem>(items: [
-            DashboardItem(
-              identifier: 'scale_widget',
-              width: 2,
-              height: 1,
-              startX: 1,
-              startY: 0,
-            ),
-          ]);
+    await dragInSteps(tester, Offset(before.right - 5, before.center.dy),
+        const Offset(2.5 * slot, 0),
+        steps: 8);
 
-          await tester.pumpWidget(
-            MaterialApp(
-              home: Scaffold(
-                body: SizedBox(
-                  width: 600,
-                  height: 300,
-                  child: Dashboard<DashboardItem>(
-                    itemBuilder: (item) => Container(
-                      color: Colors.purple,
-                      child: Center(
-                        child: Text('Scale Test',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                    dashboardItemController: controller,
-                    slotCount: slotCount,
-                    slotHeight: 100,
-                    editModeSettings: EditModeSettings(
-                      resizeCursorSide: 15,
-                      longPressEnabled: true,
-                      panEnabled: true,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-
-          await tester.pumpAndSettle();
-
-          final widgetFinder = find.text('Scale Test');
-          expect(widgetFinder, findsOneWidget);
-
-          await tester.longPress(widgetFinder);
-          await tester.pumpAndSettle();
-
-          final widgetRect = tester.getRect(widgetFinder);
-
-          // Quick resize test
-          final gesture = await tester
-              .startGesture(Offset(widgetRect.right - 5, widgetRect.center.dy));
-          await gesture.moveBy(const Offset(20, 0));
-          await gesture.up();
-          await tester.pumpAndSettle();
-        }
-
-        debugPrint('✅ Resize scaling tests - OK');
-      });
-    });
+    expect(layoutOf(controller, 'a'), '1,0 2x1');
+    expect(tester.getRect(tile('a')), before);
+    expect(delegate.updated, isEmpty);
   });
 }

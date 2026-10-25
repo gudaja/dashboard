@@ -507,6 +507,11 @@ class _DashboardStackState<T extends DashboardItem>
       result = GestureDetector(
         // Opaque behavior żeby przechwytywać gesty przed Scrollable
         behavior: HitTestBehavior.opaque,
+        // The item and the edge are picked where the pointer went DOWN. With
+        // the default `start`, `onPanStart` reports the position after the
+        // touch slop (18 px), so a grab near an edge landed outside the item
+        // or on the wrong edge.
+        dragStartBehavior: DragStartBehavior.down,
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
                 _onMoveStart(panStart.localPosition);
