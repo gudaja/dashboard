@@ -12,6 +12,45 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## Unreleased
+
+**Edit-mode gestures, item width and the delete handle fixed; real gesture
+tests.**
+
+* **Drags start where the pointer went down.** The edit-mode `GestureDetector`
+  used `DragStartBehavior.start`, so the item and the resize edges were picked
+  at the position after the touch slop (18 px). On touch, grabbing an edge and
+  pulling outwards started outside the item and did nothing; a fast move from
+  the centre of a small item became a resize (1x1 → 4x1). Now
+  `DragStartBehavior.down`.
+* **The delete handle's `onDelete` deletes through `DashboardItemController`.**
+  It only took the item off the grid: the item stayed in `items` and the
+  storage delegate never got `onItemsDeleted`, so it came back on reload. A
+  consumer calling `controller.delete` itself (as `sinum_dashboard` does) is
+  unaffected.
+* **Edit-mode handles keep the item at its slot size.** With
+  `resizeHandleBuilder`/`deleteHandleBuilder` set, the item sat in a loose
+  `Stack` and shrank to its own content; now `StackFit.expand`.
+* **Last-column items stay inside the right padding.** Disabled virtual
+  columns were sized from the padded width while `slotEdge` came from the
+  padding-free one, pushing every later column right by
+  `disabledColumnWidth × padding.horizontal`.
+* **A storage-backed controller swapped in under the same key** shows the
+  loading placeholder instead of a null-check error (its items were never
+  loaded: that happens in `initState`).
+* `super.initState()` is called first in every `State` (upstream
+  Mehmetyaz/dashboard#54).
+* Tests: `resize_test.dart` replaces the placeholders (gestures with no
+  assertion) with `T-R-01…08`; new `move_test.dart` (`T-M-01…05`),
+  `controller_api_test.dart` (`T-C-01…04`: `addAll`, `deleteAll`,
+  `errorPlaceholder`, `onGridDimensionsChanged`), `edit_mode_handles_test.dart`
+  (`T-EH-01…03`), `branch_salvage_test.dart` (`T-S-01…02`). Gesture tests need a
+  real 20 ms wait between moves because of the 16 ms wall-clock throttle; see
+  `test/support/edit_grid.dart`.
+* README: animated demos of the fork's features (recorded by
+  `tool/doc_screenshots_test.dart`), install from git, an up-to-date TODO.
+  Removed: session reports, the Raspberry Pi tooling and dead example code.
+
 ## 0.0.13
 
 **Toggling edit mode keeps the scroll offset, and the layout can be compacted.**
