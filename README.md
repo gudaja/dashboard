@@ -10,17 +10,17 @@ Dashboard can be thought of as a dynamic grid. Your users can create their own l
 
 Layout divides the screen into horizontal slots according to the entered value. The aspect ratio of the slots also determine their height. Widgets called DashboardItem are placed in these slots. This layout can be changed later.
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/slots.png?raw=true" width="400"/>
+<img src="documentation/slots.png" width="400"/>
 
 ### Resize
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/resize.gif?raw=true" width="400"/>
+<img src="documentation/resize.gif" width="400"/>
 
 Dashboard Items can be resized both by long pressing on mobile and by holding and moving on desktop/browser.
 
 ### Move
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/move.gif?raw=true" width="400"/>
+<img src="documentation/move.gif" width="400"/>
 
 Dashboard Item locations can be changed by long pressing on mobile or by holding and pulling on desktop/browser.
 
@@ -28,7 +28,7 @@ Dashboard Item locations can be changed by long pressing on mobile or by holding
 
 With dynamic slot count, you can re-layout window size changes.
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/re-layout.gif?raw=true" width="400"/>>
+<img src="documentation/re-layout.gif" width="400"/>
 
 
 ### Storage Delegate
@@ -141,11 +141,11 @@ Slide to top items initially. Auto relayout places items to top as possible.
 
 Before: 
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/before.png?raw=true" width="400"/>>
+<img src="documentation/before.png" width="400"/>
 
 After: 
 
-<img src="https://github.com/Mehmetyaz/dashboard/blob/master/documentation/after.png?raw=true" width="400"/>>
+<img src="documentation/after.png" width="400"/>
 
 #### Shrink
 
