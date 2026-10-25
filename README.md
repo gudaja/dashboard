@@ -319,4 +319,3 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
        columns, where enabled slots are wider and disabled ones narrower.
  - [ ] Document `invalidateCache`, `GridDimensions` / `onGridDimensionsChanged`,
        `primary` and `MobileCarouselConfig.sectionStepOnTablet`.
- - [ ] Measure `FastIndexMap` (upstream `local` branch) against `SplayTreeMap`.

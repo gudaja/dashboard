@@ -511,7 +511,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       _reloadFor = widget.slotCount;
       widget.dashboardItemController._items.clear();
       _layoutController._startsTree.clear();
-      _layoutController._indexesTree.clear();
+      _layoutController._slotIndex.clear();
       _layoutController._endsTree.clear();
       var loader = widget.dashboardItemController._loadItems(widget.slotCount);
 

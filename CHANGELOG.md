@@ -38,6 +38,14 @@ tests.**
 * **A storage-backed controller swapped in under the same key** shows the
   loading placeholder instead of a null-check error (its items were never
   loaded: that happens in `initState`).
+* **The visible-items query no longer walks the whole grid.** On every stack
+  build — every scroll and drag frame — the stack walked the entire slot index
+  before and after the viewport to find what to drop, so the cost grew with
+  the grid, not the view. It now scans the visible rows only, and the slot
+  index is a hash map (`_SlotIndex`, after upstream's `FastIndexMap`) instead of
+  a `SplayTreeMap`. Measured by `tool/bench_index_map.dart`, AOT, per build:
+  36 → 3.5 µs for a 30-item cockpit, 383 → 19 µs for 600 items; slot lookups
+  for the grid background about 10× faster. Same items, same z-order.
 * `super.initState()` is called first in every `State` (upstream
   Mehmetyaz/dashboard#54).
 * Tests: `resize_test.dart` replaces the placeholders (gestures with no

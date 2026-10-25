@@ -51,7 +51,7 @@ abstract class SlotBackgroundBuilder<T extends DashboardItem> {
   /// answer `null`, so nothing outside the package changes.
   Widget? _build(BuildContext context, int x, int y) {
     final layoutController = _itemController!._layoutController!;
-    final i = layoutController._indexesTree[layoutController.getIndex([x, y])];
+    final i = layoutController._slotIndex[layoutController.getIndex([x, y])];
 
     T? item;
 

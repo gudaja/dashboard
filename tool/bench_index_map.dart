@@ -1,12 +1,13 @@
-// Measures the slot index the layout controller keeps (`_indexesTree`, slot
-// index → item id) against the HashMap-based `FastIndexMap` from the upstream
-// `local` branch (Mehmetyaz/dashboard f37e788). Pure Dart, no Flutter:
+// Measures the slot index of the layout controller (slot index → item id):
+// the SplayTreeMap `_indexesTree` the fork used up to 0.0.13 against the
+// HashMap-based `FastIndexMap` from the upstream `local` branch
+// (Mehmetyaz/dashboard f37e788). The fork switched to C (`_SlotIndex`) after
+// this measurement. Pure Dart, no Flutter:
 //
 //   dart run tool/bench_index_map.dart                 # JIT
 //   dart compile exe tool/bench_index_map.dart -o build/bench && build/bench  # AOT, as in release
 //
-// The loops are copied from `_DashboardStackState.build`
-// (`dashboard_stack.dart`) and `_DashboardLayoutController`.
+// A's loops are copied from `_DashboardStackState.build` as of 0.0.13.
 // ignore_for_file: avoid_print
 import 'dart:collection';
 import 'dart:math';
@@ -76,7 +77,7 @@ Map<String, List<int>> layout(Scenario s) {
   return result;
 }
 
-/// The fork today: walk from startIndex to endIndex, then walk the WHOLE tree
+/// The fork up to 0.0.13: walk from startIndex to endIndex, then walk the WHOLE tree
 /// before and after startIndex to find what to drop.
 int queryFork(SplayTreeMap<int, String> tree, int startIndex, int endIndex) {
   var needs = <String>[];
@@ -220,7 +221,7 @@ void main() {
         time(q, () => queryHash(hash, startIndex, endIndex, freshWidgets()));
     final copy = time(q, () => freshWidgets().length);
     print('zapytanie o widoczne (na budowę stosu):');
-    print('  A fork (SplayTree, pełny obchód)     ${fmt(a)}');
+    print('  A fork do 0.0.13 (SplayTree, obchód)  ${fmt(a)}');
     print('  B SplayTree, tylko widoczny zakres   ${fmt(b - copy)}');
     print('  C upstream (HashMap, itemsInRange)   ${fmt(c - copy)}');
 

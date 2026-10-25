@@ -351,7 +351,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   final SplayTreeMap<int, String> _startsTree = SplayTreeMap<int, String>();
   final SplayTreeMap<int, String> _endsTree = SplayTreeMap<int, String>();
 
-  final SplayTreeMap<int, String> _indexesTree = SplayTreeMap<int, String>();
+  final _SlotIndex _slotIndex = _SlotIndex();
 
   _EditSession? editSession;
 
@@ -415,7 +415,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       _endsTree.remove(indexes.last);
 
       for (var i in indexes) {
-        _indexesTree.remove(i);
+        _slotIndex.remove(i);
       }
 
       _layouts!.remove(id);
@@ -430,7 +430,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     _endsTree.remove(indexes.last);
 
     for (var i in indexes) {
-      _indexesTree.remove(i);
+      _slotIndex.remove(i);
     }
 
     _layouts!.remove(id);
@@ -584,7 +584,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
               x, y + 1, x - itemLayout.startX, y - itemLayout.startY + 1));
           break xLoop;
         }
-        if (_indexesTree.containsKey(getIndex([x, y]))) {
+        if (_slotIndex.containsKey(getIndex([x, y]))) {
           minX = x - 1;
           // filled
           if (x == itemLayout.startX) {
@@ -666,9 +666,9 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       _endsTree.remove((i.last));
     }
     for (var index in i) {
-      var s = _indexesTree[index];
+      var s = _slotIndex[index];
       if (s != null && s == id) {
-        _indexesTree.remove(index);
+        _slotIndex.remove(index);
       }
     }
   }
@@ -689,7 +689,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     _startsTree[i.first] = id;
     _endsTree[i.last] = id;
     for (var index in i) {
-      _indexesTree[index] = id;
+      _slotIndex[index] = id;
     }
 
     _layouts![id]!.origin = itemLayout.._haveLocation = true;
@@ -838,7 +838,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
     _startsTree.clear();
     _endsTree.clear();
-    _indexesTree.clear();
+    _slotIndex.clear();
 
     final moved = <String>[];
     for (final entry in order) {
@@ -847,8 +847,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       while (y > 0 && _isRowFree(y - 1, origin.startX, origin.width)) {
         y--;
       }
-      _indexItem(
-          y == origin.startY ? origin : origin.copyWithStarts(startY: y),
+      _indexItem(y == origin.startY ? origin : origin.copyWithStarts(startY: y),
           entry.key);
       if (y != origin.startY) moved.add(entry.key);
     }
@@ -864,7 +863,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
   bool _isRowFree(int y, int startX, int width) {
     for (var x = startX; x < startX + width; x++) {
-      if (_indexesTree.containsKey(getIndex([x, y]))) return false;
+      if (_slotIndex.containsKey(getIndex([x, y]))) return false;
     }
     return true;
   }
@@ -875,7 +874,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
     _startsTree.clear();
     _endsTree.clear();
-    _indexesTree.clear();
+    _slotIndex.clear();
     for (var e in l) {
       mountToTop(e);
     }
@@ -888,7 +887,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
       _startsTree.clear();
       _endsTree.clear();
-      _indexesTree.clear();
+      _slotIndex.clear();
 
       var not = <String>[];
 
@@ -1358,4 +1357,35 @@ class _EditSession {
 
   ///
   final _ItemCurrentLayout editingOrigin;
+}
+
+/// Slot index → id of the item covering that slot.
+///
+/// A hash map, not a sorted tree: every lookup is by one exact slot, and the
+/// only range question — which items cover the visible rows — is answered by
+/// scanning those rows' slots (`tool/bench_index_map.dart`). Same idea as
+/// upstream's `FastIndexMap` (Mehmetyaz/dashboard `local`, f37e788).
+class _SlotIndex {
+  final Map<int, String> _map = <int, String>{};
+
+  String? operator [](int index) => _map[index];
+
+  void operator []=(int index, String id) => _map[index] = id;
+
+  bool containsKey(int index) => _map.containsKey(index);
+
+  String? remove(int index) => _map.remove(index);
+
+  void clear() => _map.clear();
+
+  /// Ids of the items covering any slot from [start] to [end] inclusive, in
+  /// slot order.
+  Set<String> itemsInRange(int start, int end) {
+    final result = <String>{};
+    for (var i = start < 0 ? 0 : start; i <= end; i++) {
+      final id = _map[i];
+      if (id != null) result.add(id);
+    }
+    return result;
+  }
 }

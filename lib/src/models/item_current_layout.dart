@@ -493,7 +493,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     }
 
     for (var i in sideIndexes) {
-      var item = _layoutController._indexesTree[i];
+      var item = _layoutController._slotIndex[i];
       if (item != null && !sideItemsIds.contains(item)) {
         sideItemsIds.add(item);
       }
@@ -797,7 +797,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
     var i = _layoutController.getIndex([newStartX, newStartY]);
 
-    if (_layoutController._indexesTree.containsKey(i)) {
+    if (_layoutController._slotIndex.containsKey(i)) {
       _layoutController._indexItem(
           ItemLayout(
               startX: startX,
@@ -970,7 +970,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var slotIndex = _layoutController.getIndex([newStartX, newStartY]);
 
     final holdItem = _layoutController
-        ._indexesTree[_layoutController.getIndex([holdX, holdY])];
+        ._slotIndex[_layoutController.getIndex([holdX, holdY])];
 
     if (holdItem != null && holdItem != id) {
       final holdingItem = _layoutController._layouts![holdItem];

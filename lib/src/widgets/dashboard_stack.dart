@@ -384,68 +384,26 @@ class _DashboardStackState<T extends DashboardItem>
     endIndex = widget.dashboardController
         .getIndex([widget.dashboardController.slotCount - 1, endY]);
 
-    var needs = <String>[];
-    var key = startIndex;
-
-    if (widget.dashboardController._indexesTree[key] != null) {
-      needs.add(widget.dashboardController._indexesTree[key]!);
-    }
-
-    while (true) {
-      var f = widget.dashboardController._indexesTree.firstKeyAfter(key);
-      if (f != null) {
-        key = f;
-        needs.add(widget.dashboardController._indexesTree[key]!);
-        if (key >= endIndex) {
-          break;
-        }
-      } else {
-        break;
-      }
-    }
-
-    var beforeIt = <String>[];
-    key = startIndex;
-    while (true) {
-      var f = widget.dashboardController._indexesTree.lastKeyBefore(key);
-      if (f != null) {
-        key = f;
-        beforeIt.add(widget.dashboardController._indexesTree[key]!);
-      } else {
-        break;
-      }
-    }
-
-    var afterIt = <String>[];
-    key = startIndex;
-    while (true) {
-      var f = widget.dashboardController._indexesTree.firstKeyAfter(key);
-      if (f != null) {
-        key = f;
-        afterIt.add(widget.dashboardController._indexesTree[key]!);
-      } else {
-        break;
-      }
-    }
-
-    var needDelete = [...afterIt, ...beforeIt];
+    // Only the slots of the visible rows are looked at, so the cost follows
+    // the viewport and not the grid. Until now the stack also walked the WHOLE
+    // index before and after the viewport, on every build — every scroll and
+    // drag frame (`tool/bench_index_map.dart`: 383 µs → 19 µs per build on a
+    // 600-item grid). Set order is slot order, the same z-order as before.
+    final needs = widget.dashboardController._slotIndex
+        .itemsInRange(startIndex, endIndex);
 
     var edit = widget.dashboardController.editSession?.editing;
 
-    for (var n in needDelete) {
-      if (!needs.contains(n) && n != edit?.id) {
-        _removeWidget(n);
-      }
-    }
-
-    // An item DELETED from the controller leaves `_indexesTree`, so neither walk
-    // above can see it any more — until this wave the only thing that took it out
-    // of the map was the blanket clear of `didUpdateWidget`, and without that
-    // clear `buildPositioned` would dereference `_items[id]!` on a dead id.
+    // Everything else leaves the map: items scrolled out (except the one being
+    // edited, which stays even when dragged out of the viewport), and items
+    // DELETED from the controller, edited or not — `buildPositioned` would
+    // dereference `_items[id]!` on a dead id.
     final live = widget.dashboardController.itemController._items;
-    for (final dead
-        in _widgetsMap.keys.where((id) => !live.containsKey(id)).toList()) {
-      _removeWidget(dead);
+    for (final gone in _widgetsMap.keys
+        .where((id) =>
+            !live.containsKey(id) || (!needs.contains(id) && id != edit?.id))
+        .toList()) {
+      _removeWidget(gone);
     }
 
     for (var n in needs) {
@@ -671,7 +629,7 @@ class _DashboardStackState<T extends DashboardItem>
         (local.dy + pixels - viewportDelegate.padding.top) ~/ verticalSlotEdge;
 
     var e = widget.dashboardController
-        ._indexesTree[widget.dashboardController.getIndex([x, y])];
+        ._slotIndex[widget.dashboardController.getIndex([x, y])];
 
     if (e is String) {
       var directions = <AxisDirection>[];
