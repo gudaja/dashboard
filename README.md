@@ -112,6 +112,25 @@ MobileDashboardWrapper(
 )
 ```
 
+
+Sections are the column groups between disabled virtual columns; without a
+`virtualColumnsConfig` every `columnsPerPage` columns make one. Page changes
+are reported through `onPageChanged`. `MobileCarouselConfig`:
+
+| Field | Default | |
+|---|---|---|
+| `mobileBreakpoint`, `tabletBreakpoint` | 600, 900 | below them the phone and the tablet layout |
+| `visibleSectionsOnMobile`, `visibleSectionsOnTablet` | 1, 2 | sections side by side |
+| `sectionStepOnTablet` | `null` (one section) | how far one tablet page moves |
+| `showHeader`, `showDots`, `showArrows` | `true` | section header, page dots, arrows |
+| `swipeEnabled` | `true` | paging by swipe (always off in edit mode) |
+| `dotColor`, `activeDotColor`, `arrowColor`, `dotSize`, `activeDotSize`, `dotsSpacing`, `arrowSize` | | looks of the dots and arrows |
+
+With two sections visible and the default step, tablet pages overlap: page 0
+shows sections 1+2, page 1 sections 2+3. `sectionStepOnTablet: 2` pages block
+by block instead; the last page is clamped so it is never half empty (three
+sections: 1+2, then 2+3; four sections: 1+2, then 3+4).
+
 ### Resize and delete handles
 
 In edit mode every item can carry a resize handle (bottom right) and a delete
@@ -133,6 +152,50 @@ EditModeSettings(
 moving or deleting items, and returns the identifiers it moved.
 
 <img src="documentation/compact_to_top.gif" width="400"/>
+
+
+### Grid geometry
+
+`onGridDimensionsChanged` reports the laid-out geometry (`slotWidth`,
+`slotHeight`, `columns`, `totalWidth`, `totalHeight`, `padding`, the spacing),
+so items can size their content to the slot. It is called during layout, on
+every layout pass: compare, and `setState` after the frame.
+
+```dart
+Dashboard(
+  onGridDimensionsChanged: (d) {
+    if (d.slotWidth == _grid?.slotWidth && d.slotHeight == _grid?.slotHeight) {
+      return;
+    }
+    _grid = d;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  },
+  ...
+)
+```
+
+`slotWidth` is the width of an enabled column; with virtual columns that is
+wider than `totalWidth / columns`. `MobileDashboardWrapper` does not take the
+callback: pass it to the `Dashboard` built in `dashboardBuilder`.
+
+### Inside a NestedScrollView
+
+With `primary: true` and no `scrollController`, the grid scrolls on the
+`PrimaryScrollController` an enclosing `NestedScrollView` gives its body, so
+dragging the grid also collapses and expands the header above it. The default
+`false` keeps the grid on its own scroll position, which is what a carousel or
+a second grid under the same header needs.
+
+```dart
+NestedScrollView(
+  headerSliverBuilder: (context, innerBoxIsScrolled) => [
+    const SliverAppBar(expandedHeight: 200, pinned: true),
+  ],
+  body: Dashboard(primary: true, ...),
+)
+```
 
 ## Getting started
 
@@ -349,5 +412,3 @@ The slot count is normalised the way `getAllItems` normalises it: with
 ## TODO
 
  - [ ] Animate `compactToTop` (items currently jump to their new rows).
- - [ ] Document `GridDimensions` / `onGridDimensionsChanged`, `primary` and
-       `MobileCarouselConfig.sectionStepOnTablet`.
