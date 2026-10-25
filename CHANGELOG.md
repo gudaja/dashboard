@@ -46,6 +46,14 @@ tests.**
   a `SplayTreeMap`. Measured by `tool/bench_index_map.dart`, AOT, per build:
   36 → 3.5 µs for a 30-item cockpit, 383 → 19 µs for 600 items; slot lookups
   for the grid background about 10× faster. Same items, same z-order.
+* **`horizontalSpace` and `verticalSpace` act in the directions they name.**
+  They were crossed (inherited from upstream): `horizontalSpace` spaced the
+  rows and `verticalSpace` the columns. Only unequal values change.
+* **`GridDimensions.slotWidth` is the width of an enabled column.** With
+  virtual columns it was `totalWidth / slotCount`, averaging the narrow
+  disabled columns in (85.7 px reported for 95 px columns). `slotHeight` from
+  `slotAspectRatio` is still `totalWidth / slotCount / ratio`; every field is
+  now documented.
 * `super.initState()` is called first in every `State` (upstream
   Mehmetyaz/dashboard#54).
 * Tests: `resize_test.dart` replaces the placeholders (gestures with no
