@@ -28,6 +28,37 @@ With dynamic slot count, you can re-layout window size changes.
 
 <img src="documentation/re-layout.gif" width="400"/>
 
+### Storage Delegate
+
+The layout information of the users can be stored in the database or on the local disk.
+
+Define your storage delegate.
+
+```dart
+class MyItemStorage extends DashboardItemStorageDelegate {  
+
+  @override  
+  FutureOr<List<DashboardItem>> getAllItems(int slotCount) {  
+    // return items from db.
+  }  
+  
+  @override  
+  FutureOr<void> onItemsUpdated(  
+      List<DashboardItem> items, int slotCount) {
+      // save new layouts to db.
+  }
+  //[...]
+}
+```
+
+And use it.
+
+```dart
+DashboardItemController.withDelegate(
+    itemStorageDelegate: MyItemStorage())
+```
+
+
 ## Added in this fork
 
 The animations below are recorded from the package itself, with real gestures,
@@ -102,37 +133,6 @@ EditModeSettings(
 moving or deleting items, and returns the identifiers it moved.
 
 <img src="documentation/compact_to_top.gif" width="400"/>
-
-### Storage Delegate
-
-The layout information of the users can be stored in the database or on the local disk.
-
-Define your storage delegate.
-
-```dart
-class MyItemStorage extends DashboardItemStorageDelegate {  
-
-  @override  
-  FutureOr<List<DashboardItem>> getAllItems(int slotCount) {  
-    // return items from db.
-  }  
-  
-  @override  
-  FutureOr<void> onItemsUpdated(  
-      List<DashboardItem> items, int slotCount) {
-      // save new layouts to db.
-  }
-  //[...]
-}
-```
-
-And use it.
-
-```dart
-DashboardItemController.withDelegate(
-    itemStorageDelegate: MyItemsStorage())
-```
-
 
 ## Getting started
 
@@ -310,10 +310,44 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
 
 [See example](example/lib/storage.dart)
 
+#### Caching
+
+```dart
+class MyItemStorage extends DashboardItemStorageDelegate<MyItem> {
+  @override
+  bool get cacheItems => true;
+
+  @override
+  bool get layoutsBySlotCount => true;
+  //[...]
+}
+```
+
+With `cacheItems` the delegate keeps the layout in memory after the first
+`getAllItems` and does not call it again for that slot count; additions,
+layout changes and deletions made through the grid update the cache as they
+are saved. With `layoutsBySlotCount` every slot count has a layout (and a
+cache entry) of its own, otherwise all slot counts share one.
+
+#### Invalidating the cache
+
+The cache lives on the delegate, not on the widget, so re-mounting the
+`Dashboard` keeps serving it. When the stored layout changed somewhere else —
+a second grid over the same storage, an editor on another screen, a sync —
+drop the cache and the next mount calls `getAllItems` again:
+
+```dart
+storage.invalidateCache(slotCount); // one slot count
+storage.invalidateCache();          // all of them
+```
+
+The slot count is normalised the way `getAllItems` normalises it: with
+`layoutsBySlotCount` false any value clears the one shared entry.
+
 
 
 ## TODO
 
  - [ ] Animate `compactToTop` (items currently jump to their new rows).
- - [ ] Document `invalidateCache`, `GridDimensions` / `onGridDimensionsChanged`,
-       `primary` and `MobileCarouselConfig.sectionStepOnTablet`.
+ - [ ] Document `GridDimensions` / `onGridDimensionsChanged`, `primary` and
+       `MobileCarouselConfig.sectionStepOnTablet`.
