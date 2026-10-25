@@ -468,9 +468,9 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
     // Oblicz wymiary grida
     final gridDimensions = GridDimensions(
-      slotWidth:
-          _layoutController._viewportDelegate.resolvedConstrains.maxWidth /
-              widget.slotCount,
+      // The width items are laid out with (`_setSizes`). Not width / slotCount:
+      // with virtual columns that averages the narrow disabled columns in.
+      slotWidth: _layoutController.slotEdge,
       slotHeight: h,
       columns: widget.slotCount,
       totalWidth:

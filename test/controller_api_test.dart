@@ -130,6 +130,44 @@ void main() {
     expect(reported.last.totalWidth, 200);
     expect(reported.last.slotWidth, 50);
   });
+
+  testWidgets(
+      'T-C-05 · przy kolumnach wirtualnych slotWidth to szerokość kolumny '
+      'włączonej, ta, w której stoją kafelki', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(600, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    GridDimensions? reported;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Dashboard<DashboardItem>(
+          dashboardItemController:
+              DashboardItemController<DashboardItem>(items: [
+            DashboardItem(
+                identifier: 'a', width: 1, height: 1, startX: 1, startY: 0),
+          ]),
+          slotCount: 7,
+          slotHeight: 50,
+          horizontalSpace: 4,
+          verticalSpace: 4,
+          slideToTop: false,
+          // 600 px: one disabled column of 5% (30 px), six enabled of 95 px.
+          virtualColumnsConfig: const VirtualColumnsConfig.visible(
+              disabledColumns: [3], disabledColumnWidth: 0.05),
+          onGridDimensionsChanged: (d) => reported = d,
+          itemBuilder: (item) => ColoredBox(
+              key: Key('tile_${item.identifier}'), color: Colors.red),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(reported!.slotWidth, 95, reason: 'not 600 / 7 = 85.7');
+    // An item away from the edges has half the spacing on each side.
+    expect(tester.getSize(find.byKey(const Key('tile_a'))).width,
+        reported!.slotWidth - 4);
+  });
 }
 
 class _FailingDelegate extends DashboardItemStorageDelegate<DashboardItem> {
