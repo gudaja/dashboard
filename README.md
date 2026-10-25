@@ -149,7 +149,10 @@ EditModeSettings(
 ### Compact to top
 
 `DashboardItemController.compactToTop()` closes the vertical gaps left after
-moving or deleting items, and returns the identifiers it moved.
+moving or deleting items, and returns the identifiers it moved. The items
+slide to their new rows in edit mode, or always with `animateEverytime` (the
+default); with `animateEverytime: false` outside edit mode they jump, like
+every other layout change.
 
 <img src="documentation/compact_to_top.gif" width="400"/>
 
@@ -406,9 +409,3 @@ storage.invalidateCache();          // all of them
 
 The slot count is normalised the way `getAllItems` normalises it: with
 `layoutsBySlotCount` false any value clears the one shared entry.
-
-
-
-## TODO
-
- - [ ] Animate `compactToTop` (items currently jump to their new rows).

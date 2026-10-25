@@ -162,7 +162,9 @@ void main() {
         title: 'compactToTop()',
         controller: controller,
         onCompact: controller.compactToTop,
-        body: _grid(controller, 4, virtual: false),
+        // Outside edit mode a layout change animates only with
+        // animateEverytime, which the other recordings leave off.
+        body: _grid(controller, 4, virtual: false, animate: true),
       ),
     );
 
@@ -308,7 +310,7 @@ Widget _wrapper(DashboardItemController<DashboardItem> controller) {
 }
 
 Widget _grid(DashboardItemController<DashboardItem> controller, int slotCount,
-    {bool virtual = true, bool handles = false}) {
+    {bool virtual = true, bool handles = false, bool animate = false}) {
   return Dashboard<DashboardItem>(
     dashboardItemController: controller,
     slotCount: slotCount,
@@ -318,7 +320,7 @@ Widget _grid(DashboardItemController<DashboardItem> controller, int slotCount,
     verticalSpace: 8,
     shrinkToPlace: false,
     slideToTop: false,
-    animateEverytime: false,
+    animateEverytime: animate,
     virtualColumnsConfig: virtual ? _columns : null,
     slotBackgroundBuilder: SlotBackgroundBuilder.withDimensionsFunction(
         (context, item, x, y, editing, slotWidth, slotHeight, config) {
