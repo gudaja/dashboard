@@ -111,15 +111,22 @@ class _DashboardPageState extends State<DashboardPage> {
     disabledColumns: [6, 13],
     disabledColumnWidth: 0.03,
   );
-  static const _mobileConfig = MobileCarouselConfig(
-    mobileBreakpoint: _mobileBreakpoint,
-    tabletBreakpoint: _tabletBreakpoint,
-    visibleSectionsOnMobile: 1,
-    visibleSectionsOnTablet: 2,
-    showHeader: false,
-    showDots: true,
-    activeDotColor: Color(0xFF4285F4),
-  );
+
+  /// EditModeSettings.scrollWhileEditing: the grid scrolls in edit mode, a
+  /// finger picks an item up after a hold, an item at an edge scrolls the grid
+  /// or flips the section.
+  bool _scrollWhileEditing = false;
+
+  MobileCarouselConfig get _mobileConfig => MobileCarouselConfig(
+        mobileBreakpoint: _mobileBreakpoint,
+        tabletBreakpoint: _tabletBreakpoint,
+        visibleSectionsOnMobile: 1,
+        visibleSectionsOnTablet: 2,
+        showHeader: false,
+        showDots: true,
+        activeDotColor: const Color(0xFF4285F4),
+        swipeWhileEditing: _scrollWhileEditing,
+      );
 
   @override
   void initState() {
@@ -205,6 +212,18 @@ class _DashboardPageState extends State<DashboardPage> {
               },
               icon: const Icon(Icons.add),
               tooltip: 'Dodaj nowy element'),
+          IconButton(
+              onPressed: () {
+                setState(() {
+                  _scrollWhileEditing = !_scrollWhileEditing;
+                });
+              },
+              isSelected: _scrollWhileEditing,
+              icon: const Icon(Icons.lock_outline),
+              selectedIcon: const Icon(Icons.swipe_vertical),
+              tooltip: _scrollWhileEditing
+                  ? 'Przewijanie w edycji: włączone'
+                  : 'Przewijanie w edycji: wyłączone'),
           IconButton(
               onPressed: () {
                 itemController.isEditing = !itemController.isEditing;
@@ -293,6 +312,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   physics: const RangeMaintainingScrollPhysics()
                       .applyTo(ClampingScrollPhysics()),
                   editModeSettings: EditModeSettings(
+                      scrollWhileEditing: _scrollWhileEditing,
                       draggableOutside: false,
                       paintBackgroundLines: false,
                       autoScroll: true,
@@ -368,13 +388,28 @@ class _DashboardPageState extends State<DashboardPage> {
                       );
                     }
 
-                    return ItemDisplayWidget(
-                      item: item,
-                      isEditing: itemController.isEditing,
-                      onDelete: () {
-                        itemController.delete(item.identifier);
-                      },
-                      borderRadius: itemBorderRadius,
+                    // Outlined while a pointer drags it (`liftedItem`).
+                    return ValueListenableBuilder<String?>(
+                      valueListenable: itemController.liftedItem,
+                      child: ItemDisplayWidget(
+                        item: item,
+                        isEditing: itemController.isEditing,
+                        onDelete: () {
+                          itemController.delete(item.identifier);
+                        },
+                        borderRadius: itemBorderRadius,
+                      ),
+                      builder: (context, lifted, child) => DecoratedBox(
+                        position: DecorationPosition.foreground,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(itemBorderRadius),
+                          border: lifted == item.identifier
+                              ? Border.all(
+                                  color: const Color(0xFF4285F4), width: 3)
+                              : null,
+                        ),
+                        child: child,
+                      ),
                     );
                   },
                 ), // Dashboard

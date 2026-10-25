@@ -384,6 +384,78 @@ void main() {
 
       expect(find.text('Sekcja 1 z 4'), findsOneWidget);
     });
+
+    testWidgets(
+        'T-SE-13 · karuzela: uchwyt resize przy prawej krawędzi przechodzi '
+        'do następnej sekcji, a kafelek rośnie za nią',
+        (WidgetTester tester) async {
+      final controller = await _pumpCarousel(tester,
+          settings: EditModeSettings(
+              scrollWhileEditing: true,
+              resizeHandleBuilder: (context, item, isEditing) => SizedBox(
+                  key: ValueKey('resize_${item.identifier}'),
+                  width: 20,
+                  height: 20)));
+      final handle = tester.getRect(find.byKey(const ValueKey('resize_s0')));
+      final at = Offset(360, handle.center.dy);
+
+      final gesture = await tester.startGesture(handle.center,
+          kind: PointerDeviceKind.touch);
+      await tester.pump();
+      await moveInSteps(tester, gesture, at - handle.center);
+      await _pumpFor(tester, const Duration(milliseconds: 850));
+      expect(find.text('Sekcja 2 z 4'), findsOneWidget);
+      await moveInSteps(tester, gesture, Offset.zero, steps: 1);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sekcja 2 z 4'), findsOneWidget);
+      expect(layoutOf(controller, 's0'), '1,0 11x1',
+          reason: 'from column 1 to the column under the finger, 11');
+    });
+
+    testWidgets(
+        'T-SE-14 · draggableOutside: false nie blokuje zmiany sekcji przy '
+        'krawędzi', (WidgetTester tester) async {
+      final controller = await _pumpCarousel(tester,
+          settings: EditModeSettings(
+              scrollWhileEditing: true, draggableOutside: false));
+      final s0 = tester.getRect(find.byKey(const Key('tile_s0')));
+      final at = Offset(360, s0.center.dy);
+
+      final gesture =
+          await tester.startGesture(s0.center, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await gesture.moveTo(at);
+      await tester.pump();
+      await _pumpFor(tester, const Duration(milliseconds: 850));
+      expect(find.text('Sekcja 2 z 4'), findsOneWidget);
+      expect(tester.getRect(find.byKey(const Key('tile_s0'))).contains(at),
+          isTrue);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(layoutOf(controller, 's0'), '11,0 1x1');
+    });
+
+    testWidgets(
+        'T-SE-15 · szybkie upuszczenie w ostatniej kolumnie sekcji nie '
+        'zmienia sekcji', (WidgetTester tester) async {
+      final controller = await _pumpCarousel(tester);
+      final s0 = tester.getRect(find.byKey(const Key('tile_s0')));
+
+      final gesture =
+          await tester.startGesture(s0.center, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await gesture.moveTo(Offset(360, s0.center.dy));
+      await _pumpFor(tester, const Duration(milliseconds: 300));
+      await gesture.up();
+      await _pumpFor(tester, const Duration(milliseconds: 800));
+
+      expect(find.text('Sekcja 1 z 4'), findsOneWidget);
+      expect(layoutOf(controller, 's0'), '5,0 1x1');
+    });
   });
 }
 
