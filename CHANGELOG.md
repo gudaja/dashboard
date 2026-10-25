@@ -59,7 +59,7 @@ tests.**
   past the whole previous slot, so shrinking meant dragging back to the
   previous line. Now both directions, all four edges, step once the edge is
   `0.5 + resizeHysteresis` of a slot past its line (new
-  `EditModeSettings.resizeHysteresis`, default 0.1: 60% in, back below 40%).
+  `EditModeSettings.resizeHysteresis`, default 0.05: 55% in, back below 45%).
   While dragging, the item follows the pointer up to that threshold, also
   beyond its current size where it can grow (it may overlap a neighbour until
   the step pushes it away). Slot widths are read before the step, which also

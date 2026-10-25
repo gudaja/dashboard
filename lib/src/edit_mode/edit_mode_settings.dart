@@ -22,7 +22,7 @@ class EditModeSettings {
   /// [kThemeAnimationDuration]
   EditModeSettings({
     this.resizeCursorSide = 10,
-    this.resizeHysteresis = 0.1,
+    this.resizeHysteresis = 0.05,
     this.paintBackgroundLines = true,
     this.fillEditingBackground = true,
     this.longPressEnabled = true,
@@ -71,8 +71,8 @@ class EditModeSettings {
   /// Hysteresis of a resize, as a fraction of a slot.
   ///
   /// An edge changes the size by one slot once it is past the middle of the
-  /// slot by this much: with the default 0.1 an item grows when its edge is
-  /// 60% into the next slot, and shrinks when it is 60% back into its own
+  /// slot by this much: with the default 0.05 an item grows when its edge is
+  /// 55% into the next slot, and shrinks when it is 55% back into its own
   /// last one. After a step, going back by less than twice this much does not
   /// undo it, so an edge held near the middle does not flicker.
   final double resizeHysteresis;

@@ -311,7 +311,7 @@ EditModeSettings contains parameters related to gesture, animations, resizing.
 ```dart
 EditModeSettings(
   resizeCursorSide: 10, // Resize side width
-  resizeHysteresis: 0.1, // A resize steps at 50% + 10% of a slot, either way
+  resizeHysteresis: 0.05, // A resize steps at 50% + 5% of a slot, either way
   paintBackgroundLines: true, // Paint background lines
   fillEditingBackground: true, // Fill editing item background
   longPressEnabled: true, // Start resize or move with long press
@@ -338,9 +338,9 @@ EditModeSettings(
 ```
 
 An edge changes the size by one slot once it is past the middle of the slot by
-`resizeHysteresis` of it: with the default 0.1 an item grows when its edge is
-60% into the next slot and shrinks when it is 60% back into its own last one.
-A step is not undone until the edge goes back past 40%, so an edge held near
+`resizeHysteresis` of it: with the default 0.05 an item grows when its edge is
+55% into the next slot and shrinks when it is 55% back into its own last one.
+A step is not undone until the edge goes back past 45%, so an edge held near
 the middle does not flicker. While dragging, the item follows the pointer.
 
 #### Custom Resize Handle

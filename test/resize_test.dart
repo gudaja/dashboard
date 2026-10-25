@@ -150,8 +150,8 @@ void main() {
     expect(delegate.updated, isEmpty);
   });
 
-  // With the default resizeHysteresis of 0.1 a step is taken once an edge is
-  // more than 60% of a slot past its grid line, in either direction.
+  // With the default resizeHysteresis of 0.05 a step is taken once an edge is
+  // more than 55% of a slot past its grid line, in either direction.
   group('T-R-09 · próg w połowie slotu z histerezą', () {
     for (final (edge, axis) in [
       ('right', const Offset(1, 0)),
@@ -160,10 +160,10 @@ void main() {
       ('top', const Offset(0, -1)),
     ]) {
       for (final (pull, expected) in [
-        (55.0, 2), // grow: not yet
-        (65.0, 3), // grow
-        (-55.0, 2), // shrink: not yet
-        (-65.0, 1), // shrink
+        (52.0, 2), // grow: not yet
+        (58.0, 3), // grow
+        (-52.0, 2), // shrink: not yet
+        (-58.0, 1), // shrink
       ]) {
         testWidgets('$edge o ${pull.round()}% slotu → $expected',
             (WidgetTester tester) async {
@@ -183,7 +183,7 @@ void main() {
     }
   });
 
-  // Grown at +70; the step back is only taken below +40 (60% back into the
+  // Grown at +70; the step back is only taken below +45 (55% back into the
   // new last slot).
   for (final (back, expected) in [(-20.0, '2,2 3x2'), (-40.0, '2,2 2x2')]) {
     testWidgets(
@@ -239,7 +239,7 @@ void main() {
 
     await moveInSteps(tester, gesture, const Offset(40, 0), steps: 4);
     expect(tester.getRect(tile('a')).width, before.width + 40,
-        reason: 'drawn 40 px wider before the 60% step');
+        reason: 'drawn 40 px wider before the 55% step');
 
     await moveInSteps(tester, gesture, const Offset(-80, 0), steps: 4);
     expect(tester.getRect(tile('a')).width, before.width - 40,
