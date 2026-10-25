@@ -269,11 +269,11 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var topPad = isTopSide ? 0.0 : viewportDelegate.mainAxisSpace / 2;
     var bottomPad = viewportDelegate.mainAxisSpace / 2;
 
-    // Calculate total width considering virtual columns
-    double totalWidth = 0.0;
-    for (int i = 0; i < width; i++) {
-      totalWidth += _layoutController.getColumnWidth(startX + i);
-    }
+    // Total width considering virtual columns: column positions are cached
+    // prefix sums of the column widths, so two lookups replace the loop.
+    final startXPosition = _layoutController.getColumnPosition(startX);
+    final totalWidth =
+        _layoutController.getColumnPosition(startX + width) - startXPosition;
 
     _cachedPosition = _ItemCurrentPosition(
         height: height * verticalSlotEdge - topPad - bottomPad,
@@ -281,9 +281,7 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
         y: ((startY * (verticalSlotEdge))) +
             viewportDelegate.padding.top +
             topPad,
-        x: _layoutController.getColumnPosition(startX) +
-            viewportDelegate.padding.left +
-            leftPad);
+        x: startXPosition + viewportDelegate.padding.left + leftPad);
 
     // Cache the parameters used to calculate this position
     _cachedSlotEdge = slotEdge;

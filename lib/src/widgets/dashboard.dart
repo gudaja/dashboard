@@ -553,6 +553,15 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     return LayoutBuilder(builder: (context, constrains) {
       Unbounded.check(Axis.vertical, constrains);
       if (_withDelegate) {
+        // A controller swapped in under the same key never ran `_loadItems`
+        // (that happens in `initState`), so it has no snapshot yet.
+        if (_snap == null) {
+          _building = false;
+          return widget.loadingPlaceholder ??
+              const Center(
+                child: CircularProgressIndicator(),
+              );
+        }
         if (_snap!.connectionState == ConnectionState.none) {
           _building = false;
           return widget.errorPlaceholder
