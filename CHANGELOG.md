@@ -43,6 +43,10 @@
   item's widget while its map entry stays. With the layer above, rebuilds per
   scroll frame end at 3 (phone cockpit) and 11 (600 items, from 825); debug
   frame time −19% and −51% against 1.1.0.
+* The stack forgets the `GlobalKey` of an item that leaves the band (the map
+  kept one for every item that had ever been in it), and an item's state
+  follows its layout object when a re-attach replaces it (it kept listening
+  to the old one).
 
 ## 1.1.0
 

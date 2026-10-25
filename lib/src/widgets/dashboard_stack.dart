@@ -417,6 +417,11 @@ class _DashboardStackState<T extends DashboardItem>
             !live.containsKey(id) || (!needs.contains(id) && id != edit?.id))
         .toList()) {
       _removeWidget(gone);
+      // Its element leaves the tree with it, so the key keeps no state; the
+      // map used to grow by every item that had ever been in the band. Not in
+      // `_removeWidget`: the item being dragged goes through it on every snap
+      // and must keep its key, or it would be remounted.
+      _keys.remove(gone);
     }
 
     for (var n in needs) {

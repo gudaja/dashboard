@@ -67,6 +67,19 @@ class _DashboardItemWidgetState<T extends DashboardItem>
     setState(() {});
   }
 
+  @override
+  void didUpdateWidget(covariant _DashboardItemWidget<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The state outlives its layout object: it is kept by a `GlobalKey`, and
+    // a re-attach of the controller (another slot count) makes a new
+    // `_ItemCurrentLayout` for every item. Listening to the old one left the
+    // item deaf to the new one's `_clearListeners`.
+    if (!identical(oldWidget.itemCurrentLayout, widget.itemCurrentLayout)) {
+      oldWidget.itemCurrentLayout.removeListener(_listen);
+      widget.itemCurrentLayout.addListener(_listen);
+    }
+  }
+
   late AnimationController _multiplierAnimationController;
 
   @override
