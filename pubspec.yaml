@@ -1,9 +1,21 @@
-name: dashboard
-description: Dynamic dashboard widget that allows your users to create their own layouts. Resize, move, indirect resize/move, auto
-  re-layout are supported.
-version: 0.0.13
+name: flutter_dashboard_grid
+description: >-
+  Dashboard grid your users lay out themselves: resize, move, column sections,
+  a phone and tablet section carousel and edit-mode handles. A fork of the
+  dashboard package.
+version: 1.0.0
 homepage: https://github.com/gudaja/dashboard
 repository: https://github.com/gudaja/dashboard
+issue_tracker: https://github.com/gudaja/dashboard/issues
+topics:
+  - dashboard
+  - grid
+  - layout
+  - drag-and-drop
+  - widget
+screenshots:
+  - description: Moving an item across column sections in edit mode.
+    path: documentation/virtual_columns.gif
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

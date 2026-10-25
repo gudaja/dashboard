@@ -1,5 +1,5 @@
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:dashboard/dashboard.dart';
+import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
 import 'package:example/storage.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -44,7 +44,7 @@ class Pub extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        launchUrlString("https://pub.dev/packages/dashboard");
+        launchUrlString("https://pub.dev/packages/flutter_dashboard_grid");
       },
       child: Container(
         color: Colors.white,
@@ -66,7 +66,8 @@ class LinkedIn extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        launchUrlString("https://www.linkedin.com/in/mehmetyaz/");
+        launchUrlString(
+            "https://www.linkedin.com/in/lukasz-gorkiewicz-82336991/");
       },
       child: Container(
         color: const Color(0xFF0A66C2),
@@ -102,7 +103,8 @@ class Twitter extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        launchUrlString("https://twitter.com/smehmetyaz");
+        launchUrlString(
+            "https://twitter.com/" /* placeholder: no account yet */);
       },
       child: Container(
         color: const Color(0xFF1DA0F1),
@@ -138,7 +140,7 @@ class Github extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        launchUrlString("https://github.com/Mehmetyaz/dashboard");
+        launchUrlString("https://github.com/gudaja/dashboard");
       },
       child: Container(
         color: Colors.white,
@@ -177,7 +179,8 @@ class BuyMee extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        launchUrlString("https://www.buymeacoffee.com/mehmetyaz");
+        launchUrlString(
+            "https://www.buymeacoffee.com/" /* placeholder: no account yet */);
       },
       child: Container(
           alignment: Alignment.center,
@@ -421,7 +424,7 @@ class WelcomeWidget extends StatelessWidget {
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
                                 launchUrlString(
-                                    "https://pub.dev/packages/dashboard");
+                                    "https://pub.dev/packages/flutter_dashboard_grid");
                               },
                             text: "dashboard",
                             style: const TextStyle(

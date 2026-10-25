@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dashboard/dashboard.dart';
+import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
 
 void main() {
   group('Dashboard Widget', () {

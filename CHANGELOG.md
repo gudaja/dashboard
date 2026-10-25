@@ -12,7 +12,13 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
-## Unreleased
+## 1.0.0
+
+**First release on pub.dev, as `flutter_dashboard_grid`** (`dashboard` is the
+upstream's name there). Migrating from the git dependency `dashboard`: rename
+the dependency and replace `package:dashboard/` with
+`package:flutter_dashboard_grid/` in imports; the main library is
+`flutter_dashboard_grid.dart`, and `dashboard.dart` re-exports it.
 
 **Edit-mode gestures, item width and the delete handle fixed; real gesture
 tests.**

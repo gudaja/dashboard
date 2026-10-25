@@ -1,0 +1,16 @@
+# A .pubignore replaces .gitignore for `pub publish`, so the .gitignore rules
+# that matter for the archive are repeated here.
+.dart_tool/
+build/
+/pubspec.lock
+.idea/
+*.iml
+.DS_Store
+
+# Not needed by users of the package (pub.dev shows README images from the
+# repository): the demo recordings, their generator and the benchmark.
+documentation/
+!documentation/virtual_columns.gif
+tool/
+example/build/
+example/.dart_tool/

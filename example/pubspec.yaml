@@ -14,7 +14,7 @@ dependencies:
   auto_size_text: ^3.0.0
   flutter:
     sdk: flutter
-  dashboard:
+  flutter_dashboard_grid:
     path: ..
   cupertino_icons: ^1.0.8
 

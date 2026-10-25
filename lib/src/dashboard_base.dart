@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
 
-import 'package:dashboard/dashboard.dart';
-import 'package:dashboard/src/widgets/style.dart';
+import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
+import 'package:flutter_dashboard_grid/src/widgets/style.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';

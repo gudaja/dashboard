@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dashboard/dashboard.dart';
+import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
 import 'package:example/add_dialog.dart';
 import 'package:example/data_widget.dart';
 import 'package:example/storage.dart';

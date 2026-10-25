@@ -1,6 +1,9 @@
-Fork from https://github.com/Mehmetyaz/dashboard
+# flutter_dashboard_grid
 
-Dynamic dashboard widget that allows your users to create their own layouts. Rezise, move, indirect resize/move, auto  re-layout are supported.
+A fork of [dashboard](https://github.com/Mehmetyaz/dashboard) by Mehmet Yaz,
+published as `flutter_dashboard_grid`.
+
+Dynamic dashboard widget that allows your users to create their own layouts. Resize, move, indirect resize/move, auto re-layout are supported.
 
 ## Features
 
@@ -8,17 +11,17 @@ Dashboard can be thought of as a dynamic grid. Your users can create their own l
 
 Layout divides the screen into horizontal slots according to the entered value. The aspect ratio of the slots also determine their height. Widgets called DashboardItem are placed in these slots. This layout can be changed later.
 
-<img src="documentation/slots.png" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/slots.png" width="400"/>
 
 ### Resize
 
-<img src="documentation/resize.gif" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/resize.gif" width="400"/>
 
 Dashboard Items can be resized both by long pressing on mobile and by holding and moving on desktop/browser.
 
 ### Move
 
-<img src="documentation/move.gif" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/move.gif" width="400"/>
 
 Dashboard Item locations can be changed by long pressing on mobile or by holding and pulling on desktop/browser.
 
@@ -26,7 +29,7 @@ Dashboard Item locations can be changed by long pressing on mobile or by holding
 
 With dynamic slot count, you can re-layout window size changes.
 
-<img src="documentation/re-layout.gif" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/re-layout.gif" width="400"/>
 
 ### Storage Delegate
 
@@ -71,7 +74,7 @@ Disabled columns split the grid into sections. Items cannot be placed in or
 across them, and they take a fixed share of the grid width (or none at all
 with `VirtualColumnsConfig.hidden`).
 
-<img src="documentation/virtual_columns.gif" width="600"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/virtual_columns.gif" width="600"/>
 
 ```dart
 Dashboard(
@@ -93,9 +96,9 @@ header, page dots and arrows. Changing pages does not rebuild the grid.
 The mode follows the width the wrapper gets, so a window crossing the
 breakpoints (900 and 600 by default) goes from three sections to two to one:
 
-<img src="documentation/sections_relayout.gif" width="600"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/sections_relayout.gif" width="600"/>
 
-<img src="documentation/mobile_carousel.gif" width="300"/> <img src="documentation/tablet_carousel.gif" width="500"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/mobile_carousel.gif" width="300"/> <img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/tablet_carousel.gif" width="500"/>
 
 ```dart
 MobileDashboardWrapper(
@@ -137,7 +140,7 @@ sections: 1+2, then 2+3; four sections: 1+2, then 3+4).
 In edit mode every item can carry a resize handle (bottom right) and a delete
 button (top right), both built by you.
 
-<img src="documentation/edit_handles.gif" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/edit_handles.gif" width="400"/>
 
 ```dart
 EditModeSettings(
@@ -155,7 +158,7 @@ slide to their new rows in edit mode, or always with `animateEverytime` (the
 default); with `animateEverytime: false` outside edit mode they jump, like
 every other layout change.
 
-<img src="documentation/compact_to_top.gif" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/compact_to_top.gif" width="400"/>
 
 
 ### Grid geometry
@@ -205,16 +208,19 @@ NestedScrollView(
 
 ### Install
 
-This fork is not published on pub.dev. Depend on it through git, pinned to a
-release tag:
-
 ```yaml
 dependencies:
-  dashboard:
-    git:
-      url: https://github.com/gudaja/dashboard.git
-      ref: v0.0.13
+  flutter_dashboard_grid: ^1.0.0
 ```
+
+```dart
+import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
+```
+
+Coming from the git dependency `dashboard` (up to `v0.0.13`): rename the
+dependency and replace `package:dashboard/` with `package:flutter_dashboard_grid/`
+in the imports; `package:flutter_dashboard_grid/dashboard.dart` still exists,
+so the rest of each import can stay.
 
 ### Define Dashboard
 
@@ -247,7 +253,7 @@ DashboardItemController<ADashboardItemImp>.withDelegate(
     itemStorageDelegate: MyItemStorage())
 ```
 
-[See example](example/lib/storage.dart)
+[See example](https://github.com/gudaja/dashboard/blob/main/example/lib/storage.dart)
 
 
 ### Define Builder
@@ -293,11 +299,11 @@ Slide to top items initially. Auto relayout places items to top as possible.
 
 Before: 
 
-<img src="documentation/before.png" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/before.png" width="400"/>
 
 After: 
 
-<img src="documentation/after.png" width="400"/>
+<img src="https://raw.githubusercontent.com/gudaja/dashboard/main/documentation/after.png" width="400"/>
 
 #### Shrink
 
@@ -382,7 +388,7 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
 
 ### Storage Delegate
 
-[See example](example/lib/storage.dart)
+[See example](https://github.com/gudaja/dashboard/blob/main/example/lib/storage.dart)
 
 #### Caching
 
