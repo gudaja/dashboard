@@ -426,7 +426,16 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       _maxExtend += widget.padding.vertical;
     }
 
-    final maxExtent = _maxExtend.clamp(0.0, double.maxFinite);
+    var maxExtent = _maxExtend.clamp(0.0, double.maxFinite);
+
+    // While an item moves on a grid that scrolls in edit mode, one more row:
+    // an item dragged to the bottom edge auto-scrolls there, and dropping it
+    // on that row grows the grid. In the range itself, not only in the
+    // auto-scroll's clamp — a rebuild during the drag would otherwise correct
+    // `pixels` back out of it below. The drop rebuilds without the row.
+    if (_moving && widget.editModeSettings.scrollWhileEditing) {
+      maxExtent += _layoutController.verticalSlotEdge;
+    }
 
     // Layout-time correction: `jumpTo` here re-entered the scroll machinery
     // (on a nested position it moved the band and started a ballistic
@@ -592,10 +601,20 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
 
   Widget dashboardWidget(BoxConstraints constrains) {
     // W trybie edycji całkowicie wyłącz scrollowanie żeby resize działał
+    //
+    // Except with `scrollWhileEditing`: the stack's recognizer then enters the
+    // arena only for a pointer on an item, and wins it before the drag of the
+    // `Scrollable` could, so the physics may stay scrollable for the whole
+    // session — also during a drag, because switching it mid-gesture is what
+    // the `_lastCanDrag` workaround below exists for.
     final isEditing = widget.dashboardItemController.isEditing;
-    final effectivePhysics = isEditing
-        ? const NeverScrollableScrollPhysics()
-        : (scrollable ? widget.physics : const NeverScrollableScrollPhysics());
+    final effectivePhysics = widget.editModeSettings.scrollWhileEditing
+        ? widget.physics
+        : isEditing
+            ? const NeverScrollableScrollPhysics()
+            : (scrollable
+                ? widget.physics
+                : const NeverScrollableScrollPhysics());
 
     // No key that depends on [isEditing]. A key swap remounted the
     // `Scrollable`, and the fresh `ScrollPosition` started at 0 — toggling edit

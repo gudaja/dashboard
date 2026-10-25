@@ -126,7 +126,8 @@ are reported through `onPageChanged`. `MobileCarouselConfig`:
 | `visibleSectionsOnMobile`, `visibleSectionsOnTablet` | 1, 2 | sections side by side |
 | `sectionStepOnTablet` | `null` (one section) | how far one tablet page moves |
 | `showHeader`, `showDots`, `showArrows` | `true` | section header, page dots, arrows |
-| `swipeEnabled` | `true` | paging by swipe (always off in edit mode) |
+| `swipeEnabled` | `true` | paging by swipe |
+| `swipeWhileEditing` | `false` | paging by swipe also in edit mode (see [Scrolling while editing](#scrolling-while-editing)) |
 | `pageSnapping` | `true` | a swipe ends on a page; `false` leaves the grid where it was released (the dots follow the nearest page) |
 | `dotColor`, `activeDotColor`, `arrowColor`, `dotSize`, `activeDotSize`, `dotsSpacing`, `arrowSize` | | looks of the dots and arrows |
 
@@ -149,6 +150,42 @@ EditModeSettings(
       IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
 )
 ```
+
+### Scrolling while editing
+
+By default a grid in edit mode does not scroll by hand: every drag on it moves
+or resizes an item. With `scrollWhileEditing` it scrolls as usual, and an item
+dragged to an edge takes the view along:
+
+```dart
+Dashboard(
+  editModeSettings: EditModeSettings(scrollWhileEditing: true),
+  ...
+)
+
+// In a carousel, also:
+MobileCarouselConfig(swipeWhileEditing: true)
+```
+
+* A drag on an empty slot scrolls the grid (or swipes the section), and the
+  mouse wheel scrolls it.
+* A finger picks an item up after it is held still on it for
+  `touchPickUpDelay` (350 ms); a finger that moves sooner scrolls instead. A
+  mouse, stylus or trackpad picks it up as soon as it moves, and so does any
+  pointer on the resize handle.
+* An item dragged into the top or bottom edge zone (`autoScrollEdge`, by
+  default 12% of the height, 40–80 px) scrolls the grid, faster the deeper it
+  is, up to `autoScrollMaxSpeed` (1200 px/s), down to one row past the end. In
+  the carousel, an item held at a side edge for `pageFlipDwell` (500 ms) moves
+  to the next section, and on to the one after while it stays there. The view
+  stays where the drag took it.
+* `DashboardItemController.liftedItem` holds the identifier of the item being
+  dragged, for drawing it picked up.
+
+With the flag `panEnabled` and `longPressEnabled` are not used, except that
+both `false` turn dragging off. Dragging an empty slot with a mouse scrolls
+only if the dashboard's `scrollBehavior` lists the mouse in `dragDevices`,
+which Flutter's default does not.
 
 ### Compact to top
 
@@ -328,6 +365,11 @@ EditModeSettings(
   shrinkOnMove: true, // Shrink items on moving if necessary
   draggableOutside: true, // Items can be dragged outside the viewport
   autoScroll: true, // Viewport will scroll automatically when item is dragged outside
+  scrollWhileEditing: false, // Scroll by hand in edit mode (see "Scrolling while editing")
+  touchPickUpDelay: Duration(milliseconds: 350), // Hold to pick up, with scrollWhileEditing
+  autoScrollMaxSpeed: 1200, // px/s at the edge, with scrollWhileEditing
+  autoScrollEdge: null, // Edge zone depth; null = 12% of the extent, 40-80 px
+  pageFlipDwell: Duration(milliseconds: 500), // Carousel section flip at a side edge
   resizeHandleBuilder: (context, item, isEditing) {
     // Custom resize handle widget displayed in bottom-right corner during edit mode
     return Container(

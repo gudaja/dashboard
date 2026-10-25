@@ -14,3 +14,6 @@ documentation/*
 tool/
 example/build/
 example/.dart_tool/
+
+# Local working notes, kept out of git by .git/info/exclude.
+local_doc/

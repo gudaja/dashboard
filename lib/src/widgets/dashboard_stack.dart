@@ -36,7 +36,7 @@ class _DashboardStack<T extends DashboardItem> extends StatefulWidget {
 }
 
 class _DashboardStackState<T extends DashboardItem>
-    extends State<_DashboardStack<T>> {
+    extends State<_DashboardStack<T>> with SingleTickerProviderStateMixin {
   ViewportOffset get viewportOffset => widget.offset;
 
   _ViewportDelegate get viewportDelegate =>
@@ -115,6 +115,17 @@ class _DashboardStackState<T extends DashboardItem>
   @override
   void dispose() {
     viewportOffset.removeListener(_listen);
+    _autoScrollTicker?.dispose();
+    _listenedCarousel?.removeListener(_onCarouselMoved);
+    if (_editing != null) {
+      // Disposed under a dragging pointer. The listeners of these notifiers
+      // may rebuild, which a tree being torn down does not allow.
+      final itemController = widget.dashboardController.itemController;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        itemController._dragPointer.value = null;
+        itemController._liftedItem.value = null;
+      });
+    }
     super.dispose();
   }
 
@@ -461,7 +472,10 @@ class _DashboardStackState<T extends DashboardItem>
       ],
     );
 
-    if (widget.dashboardController.isEditing) {
+    if (widget.dashboardController.isEditing &&
+        widget.editModeSettings.scrollWhileEditing) {
+      result = _buildEditGestures(result);
+    } else if (widget.dashboardController.isEditing) {
       result = GestureDetector(
         // Opaque behavior żeby przechwytywać gesty przed Scrollable
         behavior: HitTestBehavior.opaque,
@@ -510,6 +524,168 @@ class _DashboardStackState<T extends DashboardItem>
       );
     }
     return result;
+  }
+
+  /// The edit-mode gestures of `scrollWhileEditing`: see
+  /// [_EditDragGestureRecognizer].
+  Widget _buildEditGestures(Widget child) {
+    final settings = widget.editModeSettings;
+    if (!settings.panEnabled && !settings.longPressEnabled) {
+      return child;
+    }
+    return RawGestureDetector(
+      behavior: HitTestBehavior.opaque,
+      gestures: {
+        _EditDragGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<_EditDragGestureRecognizer>(
+          () => _EditDragGestureRecognizer(debugOwner: this),
+          (recognizer) => recognizer
+            ..hitTest = _editHitAt
+            ..touchPickUpDelay = settings.touchPickUpDelay
+            ..onStart = _onEditDragStart
+            ..onUpdate = _onEditDragUpdate
+            ..onEnd = _onMoveEnd,
+        ),
+      },
+      child: child,
+    );
+  }
+
+  _EditHit _editHitAt(Offset local) {
+    final hit = _hitAt(local);
+    if (hit == null || hit.holdOffset.dx < 0 || hit.holdOffset.dy < 0) {
+      return _EditHit.none;
+    }
+    return hit.onResizeButton ? _EditHit.handle : _EditHit.tile;
+  }
+
+  void _onEditDragStart(Offset local, Offset global) {
+    _onMoveStart(local);
+    if (_editing == null) {
+      return;
+    }
+    _lastLocal = local;
+    final carousel = widget.dashboardController.itemController._carouselOffset;
+    _startPageOffset = carousel?.value;
+    _listenedCarousel = carousel?..addListener(_onCarouselMoved);
+    _publishPointer(global);
+  }
+
+  void _onEditDragUpdate(Offset local, Offset global) {
+    if (_editing == null || widget.dashboardController.editSession == null) {
+      return;
+    }
+    _lastLocal = local;
+    _publishPointer(global);
+    _updateAutoScroll(local);
+    _onMoveUpdate(local + _pageShift);
+  }
+
+  void _publishPointer(Offset global) {
+    widget.dashboardController.itemController._dragPointer.value =
+        _DragPointer(global, widget.editModeSettings);
+  }
+
+  /// Where the dragging pointer last was, in this stack's coordinates AS THE
+  /// POINTER SEES THEM: the transform of every later event is the one recorded
+  /// by the hit test on `down`, so once the carousel has moved the grid, this
+  /// still points into the section the drag started in. [_pageShift] is the
+  /// correction, like `pixels - _startScrollPixels` is for the vertical scroll.
+  Offset? _lastLocal;
+
+  /// The carousel's offset when the drag started, `null` outside a carousel.
+  double? _startPageOffset;
+  ValueListenable<double>? _listenedCarousel;
+
+  Offset get _pageShift {
+    final carousel = _listenedCarousel;
+    if (carousel == null || _startPageOffset == null) {
+      return Offset.zero;
+    }
+    return Offset(carousel.value - _startPageOffset!, 0);
+  }
+
+  /// The carousel moved under a pointer that may stand still: the item
+  /// follows the content, not the stale position of the last event.
+  void _onCarouselMoved() {
+    if (_editing != null && _lastLocal != null) {
+      _onMoveUpdate(_lastLocal! + _pageShift, force: true);
+    }
+  }
+
+  Ticker? _autoScrollTicker;
+
+  /// Auto-scroll speed in pixels per second; negative scrolls up.
+  double _autoScrollVelocity = 0;
+  Duration _lastAutoScrollTick = Duration.zero;
+
+  /// Sets the auto-scroll speed from how deep [local] is in an edge zone:
+  /// zero at its inner border, [EditModeSettings.autoScrollMaxSpeed] at the
+  /// edge, growing with the square of the depth.
+  void _updateAutoScroll(Offset local) {
+    final settings = widget.editModeSettings;
+    final extent = viewportDelegate.constraints.maxHeight;
+    var depth = 0.0;
+    if (settings.autoScroll && extent.isFinite) {
+      final edge = settings._edgeFor(extent);
+      if (local.dy < edge) {
+        depth = -(edge - local.dy) / edge;
+      } else if (local.dy > extent - edge) {
+        depth = (local.dy - (extent - edge)) / edge;
+      }
+    }
+    depth = depth.clamp(-1.0, 1.0);
+    _autoScrollVelocity = settings.autoScrollMaxSpeed * depth * depth.abs();
+
+    if (_autoScrollVelocity == 0) {
+      _stopAutoScroll();
+    } else {
+      final ticker = _autoScrollTicker ??= createTicker(_onAutoScrollTick);
+      if (!ticker.isActive) {
+        _lastAutoScrollTick = Duration.zero;
+        ticker.start();
+      }
+    }
+  }
+
+  void _stopAutoScroll() {
+    _autoScrollVelocity = 0;
+    _autoScrollTicker?.stop();
+  }
+
+  /// One step of the auto-scroll: speed × time since the last frame, so the
+  /// speed does not depend on the refresh rate.
+  ///
+  /// `jumpTo` applies no boundary of the physics, so the range is clamped here.
+  /// While an item moves, `Dashboard._setNewOffset` extends the range by one
+  /// row past the end, which is where an item can be dragged to grow the
+  /// grid; the drop recomputes it, growing it or correcting `pixels` back into
+  /// it.
+  void _onAutoScrollTick(Duration elapsed) {
+    final dt = (elapsed - _lastAutoScrollTick).inMicroseconds /
+        Duration.microsecondsPerSecond;
+    _lastAutoScrollTick = elapsed;
+    if (dt <= 0 || _editing == null || _lastLocal == null) {
+      return;
+    }
+
+    final position = viewportOffset;
+    var minExtent = 0.0;
+    var maxExtent = double.infinity;
+    if (position is ScrollPosition && position.hasContentDimensions) {
+      minExtent = position.minScrollExtent;
+      maxExtent = position.maxScrollExtent;
+    }
+    final target = (pixels + _autoScrollVelocity * dt)
+        .clamp(min(minExtent, pixels), max(maxExtent, pixels))
+        .toDouble();
+    if (target == pixels) {
+      return;
+    }
+    viewportOffset.jumpTo(target);
+    // The pointer may stand still: without this the item stays where the last
+    // event left it while the content moves away under it.
+    _onMoveUpdate(_lastLocal! + _pageShift, force: true);
   }
 
   // Cache for static widgets
@@ -618,7 +794,20 @@ class _DashboardStackState<T extends DashboardItem>
 
   Offset holdOffset = Offset.zero;
 
-  void _onMoveStart(Offset local) {
+  /// The item under [local] and how a drag from there edits it, or `null`
+  /// over an empty slot.
+  ///
+  /// The one copy of this arithmetic: [_onMoveStart] picks the item and the
+  /// edges with it, and the recognizer of `scrollWhileEditing` decides with it
+  /// whether to enter the arena at all, so the two can never disagree. A
+  /// negative [holdOffset] means the pointer is on the item's slot but in the
+  /// gap before the item.
+  ({
+    String id,
+    List<AxisDirection>? directions,
+    bool onResizeButton,
+    Offset holdOffset,
+  })? _hitAt(Offset local) {
     // Oblicz pozycję względną (bez padding)
     var holdGlobal = Offset(local.dx - viewportDelegate.padding.left,
         local.dy - viewportDelegate.padding.top);
@@ -631,78 +820,102 @@ class _DashboardStackState<T extends DashboardItem>
     var e = widget.dashboardController
         ._slotIndex[widget.dashboardController.getIndex([x, y])];
 
-    if (e is String) {
-      var directions = <AxisDirection>[];
+    if (e is! String) {
+      return null;
+    }
+
+    var directions = <AxisDirection>[];
+    var current = widget.dashboardController._layouts![e]!._currentPosition(
+        slotEdge: slotEdge,
+        viewportDelegate: viewportDelegate,
+        verticalSlotEdge: verticalSlotEdge);
+
+    // Popraw obliczenia pozycji elementu - current.x już zawiera padding.left
+    var itemGlobal = _ItemCurrentPosition(
+        x: current.x - viewportDelegate.padding.left,
+        y: current.y - viewportDelegate.padding.top - pixels,
+        height: current.height,
+        width: current.width);
+
+    final holdOffset = holdGlobal - Offset(itemGlobal.x, itemGlobal.y);
+    if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
+      return (
+        id: e,
+        directions: null,
+        onResizeButton: false,
+        holdOffset: holdOffset
+      );
+    }
+
+    // Sprawdź czy kliknięcie jest na przycisku skalowania (bottom-right)
+    bool onResizeButton = false;
+    if (widget.editModeSettings.resizeHandleBuilder != null) {
+      // Powiększony obszar detekcji dla ekranu dotykowego (50x50px)
+      // Przycisk wizualnie jest mniejszy, ale strefa dotykowa większa
+      double buttonLeft = itemGlobal.endX - 50;
+      double buttonTop = itemGlobal.endY - 50;
+      double buttonRight = itemGlobal.endX;
+      double buttonBottom = itemGlobal.endY;
+
+      onResizeButton = holdGlobal.dx >= buttonLeft &&
+          holdGlobal.dx <= buttonRight &&
+          holdGlobal.dy >= buttonTop &&
+          holdGlobal.dy <= buttonBottom;
+    }
+
+    // Lewa krawędź
+    double leftEdge = itemGlobal.x + widget.editModeSettings.resizeCursorSide;
+    if (leftEdge > holdGlobal.dx) {
+      directions.add(AxisDirection.left);
+    }
+
+    // Górna krawędź
+    double topEdge = itemGlobal.y + widget.editModeSettings.resizeCursorSide;
+    if (topEdge > holdGlobal.dy) {
+      directions.add(AxisDirection.up);
+    }
+
+    // Prawa krawędź
+    double rightEdge =
+        itemGlobal.endX - widget.editModeSettings.resizeCursorSide;
+    if (rightEdge < holdGlobal.dx || onResizeButton) {
+      directions.add(AxisDirection.right);
+    }
+
+    // Dolna krawędź
+    double bottomEdge =
+        itemGlobal.endY - widget.editModeSettings.resizeCursorSide;
+    if (bottomEdge < holdGlobal.dy || onResizeButton) {
+      directions.add(AxisDirection.down);
+    }
+
+    return (
+      id: e,
+      directions: directions.isEmpty ? null : directions,
+      onResizeButton: onResizeButton,
+      holdOffset: holdOffset
+    );
+  }
+
+  void _onMoveStart(Offset local) {
+    final hit = _hitAt(local);
+
+    if (hit != null) {
+      final e = hit.id;
       _editing = widget.dashboardController._layouts![e]!;
-      var current = _editing!._currentPosition(
-          slotEdge: slotEdge,
-          viewportDelegate: viewportDelegate,
-          verticalSlotEdge: verticalSlotEdge);
 
-      // Popraw obliczenia pozycji elementu - current.x już zawiera padding.left
-      var itemGlobal = _ItemCurrentPosition(
-          x: current.x - viewportDelegate.padding.left,
-          y: current.y - viewportDelegate.padding.top - pixels,
-          height: current.height,
-          width: current.width);
-
-      if (holdGlobal.dx < itemGlobal.x || holdGlobal.dy < itemGlobal.y) {
+      if (hit.holdOffset.dx < 0 || hit.holdOffset.dy < 0) {
         _editing = null;
         return;
       }
 
-      // Sprawdź czy kliknięcie jest na przycisku skalowania (bottom-right)
-      bool onResizeButton = false;
-      if (widget.editModeSettings.resizeHandleBuilder != null) {
-        // Powiększony obszar detekcji dla ekranu dotykowego (50x50px)
-        // Przycisk wizualnie jest mniejszy, ale strefa dotykowa większa
-        double buttonLeft = itemGlobal.endX - 50;
-        double buttonTop = itemGlobal.endY - 50;
-        double buttonRight = itemGlobal.endX;
-        double buttonBottom = itemGlobal.endY;
-
-        onResizeButton = holdGlobal.dx >= buttonLeft &&
-            holdGlobal.dx <= buttonRight &&
-            holdGlobal.dy >= buttonTop &&
-            holdGlobal.dy <= buttonBottom;
-      }
-
-      // Lewa krawędź
-      double leftEdge = itemGlobal.x + widget.editModeSettings.resizeCursorSide;
-      if (leftEdge > holdGlobal.dx) {
-        directions.add(AxisDirection.left);
-      }
-
-      // Górna krawędź
-      double topEdge = itemGlobal.y + widget.editModeSettings.resizeCursorSide;
-      if (topEdge > holdGlobal.dy) {
-        directions.add(AxisDirection.up);
-      }
-
-      // Prawa krawędź
-      double rightEdge =
-          itemGlobal.endX - widget.editModeSettings.resizeCursorSide;
-      if (rightEdge < holdGlobal.dx || onResizeButton) {
-        directions.add(AxisDirection.right);
-      }
-
-      // Dolna krawędź
-      double bottomEdge =
-          itemGlobal.endY - widget.editModeSettings.resizeCursorSide;
-      if (bottomEdge < holdGlobal.dy || onResizeButton) {
-        directions.add(AxisDirection.down);
-      }
-
-      if (directions.isNotEmpty) {
-        _holdDirections = directions;
-      } else {
-        _holdDirections = null;
-      }
+      _holdDirections = hit.directions;
       _moveStartOffset = local;
       _startScrollPixels = pixels;
       widget.dashboardController.startEdit(e, _holdDirections == null);
+      widget.dashboardController.itemController._liftedItem.value = e;
 
-      holdOffset = holdGlobal - Offset(itemGlobal.x, itemGlobal.y);
+      holdOffset = hit.holdOffset;
 
       var l = widget.dashboardController._layouts![e];
       widget.dashboardController.editSession!.editing._originSize = [
@@ -733,14 +946,17 @@ class _DashboardStackState<T extends DashboardItem>
 
   int? _lastMoveUpdate;
 
-  void _onMoveUpdate(Offset local) {
+  /// [force] skips the throttling: the auto-scroll and the carousel call this
+  /// once per frame when the content moves, and dropping such a call leaves
+  /// the item behind until the pointer moves again.
+  void _onMoveUpdate(Offset local, {bool force = false}) {
     if (_editing == null) {
       return;
     }
 
     // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (_lastMoveUpdate != null && now - _lastMoveUpdate! < 16) {
+    if (!force && _lastMoveUpdate != null && now - _lastMoveUpdate! < 16) {
       return;
     }
     _lastMoveUpdate = now;
@@ -806,7 +1022,21 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void _onMoveEnd() {
+    if (_editing != null && _lastLocal != null && !_editingResize) {
+      // The drop lands where the pointer is NOW. Both throttles run on the
+      // wall clock, so after the auto-scroll or a section change the last
+      // slot check may be up to a frame old; this one is not skipped.
+      _editing!._lastTransformUpdate = null;
+      _onMoveUpdate(_lastLocal! + _pageShift, force: true);
+    }
     _lastMoveUpdate = null; // Reset on move end
+    _stopAutoScroll();
+    _listenedCarousel?.removeListener(_onCarouselMoved);
+    _listenedCarousel = null;
+    _startPageOffset = null;
+    _lastLocal = null;
+    widget.dashboardController.itemController._dragPointer.value = null;
+    widget.dashboardController.itemController._liftedItem.value = null;
     _editing?._key = _keys[_editing!.id]!;
     _editing?._key.currentState
         ?._setLast(_editing!._transform.value, _editing!._resizePosition.value)

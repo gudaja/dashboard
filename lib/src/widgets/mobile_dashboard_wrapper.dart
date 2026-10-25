@@ -23,6 +23,7 @@ class MobileCarouselConfig {
     this.arrowSize = 24.0,
     this.pageSnapping = true,
     this.swipeEnabled = true,
+    this.swipeWhileEditing = false,
   });
 
   final double mobileBreakpoint;
@@ -69,6 +70,15 @@ class MobileCarouselConfig {
   /// page.
   final bool pageSnapping;
   final bool swipeEnabled;
+
+  /// Whether a swipe changes the section while the layout is edited.
+  ///
+  /// `false` (the default): in edit mode the sections change only with the
+  /// arrows and the dots, as before. `true` is meant for a grid with
+  /// [EditModeSettings.scrollWhileEditing]: a swipe that starts on an empty
+  /// slot, or a quick finger swipe over an item, changes the section, while a
+  /// drag that picks an item up moves the item.
+  final bool swipeWhileEditing;
 
   DeviceType getDeviceType(double width) {
     if (width < mobileBreakpoint) return DeviceType.mobile;
@@ -281,6 +291,80 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     });
     _updatePageBreaks();
     widget.dashboardItemController.addListener(_dropGridCache);
+    _attachDragChannel(widget.dashboardItemController);
+  }
+
+  /// The visible area of the carousel, where the side edge zones of
+  /// [EditModeSettings.pageFlipDwell] are measured.
+  final GlobalKey _viewportKey = GlobalKey();
+
+  /// Which side edge zone the dragging pointer is in: -1 left, 1 right, 0 none.
+  int _flipDirection = 0;
+  Timer? _flipTimer;
+
+  /// Hands [controller] the carousel's offset — the grid corrects a drag by it
+  /// — and listens to the pointer of a drag, to flip the section at an edge.
+  void _attachDragChannel(DashboardItemController<T> controller) {
+    controller._carouselOffset = _pageOffset;
+    controller._dragPointer.addListener(_onDragPointer);
+  }
+
+  void _detachDragChannel(DashboardItemController<T> controller) {
+    if (identical(controller._carouselOffset, _pageOffset)) {
+      controller._carouselOffset = null;
+    }
+    controller._dragPointer.removeListener(_onDragPointer);
+    _cancelFlip();
+  }
+
+  void _cancelFlip() {
+    _flipTimer?.cancel();
+    _flipTimer = null;
+    _flipDirection = 0;
+  }
+
+  /// A dragging pointer moved (or let go): starts, keeps or cancels the dwell
+  /// of a side edge zone.
+  void _onDragPointer() {
+    final pointer = widget.dashboardItemController._dragPointer.value;
+    final side = pointer == null ? 0 : _flipSideOf(pointer);
+    if (side != _flipDirection) {
+      _flipTimer?.cancel();
+      _flipTimer = null;
+      _flipDirection = side;
+    }
+    if (side != 0 && _flipTimer == null && !_animationController.isAnimating) {
+      _flipTimer = Timer(pointer!.settings.pageFlipDwell, _flip);
+    }
+  }
+
+  /// The side edge zone [pointer] is in, if a page lies in that direction.
+  int _flipSideOf(_DragPointer pointer) {
+    if (_currentDeviceType == DeviceType.desktop) return 0;
+    final box = _viewportKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return 0;
+    final local = box.globalToLocal(pointer.global);
+    final width = box.size.width;
+    final edge = pointer.settings._edgeFor(width);
+    if (local.dx < edge && _currentPage > 0) return -1;
+    if (local.dx > width - edge &&
+        _currentPage < _getTotalPages(_currentDeviceType) - 1) {
+      return 1;
+    }
+    return 0;
+  }
+
+  /// The dwell is over: one section further. Once the animation has finished
+  /// the dwell starts again, so a pointer held at the edge walks the carousel
+  /// section by section; the page it reaches stays after the drop.
+  void _flip() {
+    _flipTimer = null;
+    if (!mounted || _flipDirection == 0) return;
+    _animateToPage(
+            _currentPage + _flipDirection, _getTotalPages(_currentDeviceType))
+        .then((_) {
+      if (mounted) _onDragPointer();
+    });
   }
 
   /// Drops the cached grid on every notification of the item controller.
@@ -392,6 +476,8 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
         oldWidget.dashboardItemController, widget.dashboardItemController)) {
       oldWidget.dashboardItemController.removeListener(_dropGridCache);
       widget.dashboardItemController.addListener(_dropGridCache);
+      _detachDragChannel(oldWidget.dashboardItemController);
+      _attachDragChannel(widget.dashboardItemController);
       _dropGridCache();
     }
     if (oldWidget.virtualColumnsConfig != widget.virtualColumnsConfig ||
@@ -424,6 +510,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   @override
   void dispose() {
     widget.dashboardItemController.removeListener(_dropGridCache);
+    _detachDragChannel(widget.dashboardItemController);
     _animationController.dispose();
     _pageOffset.dispose();
     super.dispose();
@@ -473,9 +560,12 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     return startColumn * slotWidth;
   }
 
-  void _animateToPage(int page, int totalPages) {
+  /// Completes when the grid stands on [page].
+  Future<void> _animateToPage(int page, int totalPages) {
     page = page.clamp(0, totalPages - 1);
-    if (page == _currentPage && !_isDragging && _freeOffset == null) return;
+    if (page == _currentPage && !_isDragging && _freeOffset == null) {
+      return Future<void>.value();
+    }
 
     // From where the grid stands: a page, or a free position.
     _animationStartOffset = _pageOffset.value;
@@ -485,7 +575,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     _isDragging = false;
     _dragProgress = 0.0;
 
-    _animationController.forward(from: 0).then((_) {
+    return _animationController.forward(from: 0).then((_) {
       if (_currentPage != page) {
         _currentPage = page;
         widget.onPageChanged?.call(page);
@@ -644,37 +734,36 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
             listenable: widget.dashboardItemController,
             builder: (context, _) {
               final isEditMode = widget.dashboardItemController.isEditing;
+              final swipe = widget.mobileConfig.swipeEnabled &&
+                  (!isEditMode || widget.mobileConfig.swipeWhileEditing);
 
               return GestureDetector(
                 // The grid follows the finger from where it went down; with
                 // the default `start` the first 18 px (touch slop) were lost
                 // and the grid trailed the finger by that much.
                 dragStartBehavior: DragStartBehavior.down,
-                onHorizontalDragStart:
-                    (widget.mobileConfig.swipeEnabled && !isEditMode)
-                        ? (details) {
-                            _animationController.stop();
-                            _isDragging = true;
-                            _dragProgress = 0.0;
-                            _freeDragStart = _pageOffset.value;
-                          }
-                        : null,
-                onHorizontalDragUpdate:
-                    (widget.mobileConfig.swipeEnabled && !isEditMode)
-                        ? (details) {
-                            // Convert pixel delta to page fraction.
-                            // Negative delta.dx = dragging left = moving to next
-                            // page. NO `setState`: the grid is moved by the
-                            // notifier, not rebuilt.
-                            _dragProgress -=
-                                details.delta.dx / constraints.maxWidth;
-                            _pageOffset.value = widget.mobileConfig.pageSnapping
-                                ? _dragOffset()
-                                : _freeDragOffset(constraints.maxWidth);
-                          }
-                        : null,
-                onHorizontalDragEnd: (widget.mobileConfig.swipeEnabled &&
-                        !isEditMode)
+                onHorizontalDragStart: swipe
+                    ? (details) {
+                        _animationController.stop();
+                        _isDragging = true;
+                        _dragProgress = 0.0;
+                        _freeDragStart = _pageOffset.value;
+                      }
+                    : null,
+                onHorizontalDragUpdate: swipe
+                    ? (details) {
+                        // Convert pixel delta to page fraction.
+                        // Negative delta.dx = dragging left = moving to next
+                        // page. NO `setState`: the grid is moved by the
+                        // notifier, not rebuilt.
+                        _dragProgress -=
+                            details.delta.dx / constraints.maxWidth;
+                        _pageOffset.value = widget.mobileConfig.pageSnapping
+                            ? _dragOffset()
+                            : _freeDragOffset(constraints.maxWidth);
+                      }
+                    : null,
+                onHorizontalDragEnd: swipe
                     ? (details) {
                         if (!widget.mobileConfig.pageSnapping) {
                           _endFreeDrag(totalPages, slotWidth, resolvedWidth);
@@ -725,6 +814,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                       }
                     : null,
                 child: ClipRect(
+                  key: _viewportKey,
                   child: OverflowBox(
                     alignment: Alignment.topLeft,
                     maxWidth: fullDashboardWidth,

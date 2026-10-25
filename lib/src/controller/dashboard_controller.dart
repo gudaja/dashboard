@@ -258,6 +258,30 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
 
   ValueNotifier<AsyncSnapshot>? _asyncSnap;
 
+  /// The identifier of the item a pointer is dragging right now, or `null`.
+  ///
+  /// Set when the item is picked up — for a finger on a grid with
+  /// [EditModeSettings.scrollWhileEditing] that is after
+  /// [EditModeSettings.touchPickUpDelay], not when the finger goes down — and
+  /// cleared when it is dropped or the gesture is cancelled. Use it to draw the
+  /// picked-up item differently.
+  ValueListenable<String?> get liftedItem => _liftedItem;
+  final ValueNotifier<String?> _liftedItem = ValueNotifier<String?>(null);
+
+  /// Where the pointer dragging an item is, in GLOBAL coordinates, while a
+  /// grid with [EditModeSettings.scrollWhileEditing] drags one; `null`
+  /// otherwise.
+  ///
+  /// The channel from the grid to the section carousel around it: the carousel
+  /// is an ancestor of the grid but never sees the grid's recognizer, and this
+  /// controller is the one object both of them hold.
+  final ValueNotifier<_DragPointer?> _dragPointer =
+      ValueNotifier<_DragPointer?>(null);
+
+  /// The horizontal offset of the section carousel around the grid, published
+  /// by [MobileDashboardWrapper]; `null` when the grid is not in one.
+  ValueListenable<double>? _carouselOffset;
+
   bool get _isAttached => _layoutController != null;
 
   _DashboardLayoutController? _layoutController;
@@ -1333,4 +1357,13 @@ class _SlotIndex {
     }
     return result;
   }
+}
+
+/// A pointer dragging an item, as [DashboardItemController._dragPointer]
+/// carries it, with the settings the carousel needs to flip a section.
+class _DragPointer {
+  const _DragPointer(this.global, this.settings);
+
+  final Offset global;
+  final EditModeSettings settings;
 }

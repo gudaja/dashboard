@@ -3,7 +3,7 @@ description: >-
   Dashboard grid your users lay out themselves: resize, move, column sections,
   a phone and tablet section carousel and edit-mode handles. A fork of the
   dashboard package.
-version: 1.0.0
+version: 1.1.0
 homepage: https://github.com/gudaja/dashboard
 repository: https://github.com/gudaja/dashboard
 issue_tracker: https://github.com/gudaja/dashboard/issues

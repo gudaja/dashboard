@@ -4,14 +4,18 @@ import 'dart:math';
 
 import 'package:flutter_dashboard_grid/flutter_dashboard_grid.dart';
 import 'package:flutter_dashboard_grid/src/widgets/style.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 part 'widgets/dashboard.dart';
 
 part 'widgets/dashboard_stack.dart';
+
+part 'widgets/edit_drag_recognizer.dart';
 
 part 'widgets/dashboard_item_widget.dart';
 part 'widgets/animated_background_painter.dart';

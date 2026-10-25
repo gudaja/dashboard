@@ -12,6 +12,32 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## 1.1.0
+
+**Scrolling while editing, opt-in.** Nothing changes without the new flags.
+
+* **`EditModeSettings.scrollWhileEditing`.** The grid keeps its scroll physics
+  in edit mode: a drag on an empty slot scrolls it, and so does the mouse
+  wheel. The edit gesture is a recognizer that enters the arena only for a
+  pointer on an item: a finger picks the item up after `touchPickUpDelay`
+  (350 ms) and gives the gesture to the scroll if it moves sooner; a mouse,
+  stylus or trackpad, and any pointer on the resize handle, pick it up on the
+  first move — not on `down`, so a click on the delete handle still reaches
+  it. A cancelled gesture ends the drag like a drop.
+* **Auto-scroll, rewritten for the flag.** Driven by a `Ticker`, speed ×
+  frame time, so it no longer depends on the refresh rate; it grows with the
+  depth in the edge zone (`autoScrollEdge`, 12% of the height, 40–80 px) up
+  to `autoScrollMaxSpeed` (1200 px/s, the old one peaked at ~18 px/s). It
+  stops one row past the end, which the scroll range gains while an item
+  moves, and the item stays under a pointer that stands still.
+* **Section change while dragging.** In `MobileDashboardWrapper`, an item held
+  at a side edge for `pageFlipDwell` (500 ms) moves the carousel to the next
+  section, and on section by section; the item follows and lands in the
+  section it is dropped in. `MobileCarouselConfig.swipeWhileEditing` lets a
+  swipe change the section in edit mode.
+* **`DashboardItemController.liftedItem`**: the identifier of the item being
+  dragged, or `null`.
+
 ## 1.0.0
 
 **First release on pub.dev, as `flutter_dashboard_grid`** (`dashboard` is the
