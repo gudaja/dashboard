@@ -422,8 +422,12 @@ class _DashboardItemWidgetState<T extends DashboardItem>
                   widget.item,
                   true,
                   () {
-                    // Delete the widget
-                    widget.layoutController.delete(widget.item.identifier);
+                    // Through the item controller, like a consumer's own
+                    // `controller.delete`: the layout controller alone took
+                    // the item off the grid but left it in `items` and never
+                    // told the storage delegate, so it came back on reload.
+                    widget.layoutController.itemController
+                        .delete(widget.item.identifier);
                   },
                 ),
               ),
