@@ -315,7 +315,8 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
 ## TODO
 
  - [ ] Animate `compactToTop` (items currently jump to their new rows).
- - [ ] Replace the placeholder resize tests with ones that assert the resulting size.
+ - [ ] `GridDimensions.slotWidth` is `width / slotCount` even with virtual
+       columns, where enabled slots are wider and disabled ones narrower.
  - [ ] Document `invalidateCache`, `GridDimensions` / `onGridDimensionsChanged`,
        `primary` and `MobileCarouselConfig.sectionStepOnTablet`.
  - [ ] Measure `FastIndexMap` (upstream `local` branch) against `SplayTreeMap`.
