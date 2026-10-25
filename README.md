@@ -4,8 +4,6 @@ Dynamic dashboard widget that allows your users to create their own layouts. Rez
 
 ## Features
 
-[Try online demo](https://styledart.dev/#/dashboard)
-
 Dashboard can be thought of as a dynamic grid. Your users can create their own layouts, add new widgets or remove widgets.
 
 Layout divides the screen into horizontal slots according to the entered value. The aspect ratio of the slots also determine their height. Widgets called DashboardItem are placed in these slots. This layout can be changed later.
@@ -138,6 +136,19 @@ DashboardItemController.withDelegate(
 
 ## Getting started
 
+### Install
+
+This fork is not published on pub.dev. Depend on it through git, pinned to a
+release tag:
+
+```yaml
+dependencies:
+  dashboard:
+    git:
+      url: https://github.com/gudaja/dashboard.git
+      ref: v0.0.13
+```
+
 ### Define Dashboard
 
 ```dart
@@ -169,7 +180,7 @@ DashboardItemController<ADashboardItemImp>.withDelegate(
     itemStorageDelegate: MyItemStorage())
 ```
 
-[See example](https://pub.dev/packages/dashboard/example)
+[See example](example/lib/storage.dart)
 
 
 ### Define Builder
@@ -297,14 +308,14 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
 
 ### Storage Delegate
 
-[See example](https://pub.dev/packages/dashboard/example)
+[See example](example/lib/storage.dart)
 
 
 
-TODO  
- - [ ] Define and fix animation bugs.
- - [ ] Check performance improvements.
- - [ ] Write tests.
- - [ ] Add more documentation.
- - [ ] Add more example.
- - [ ] Create Youtube video.
+## TODO
+
+ - [ ] Animate `compactToTop` (items currently jump to their new rows).
+ - [ ] Replace the placeholder resize tests with ones that assert the resulting size.
+ - [ ] Document `invalidateCache`, `GridDimensions` / `onGridDimensionsChanged`,
+       `primary` and `MobileCarouselConfig.sectionStepOnTablet`.
+ - [ ] Measure `FastIndexMap` (upstream `local` branch) against `SplayTreeMap`.
