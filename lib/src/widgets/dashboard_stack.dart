@@ -186,6 +186,7 @@ class _DashboardStackState<T extends DashboardItem>
   /// revision would silently resurrect the defect this wave fixes, so they all
   /// go through here.
   void _removeWidget(String id) {
+    _positionedCache.remove(id);
     if (_widgetsMap.remove(id) != null) {
       _keySetChanged(id);
     }
@@ -205,6 +206,7 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void addWidget(String id) {
+    _positionedCache.remove(id);
     var i = widget.dashboardController.itemController._items[id];
     var l = widget.dashboardController._layouts![i!.identifier]!;
     i.layoutData = l.asLayout();
@@ -848,16 +850,30 @@ class _DashboardStackState<T extends DashboardItem>
 
     _cachedStaticWidgets = _widgetsMap.entries
         .where((element) => element.value[2] != currentEditingId)
-        .map((e) {
-      return buildPositioned(e.value);
-    }).toList();
+        .map((e) => _positionedCache[e.key] ??= buildPositioned(e.value))
+        .toList();
 
     _lastEditingId = currentEditingId;
     _lastStaticRevision = _widgetsRevision;
     return _cachedStaticWidgets!;
   }
 
+  /// The item widget [buildPositioned] made for each id in [_widgetsMap],
+  /// kept while its map entry stays.
+  ///
+  /// A new key set rebuilds the static list, and without this every item in
+  /// it came out as a NEW `_DashboardItemWidget`, so a scroll that crossed a
+  /// row rebuilt every item in the band to add the few that came in:
+  /// measured as 40 item rebuilds per scroll frame for 600 items on a desktop
+  /// (`tool/bench_scroll_frame_test.dart`). An identical widget is skipped by
+  /// `Element.updateChild`. An entry goes whenever its item leaves or
+  /// re-enters the map — which is how a changed layout reaches the stack
+  /// (`_onMoveUpdate`, the `_rebuild` flag, [_clearWidgets]) — and with every
+  /// invalidation of the static cache.
+  final Map<String, Widget> _positionedCache = {};
+
   void _invalidateStaticCache() {
+    _positionedCache.clear();
     _cachedStaticWidgets = null;
     _lastEditingId = null;
     _lastStaticRevision = null;

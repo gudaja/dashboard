@@ -37,6 +37,12 @@
   items on a desktop; frame time of the debug test binding −18% and −42%. The
   edit gestures stay on the viewport-sized stack, so the pointer arithmetic is
   unchanged.
+* **A scroll across a row builds only the items that came in.** A new key set
+  rebuilt the static item list from scratch, so every item in the band got a
+  new widget and rebuilt, to add the few new ones. The stack now keeps each
+  item's widget while its map entry stays. With the layer above, rebuilds per
+  scroll frame end at 3 (phone cockpit) and 11 (600 items, from 825); debug
+  frame time −19% and −51% against 1.1.0.
 
 ## 1.1.0
 

@@ -72,6 +72,31 @@ void main() {
   });
 
   testWidgets(
+      'T-SL-03 · przewinięcie przez granicę wiersza buduje tylko kafelki, '
+      'które weszły do pasma', (WidgetTester tester) async {
+    await pumpTall(tester);
+    position(tester).jumpTo(210);
+    await tester.pump();
+
+    final built = <String>[];
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      if (element.widget.runtimeType.toString().startsWith('_DashboardItem')) {
+        built.add(element.widget.runtimeType.toString());
+      }
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = null);
+    // The band ends at (pixels + 600 + cacheExtend 500) / 100: from row 14 to
+    // row 15, one row of three items comes in.
+    position(tester).jumpTo(310);
+    await tester.pump();
+    debugOnRebuildDirtyWidget = null;
+
+    expect(built.where((t) => t.startsWith('_DashboardItemWidget<')).length, 3,
+        reason: 'the three new items; the 45 already in the band are '
+            'handed their identical widgets');
+  });
+
+  testWidgets(
       'T-SL-02 · po przewinięciu kafelek jest trafiany tam, gdzie jest '
       'narysowany, także na dole treści', (WidgetTester tester) async {
     final taps = await pumpTall(tester);
