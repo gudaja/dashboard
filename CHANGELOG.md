@@ -12,6 +12,20 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
+## Unreleased
+
+* **Auto-scroll under a `NestedScrollView` band.** With `primary: true` the
+  grid's position is the inner one of the band's coordinator, and the
+  auto-scroll's `jumpTo` was a jump of the whole coordinator: the band snapped
+  shut in one frame, and the item lost the pointer, because the body rises on
+  the screen while the band collapses and the pointer events keep the
+  transform of the `down`. A step is now a `pointerScroll`, which collapses
+  the band first, step by step, as a mouse wheel does; the drag adds the
+  stack's own move on the screen to the pointer; the edge zones stand at the
+  edges of the part of the grid that is on screen (under an expanded band the
+  body reaches below it); and once a step moves nothing the steps stop, as on
+  a nested position each would still send scroll notifications.
+
 ## 1.1.0
 
 **Scrolling while editing, opt-in.** Nothing changes without the new flags.

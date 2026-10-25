@@ -568,6 +568,7 @@ class _DashboardStackState<T extends DashboardItem>
     final carousel = widget.dashboardController.itemController._carouselOffset;
     _startPageOffset = carousel?.value;
     _listenedCarousel = carousel?..addListener(_onCarouselMoved);
+    _startOriginDy = _originDy();
     _publishPointer(global);
   }
 
@@ -577,8 +578,8 @@ class _DashboardStackState<T extends DashboardItem>
     }
     _lastLocal = local;
     _publishPointer(global);
-    _updateAutoScroll(local);
-    _onMoveUpdate(local + _pageShift);
+    _updateAutoScroll(local + _dragShift);
+    _onMoveUpdate(local + _dragShift);
   }
 
   void _publishPointer(Offset global) {
@@ -588,10 +589,36 @@ class _DashboardStackState<T extends DashboardItem>
 
   /// Where the dragging pointer last was, in this stack's coordinates AS THE
   /// POINTER SEES THEM: the transform of every later event is the one recorded
-  /// by the hit test on `down`, so once the carousel has moved the grid, this
-  /// still points into the section the drag started in. [_pageShift] is the
-  /// correction, like `pixels - _startScrollPixels` is for the vertical scroll.
+  /// by the hit test on `down`, so once the carousel has moved the grid, or a
+  /// collapsing band has moved the whole stack up the screen, this still
+  /// points where the stack stood when the drag started. [_dragShift] is the
+  /// correction, like `pixels - _startScrollPixels` is for the scroll.
   Offset? _lastLocal;
+
+  /// Where this stack's top stood on the screen when the drag started.
+  double? _startOriginDy;
+
+  /// The stack's top on the screen, as of the last layout.
+  double? _originDy() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero).dy;
+  }
+
+  /// [_lastLocal] and every pointer position of the drag, plus this, is where
+  /// the pointer is in the stack NOW.
+  ///
+  /// Horizontally the carousel's offset, which is current within the frame.
+  /// Vertically the stack's own move on the screen — the body of a
+  /// `NestedScrollView` rises while its band collapses — read from the last
+  /// layout, so one frame late while the band moves and exact once it stops.
+  Offset get _dragShift {
+    final start = _startOriginDy;
+    final now = start == null ? null : _originDy();
+    return _pageShift + Offset(0, now == null ? 0 : start! - now);
+  }
 
   /// The carousel's offset when the drag started, `null` outside a carousel.
   double? _startPageOffset;
@@ -609,7 +636,7 @@ class _DashboardStackState<T extends DashboardItem>
   /// follows the content, not the stale position of the last event.
   void _onCarouselMoved() {
     if (_editing != null && _lastLocal != null) {
-      _onMoveUpdate(_lastLocal! + _pageShift, force: true);
+      _onMoveUpdate(_lastLocal! + _dragShift, force: true);
     }
   }
 
@@ -622,20 +649,30 @@ class _DashboardStackState<T extends DashboardItem>
   /// Sets the auto-scroll speed from how deep [local] is in an edge zone:
   /// zero at its inner border, [EditModeSettings.autoScrollMaxSpeed] at the
   /// edge, growing with the square of the depth.
+  ///
+  /// The zones stand at the edges of the part of this stack that is ON
+  /// SCREEN ([_visibleSpan]): under an expanded band the body of a
+  /// `NestedScrollView` reaches below the screen, and a zone at the bottom of
+  /// the box would be out of reach.
   void _updateAutoScroll(Offset local) {
     final settings = widget.editModeSettings;
-    final extent = viewportDelegate.constraints.maxHeight;
+    final (top, bottom) = _visibleSpan();
+    final extent = bottom - top;
     var depth = 0.0;
-    if (settings.autoScroll && extent.isFinite) {
+    if (settings.autoScroll && extent.isFinite && extent > 0) {
       final edge = settings._edgeFor(extent);
-      if (local.dy < edge) {
-        depth = -(edge - local.dy) / edge;
-      } else if (local.dy > extent - edge) {
-        depth = (local.dy - (extent - edge)) / edge;
+      if (local.dy < top + edge) {
+        depth = -(top + edge - local.dy) / edge;
+      } else if (local.dy > bottom - edge) {
+        depth = (local.dy - (bottom - edge)) / edge;
       }
     }
     depth = depth.clamp(-1.0, 1.0);
-    _autoScrollVelocity = settings.autoScrollMaxSpeed * depth * depth.abs();
+    final velocity = settings.autoScrollMaxSpeed * depth * depth.abs();
+    if (velocity.sign != _autoScrollVelocity.sign) {
+      _stalledAt = null;
+    }
+    _autoScrollVelocity = velocity;
 
     if (_autoScrollVelocity == 0) {
       _stopAutoScroll();
@@ -650,17 +687,55 @@ class _DashboardStackState<T extends DashboardItem>
 
   void _stopAutoScroll() {
     _autoScrollVelocity = 0;
+    _stalledAt = null;
     _autoScrollTicker?.stop();
   }
+
+  /// The part of this stack that is on screen, top and bottom in its own
+  /// coordinates: its box, clipped by the viewport of every vertical
+  /// `Scrollable` around it — the outer viewport of a `NestedScrollView`
+  /// hides the part of the body below the screen while the band is expanded.
+  (double, double) _visibleSpan() {
+    var top = 0.0;
+    var bottom = viewportDelegate.constraints.maxHeight;
+    final originDy = _originDy();
+    if (originDy == null) {
+      return (top, bottom);
+    }
+    // The nearest one is the grid's own `Scrollable`, whose viewport is this
+    // stack; the search starts above it.
+    var scrollable = Scrollable.maybeOf(context, axis: Axis.vertical);
+    while (scrollable != null) {
+      scrollable = Scrollable.maybeOf(scrollable.context, axis: Axis.vertical);
+      final box = scrollable?.context.findRenderObject();
+      if (box is RenderBox && box.hasSize) {
+        final dy = box.localToGlobal(Offset.zero).dy - originDy;
+        top = max(top, dy);
+        bottom = min(bottom, dy + box.size.height);
+      }
+    }
+    return (top, bottom);
+  }
+
+  /// Where the last auto-scroll step started — the grid's offset and the
+  /// stack's place on the screen — or `null`. A step that moved neither has
+  /// used the range up.
+  (double, double?)? _stalledAt;
 
   /// One step of the auto-scroll: speed × time since the last frame, so the
   /// speed does not depend on the refresh rate.
   ///
-  /// `jumpTo` applies no boundary of the physics, so the range is clamped here.
-  /// While an item moves, `Dashboard._setNewOffset` extends the range by one
-  /// row past the end, which is where an item can be dragged to grow the
-  /// grid; the drop recomputes it, growing it or correcting `pixels` back into
-  /// it.
+  /// The step is a `pointerScroll`, the way a mouse wheel scrolls: clamped to
+  /// the range, which grows by one row past the end while an item moves
+  /// (`Dashboard._setNewOffset`, so an item can be dragged there to grow the
+  /// grid), and on the inner position of a `NestedScrollView` shared with the
+  /// band — the band collapses first, step by step, as under a wheel. A
+  /// `jumpTo` there is a jump of the whole coordinator: the band snapped shut
+  /// in one frame.
+  ///
+  /// Once a step moves nothing the steps stop until the pointer turns to the
+  /// other edge (the range only grows on a drop): on a nested position each
+  /// of them would still send a pair of scroll notifications.
   void _onAutoScrollTick(Duration elapsed) {
     final dt = (elapsed - _lastAutoScrollTick).inMicroseconds /
         Duration.microsecondsPerSecond;
@@ -669,23 +744,22 @@ class _DashboardStackState<T extends DashboardItem>
       return;
     }
 
-    final position = viewportOffset;
-    var minExtent = 0.0;
-    var maxExtent = double.infinity;
-    if (position is ScrollPosition && position.hasContentDimensions) {
-      minExtent = position.minScrollExtent;
-      maxExtent = position.maxScrollExtent;
-    }
-    final target = (pixels + _autoScrollVelocity * dt)
-        .clamp(min(minExtent, pixels), max(maxExtent, pixels))
-        .toDouble();
-    if (target == pixels) {
+    final here = (pixels, _originDy());
+    if (_stalledAt == here) {
       return;
     }
-    viewportOffset.jumpTo(target);
+    _stalledAt = here;
+
+    final delta = _autoScrollVelocity * dt;
+    final position = viewportOffset;
+    if (position is ScrollPosition) {
+      position.pointerScroll(delta);
+    } else {
+      position.jumpTo(max(0.0, pixels + delta));
+    }
     // The pointer may stand still: without this the item stays where the last
     // event left it while the content moves away under it.
-    _onMoveUpdate(_lastLocal! + _pageShift, force: true);
+    _onMoveUpdate(_lastLocal! + _dragShift, force: true);
   }
 
   // Cache for static widgets
@@ -1027,13 +1101,14 @@ class _DashboardStackState<T extends DashboardItem>
       // wall clock, so after the auto-scroll or a section change the last
       // slot check may be up to a frame old; this one is not skipped.
       _editing!._lastTransformUpdate = null;
-      _onMoveUpdate(_lastLocal! + _pageShift, force: true);
+      _onMoveUpdate(_lastLocal! + _dragShift, force: true);
     }
     _lastMoveUpdate = null; // Reset on move end
     _stopAutoScroll();
     _listenedCarousel?.removeListener(_onCarouselMoved);
     _listenedCarousel = null;
     _startPageOffset = null;
+    _startOriginDy = null;
     _lastLocal = null;
     widget.dashboardController.itemController._dragPointer.value = null;
     widget.dashboardController.itemController._liftedItem.value = null;

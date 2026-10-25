@@ -456,6 +456,119 @@ void main() {
       expect(find.text('Sekcja 1 z 4'), findsOneWidget);
       expect(layoutOf(controller, 's0'), '5,0 1x1');
     });
+
+    testWidgets(
+        'T-SE-16 · pod pasmem NestedScrollView autoscroll zwija pasmo płynnie, '
+        'a kafelek zostaje pod kursorem', (WidgetTester tester) async {
+      final notifications = <ScrollNotification>[];
+      final (controller, outer, inner) = await _pumpUnderBand(tester,
+          notifications: notifications,
+          grid: (ctrl) => Dashboard<DashboardItem>(
+                primary: true,
+                dashboardItemController: ctrl,
+                slotCount: 6,
+                slotHeight: slot,
+                slideToTop: false,
+                editModeSettings: EditModeSettings(scrollWhileEditing: true),
+                itemBuilder: (item) => ColoredBox(
+                    key: ValueKey('tile_${item.identifier}'),
+                    color: Colors.red),
+              ),
+          items: tall());
+
+      const at = Offset(150, 790);
+      final gesture = await tester.startGesture(
+          tester.getRect(tile('a')).center,
+          kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await gesture.moveTo(at);
+      await tester.pump();
+
+      final bands = <double>[];
+      for (var i = 0; i < 90; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        bands.add(outer.offset);
+      }
+
+      expect(bands.first, inExclusiveRange(0, 50),
+          reason: 'the band collapses step by step, not in one jump');
+      expect(bands.last, outer.position.maxScrollExtent);
+      for (var i = 1; i < bands.length; i++) {
+        expect(bands[i], greaterThanOrEqualTo(bands[i - 1]));
+      }
+      expect(inner().pixels, greaterThan(0),
+          reason: 'then the grid scrolls on');
+      expect(tester.getRect(tile('a')).contains(at), isTrue,
+          reason: 'the item stayed under the pointer');
+
+      // Everything is at its end: the steps stop instead of notifying on.
+      notifications.clear();
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(notifications, isEmpty);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.liftedItem.value, isNull);
+      expect(outer.offset, outer.position.maxScrollExtent,
+          reason: 'stays where the drag took it');
+    });
+
+    testWidgets(
+        'T-SE-17 · karuzela pod pasmem (jak kokpit na telefonie): pasmo '
+        'zwija się, kafelek zostaje pod kursorem', (WidgetTester tester) async {
+      final (controller, outer, inner) = await _pumpUnderBand(tester,
+          width: 390,
+          items: [
+            DashboardItem(
+                identifier: 'a', width: 1, height: 1, startX: 1, startY: 0),
+            DashboardItem(
+                identifier: 'end', width: 1, height: 1, startX: 5, startY: 30),
+          ],
+          grid: (ctrl) => MobileDashboardWrapper<DashboardItem>(
+                dashboardItemController: ctrl,
+                slotCount: 24,
+                columnsPerPage: 6,
+                mobileConfig:
+                    const MobileCarouselConfig(swipeWhileEditing: true),
+                dashboardBuilder: (c, slotCount, startColumn, isMobile) =>
+                    Dashboard<DashboardItem>(
+                  primary: true,
+                  dashboardItemController: c,
+                  slotCount: slotCount,
+                  slotHeight: 40,
+                  padding: const EdgeInsets.all(8),
+                  slideToTop: false,
+                  shrinkToPlace: false,
+                  editModeSettings: EditModeSettings(scrollWhileEditing: true),
+                  itemBuilder: (item) =>
+                      Container(key: ValueKey('tile_${item.identifier}')),
+                ),
+              ));
+
+      final start = tester.getRect(tile('a')).center;
+      final at = Offset(start.dx, 760);
+      final gesture =
+          await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await gesture.moveTo(at);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(outer.offset, inExclusiveRange(0, 50));
+
+      for (var i = 0; i < 120; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(outer.offset, outer.position.maxScrollExtent);
+      expect(inner().pixels, greaterThan(0));
+      expect(tester.getRect(tile('a')).contains(at), isTrue);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.text('Sekcja 1 z 4'), findsOneWidget);
+      expect(controller.liftedItem.value, isNull);
+    });
   });
 }
 
@@ -532,4 +645,60 @@ Future<DashboardItemController<DashboardItem>> _pumpCarousel(
   controller.isEditing = true;
   await tester.pumpAndSettle();
   return controller;
+}
+
+/// [grid] under a One UI-like band: a `NestedScrollView` whose header is a
+/// 200 px `SliverAppBar` pinned at the toolbar, in edit mode. Returns the
+/// controller, the outer (band) controller and the grid's inner position.
+Future<
+    (
+      DashboardItemController<DashboardItem>,
+      ScrollController,
+      ScrollPosition Function()
+    )> _pumpUnderBand(
+  WidgetTester tester, {
+  required Widget Function(DashboardItemController<DashboardItem>) grid,
+  required List<DashboardItem> items,
+  double width = 600,
+  List<ScrollNotification>? notifications,
+}) async {
+  tester.view.physicalSize = Size(width, 800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
+  final controller = DashboardItemController<DashboardItem>(items: items);
+  final outer = ScrollController();
+  addTearDown(outer.dispose);
+  await tester.pumpWidget(MaterialApp(
+    home: Scaffold(
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          notifications?.add(n);
+          return false;
+        },
+        child: NestedScrollView(
+          controller: outer,
+          headerSliverBuilder: (context, _) => const [
+            SliverAppBar(
+                expandedHeight: 200,
+                pinned: true,
+                flexibleSpace: FlexibleSpaceBar(title: Text('band'))),
+          ],
+          body: grid(controller),
+        ),
+      ),
+    ),
+  ));
+  await tester.pumpAndSettle();
+  controller.isEditing = true;
+  await tester.pumpAndSettle();
+
+  ScrollPosition inner() => tester
+      .state<ScrollableState>(find
+          .descendant(
+              of: find.byType(Dashboard<DashboardItem>),
+              matching: find.byType(Scrollable))
+          .first)
+      .position;
+  return (controller, outer, inner);
 }
