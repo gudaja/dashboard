@@ -30,6 +30,75 @@ With dynamic slot count, you can re-layout window size changes.
 
 <img src="documentation/re-layout.gif" width="400"/>
 
+## Added in this fork
+
+The screenshots below are rendered from the package itself by
+`tool/doc_screenshots_test.dart`; regenerate them after a visual change with
+`flutter test tool/doc_screenshots_test.dart`.
+
+### Column sections (virtual columns)
+
+Disabled columns split the grid into sections. Items cannot be placed in or
+across them, and they take a fixed share of the grid width (or none at all
+with `VirtualColumnsConfig.hidden`).
+
+<img src="documentation/virtual_columns.png" width="600"/>
+
+```dart
+Dashboard(
+  slotCount: 14,
+  virtualColumnsConfig: const VirtualColumnsConfig.visible(
+    disabledColumns: [4, 9],   // three sections of four columns
+    disabledColumnWidth: 0.04, // 4% of the grid width each
+  ),
+  ...
+)
+```
+
+### Sections on phones and tablets
+
+`MobileDashboardWrapper` keeps the desktop layout and shows it section by
+section below the breakpoints: one section on a phone, two on a tablet, with a
+header, page dots and arrows. Changing pages does not rebuild the grid.
+
+<img src="documentation/mobile_carousel.png" width="300"/> <img src="documentation/tablet_carousel.png" width="500"/>
+
+```dart
+MobileDashboardWrapper(
+  dashboardItemController: controller,
+  slotCount: 14,
+  columnsPerPage: 4,
+  virtualColumnsConfig: columns,
+  mobileConfig: const MobileCarouselConfig(
+    visibleSectionsOnMobile: 1,
+    visibleSectionsOnTablet: 2,
+  ),
+  dashboardBuilder: (controller, slotCount, startColumn, isMobile) =>
+      Dashboard(dashboardItemController: controller, slotCount: slotCount, ...),
+)
+```
+
+### Resize and delete handles
+
+In edit mode every item can carry a resize handle (bottom right) and a delete
+button (top right), both built by you.
+
+<img src="documentation/edit_handles.png" width="400"/>
+
+```dart
+EditModeSettings(
+  resizeHandleBuilder: (context, item, isEditing) => const Icon(Icons.open_in_full),
+  deleteHandleBuilder: (context, item, isEditing, onDelete) =>
+      IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
+)
+```
+
+### Compact to top
+
+`DashboardItemController.compactToTop()` closes the vertical gaps left after
+moving or deleting items, and returns the identifiers it moved.
+
+<img src="documentation/compact_before.png" width="300"/> <img src="documentation/compact_after.png" width="300"/>
 
 ### Storage Delegate
 
