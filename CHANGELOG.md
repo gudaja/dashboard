@@ -12,7 +12,23 @@
 > therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
 > they pointed.
 
-## Unreleased
+## 1.2.0
+
+* **`SliverDashboard`: the grid as a sliver** of a `CustomScrollView`, to put
+  it under an app bar or a band without a `NestedScrollView`. It takes the
+  parameters of `Dashboard` except the scroll ones and keeps the grid
+  virtualised: the stack is laid out at the viewport's height and pinned to
+  the visible part of the sliver, so it works exactly as in a `Dashboard`.
+  (Upstream's unmerged `local` branch has a `SliverDashboard` too, which lays
+  the grid out at its full height and builds every item.) Same rebuilds per
+  scroll frame as `Dashboard` (`tool/bench_scroll_frame_test.dart`). In edit
+  mode it always uses the gestures of `scrollWhileEditing`; the auto-scroll
+  scrolls the whole scroll view, the app bar first; the top edge zone starts
+  under a pinned app bar.
+* **`MobileDashboardWrapper.scrollViewBuilder`**: the section carousel with a
+  `SliverDashboard`. The builder gets the grid's sliver and returns the scroll
+  view around it; the carousel moves only the grid sideways, inside its
+  sliver, so the slivers around it stay in place and the dots stay below.
 
 * **Auto-scroll under a `NestedScrollView` band.** With `primary: true` the
   grid's position is the inner one of the band's coordinator, and the

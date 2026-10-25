@@ -117,6 +117,9 @@ class _DashboardPageState extends State<DashboardPage> {
   /// or flips the section.
   bool _scrollWhileEditing = false;
 
+  /// Band mode: a [SliverDashboard] under a collapsing app bar.
+  bool _band = false;
+
   MobileCarouselConfig get _mobileConfig => MobileCarouselConfig(
         mobileBreakpoint: _mobileBreakpoint,
         tabletBreakpoint: _tabletBreakpoint,
@@ -165,6 +168,133 @@ class _DashboardPageState extends State<DashboardPage> {
     // Calculate dynamic border radius for items based on slot size
     final slotWidth = (w - 16) / slot!; // subtract padding
     final itemBorderRadius = (slotWidth * 0.08).clamp(4.0, 15.0);
+
+    // Shared by the box grid and the sliver grid of the band mode.
+    final slotBackground =
+        SlotBackgroundBuilder.withDimensionsFunction<ColoredDashboardItem>(
+            (context, item, x, y, editing, slotWidth, slotHeight,
+                virtualConfig) {
+      // Show disabled columns in red using config
+      final isDisabled = virtualConfig?.isColumnDisabled(x) ?? false;
+
+      // Calculate dynamic border radius (5% of slot width, max 10px)
+      final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
+
+      return isDisabled
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black12, width: 0.5),
+                borderRadius: BorderRadius.circular(borderRadius),
+                color: null,
+              ),
+              child: null,
+            );
+    });
+    final itemStyle = ItemStyle(
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        elevation: 3, // Zmniejszone z 5 do 3 dla lepszej wydajności
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(itemBorderRadius)));
+    final editModeSettings = EditModeSettings(
+        scrollWhileEditing: _scrollWhileEditing,
+        draggableOutside: false,
+        paintBackgroundLines: false,
+        autoScroll: true,
+        resizeCursorSide: 5, // Zwiększone dla ekranu dotykowego
+        longPressEnabled: false, // Wyłącz longPress - tylko pan dla dotyku
+        curve: Curves.easeOut,
+        fillEditingBackground:
+            true, // Zachowaj delikatne linie siatki podczas edycji
+        duration: const Duration(milliseconds: 200),
+        resizeHandleBuilder: (context, item, isEditing) {
+          return Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: Offset(2, 2),
+                ),
+              ],
+            ),
+            child: Transform.rotate(
+              angle: 3.14159 / 2, // 180 stopni
+              child: const Icon(
+                Icons.open_in_full,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+          );
+        },
+        deleteHandleBuilder: (context, item, isEditing, onDelete) {
+          return GestureDetector(
+            onTap: onDelete,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.delete,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+          );
+        },
+        backgroundStyle: const EditModeBackgroundStyle(
+            lineColor: Colors.black38,
+            lineWidth: 0.5,
+            dualLineHorizontal: false,
+            dualLineVertical: false));
+    Widget itemBuilder(ColoredDashboardItem item) {
+      if (item.data != null) {
+        return DataWidget(
+          item: item,
+        );
+      }
+
+      // Outlined while a pointer drags it (`liftedItem`).
+      return ValueListenableBuilder<String?>(
+        valueListenable: itemController.liftedItem,
+        child: ItemDisplayWidget(
+          item: item,
+          isEditing: itemController.isEditing,
+          onDelete: () {
+            itemController.delete(item.identifier);
+          },
+          borderRadius: itemBorderRadius,
+        ),
+        builder: (context, lifted, child) => DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(itemBorderRadius),
+            border: lifted == item.identifier
+                ? Border.all(color: const Color(0xFF4285F4), width: 3)
+                : null,
+          ),
+          child: child,
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -226,6 +356,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   : 'Przewijanie w edycji: wyłączone'),
           IconButton(
               onPressed: () {
+                setState(() {
+                  _band = !_band;
+                });
+              },
+              isSelected: _band,
+              icon: const Icon(Icons.view_agenda_outlined),
+              selectedIcon: const Icon(Icons.view_day),
+              tooltip: _band ? 'Pasmo: włączone' : 'Pasmo: wyłączone'),
+          IconButton(
+              onPressed: () {
                 itemController.isEditing = !itemController.isEditing;
                 setState(() {});
               },
@@ -253,167 +393,72 @@ class _DashboardPageState extends State<DashboardPage> {
                   _currentPage = page;
                 },
                 dashboardBuilder:
-                    (controller, pageSlotCount, startColumn, isMobile) =>
-                        Dashboard<ColoredDashboardItem>(
-                  scrollController: isMobile ? null : scrollController,
-                  shrinkToPlace: false,
-                  slideToTop: false,
-                  absorbPointer: false,
-                  slotBackgroundBuilder:
-                      SlotBackgroundBuilder.withDimensionsFunction((context,
-                          item,
-                          x,
-                          y,
-                          editing,
-                          slotWidth,
-                          slotHeight,
-                          virtualConfig) {
-                    // Show disabled columns in red using config
-                    final isDisabled =
-                        virtualConfig?.isColumnDisabled(x) ?? false;
-
-                    // Calculate dynamic border radius (5% of slot width, max 10px)
-                    final borderRadius = (slotWidth * 0.05).clamp(2.0, 10.0);
-
-                    return isDisabled
-                        ? null
-                        : Container(
-                            decoration: BoxDecoration(
-                              border:
-                                  Border.all(color: Colors.black12, width: 0.5),
-                              borderRadius: BorderRadius.circular(borderRadius),
-                              color: null,
-                            ),
-                            child: null,
-                          );
-                  }),
-                  padding: const EdgeInsets.all(8),
-                  horizontalSpace: 8,
-                  verticalSpace: 8,
-                  slotAspectRatio: 1,
-                  animateEverytime: false,
-                  cacheExtend: 250,
-                  dashboardItemController: controller,
-                  slotCount: pageSlotCount,
-                  // Virtual columns config - disabled columns should be respected in all views
-                  virtualColumnsConfig: _virtualColumnsConfig,
-                  errorPlaceholder: (e, s) {
-                    return Text("$e , $s");
-                  },
-                  emptyPlaceholder: const Center(child: Text("Empty")),
-                  itemStyle: ItemStyle(
-                      color: Colors.transparent,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      elevation:
-                          3, // Zmniejszone z 5 do 3 dla lepszej wydajności
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(itemBorderRadius))),
-                  physics: const RangeMaintainingScrollPhysics()
-                      .applyTo(ClampingScrollPhysics()),
-                  editModeSettings: EditModeSettings(
-                      scrollWhileEditing: _scrollWhileEditing,
-                      draggableOutside: false,
-                      paintBackgroundLines: false,
-                      autoScroll: true,
-                      resizeCursorSide: 5, // Zwiększone dla ekranu dotykowego
-                      longPressEnabled:
-                          false, // Wyłącz longPress - tylko pan dla dotyku
-                      curve: Curves.easeOut,
-                      fillEditingBackground:
-                          true, // Zachowaj delikatne linie siatki podczas edycji
-                      duration: const Duration(milliseconds: 200),
-                      resizeHandleBuilder: (context, item, isEditing) {
-                        return Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(2, 2),
-                              ),
-                            ],
+                    (controller, pageSlotCount, startColumn, isMobile) => _band
+                        ? SliverDashboard<ColoredDashboardItem>(
+                            shrinkToPlace: false,
+                            slideToTop: false,
+                            absorbPointer: false,
+                            slotBackgroundBuilder: slotBackground,
+                            padding: const EdgeInsets.all(8),
+                            horizontalSpace: 8,
+                            verticalSpace: 8,
+                            slotAspectRatio: 1,
+                            animateEverytime: false,
+                            cacheExtend: 250,
+                            dashboardItemController: controller,
+                            slotCount: pageSlotCount,
+                            virtualColumnsConfig: _virtualColumnsConfig,
+                            errorPlaceholder: (e, s) => Text("$e , $s"),
+                            emptyPlaceholder:
+                                const Center(child: Text("Empty")),
+                            itemStyle: itemStyle,
+                            editModeSettings: editModeSettings,
+                            itemBuilder: itemBuilder,
+                          )
+                        : Dashboard<ColoredDashboardItem>(
+                            scrollController:
+                                isMobile ? null : scrollController,
+                            shrinkToPlace: false,
+                            slideToTop: false,
+                            absorbPointer: false,
+                            slotBackgroundBuilder: slotBackground,
+                            padding: const EdgeInsets.all(8),
+                            horizontalSpace: 8,
+                            verticalSpace: 8,
+                            slotAspectRatio: 1,
+                            animateEverytime: false,
+                            cacheExtend: 250,
+                            dashboardItemController: controller,
+                            slotCount: pageSlotCount,
+                            // Virtual columns config - disabled columns should be respected in all views
+                            virtualColumnsConfig: _virtualColumnsConfig,
+                            errorPlaceholder: (e, s) => Text("$e , $s"),
+                            emptyPlaceholder:
+                                const Center(child: Text("Empty")),
+                            itemStyle: itemStyle,
+                            physics: const RangeMaintainingScrollPhysics()
+                                .applyTo(const ClampingScrollPhysics()),
+                            editModeSettings: editModeSettings,
+                            itemBuilder: itemBuilder,
                           ),
-                          child: Transform.rotate(
-                            angle: 3.14159 / 2, // 180 stopni
-                            child: const Icon(
-                              Icons.open_in_full,
-                              color: Colors.white,
-                              size: 16,
+                // Band mode: the grid is a sliver under a collapsing app bar,
+                // in one CustomScrollView (no NestedScrollView).
+                scrollViewBuilder: _band
+                    ? (context, grid) => CustomScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          slivers: [
+                            const SliverAppBar(
+                              pinned: true,
+                              expandedHeight: 160,
+                              automaticallyImplyLeading: false,
+                              flexibleSpace:
+                                  FlexibleSpaceBar(title: Text('Pasmo')),
                             ),
-                          ),
-                        );
-                      },
-                      deleteHandleBuilder:
-                          (context, item, isEditing, onDelete) {
-                        return GestureDetector(
-                          onTap: onDelete,
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(2, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        );
-                      },
-                      backgroundStyle: const EditModeBackgroundStyle(
-                          lineColor: Colors.black38,
-                          lineWidth: 0.5,
-                          dualLineHorizontal: false,
-                          dualLineVertical: false)),
-                  itemBuilder: (ColoredDashboardItem item) {
-                    if (item.data != null) {
-                      return DataWidget(
-                        item: item,
-                      );
-                    }
-
-                    // Outlined while a pointer drags it (`liftedItem`).
-                    return ValueListenableBuilder<String?>(
-                      valueListenable: itemController.liftedItem,
-                      child: ItemDisplayWidget(
-                        item: item,
-                        isEditing: itemController.isEditing,
-                        onDelete: () {
-                          itemController.delete(item.identifier);
-                        },
-                        borderRadius: itemBorderRadius,
-                      ),
-                      builder: (context, lifted, child) => DecoratedBox(
-                        position: DecorationPosition.foreground,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(itemBorderRadius),
-                          border: lifted == item.identifier
-                              ? Border.all(
-                                  color: const Color(0xFF4285F4), width: 3)
-                              : null,
-                        ),
-                        child: child,
-                      ),
-                    );
-                  },
-                ), // Dashboard
-              ), // dashboardBuilder
+                            grid,
+                          ],
+                        )
+                    : null,
+              ), // MobileDashboardWrapper
       ),
     );
   }

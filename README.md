@@ -224,6 +224,44 @@ Dashboard(
 wider than `totalWidth / columns`. `MobileDashboardWrapper` does not take the
 callback: pass it to the `Dashboard` built in `dashboardBuilder`.
 
+### As a sliver
+
+`SliverDashboard` is the grid as a sliver of a `CustomScrollView`, so an app
+bar, a band or anything else scrolls with it in one scroll view — no
+`NestedScrollView`. It takes the parameters of `Dashboard` except the scroll
+ones (the scroll view owns those) and stays virtualised: only the rows on
+screen and within `cacheExtend` of it are built.
+
+```dart
+CustomScrollView(slivers: [
+  const SliverAppBar(expandedHeight: 200, pinned: true),
+  SliverDashboard(dashboardItemController: controller, slotCount: 12, ...),
+])
+```
+
+In edit mode it always behaves as with `scrollWhileEditing`: a drag on an
+empty slot scrolls the scroll view, and an item at the bottom edge collapses
+the app bar first, then scrolls the grid on. The grid is at least one viewport
+tall.
+
+In the section carousel, give `MobileDashboardWrapper` a `scrollViewBuilder`
+and let `dashboardBuilder` return the `SliverDashboard`. The carousel moves the
+grid sideways inside its sliver, so the app bar stays in place, and the dots
+stay below the scroll view:
+
+```dart
+MobileDashboardWrapper(
+  dashboardItemController: controller,
+  slotCount: 20,
+  dashboardBuilder: (controller, slotCount, startColumn, isMobile) =>
+      SliverDashboard(dashboardItemController: controller, slotCount: slotCount, ...),
+  scrollViewBuilder: (context, grid) => CustomScrollView(slivers: [
+    const SliverAppBar(expandedHeight: 200, pinned: true),
+    grid,
+  ]),
+)
+```
+
 ### Inside a NestedScrollView
 
 With `primary: true` and no `scrollController`, the grid scrolls on the
@@ -247,7 +285,7 @@ NestedScrollView(
 
 ```yaml
 dependencies:
-  flutter_dashboard_grid: ^1.0.0
+  flutter_dashboard_grid: ^1.2.0
 ```
 
 ```dart
