@@ -344,8 +344,11 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     _layoutController._viewportDelegate = _ViewportDelegate(
         constraints: constraints,
         padding: widget.padding.resolve(widget.textDirection),
-        mainAxisSpace: widget.horizontalSpace,
-        crossAxisSpace: widget.verticalSpace);
+        // The grid scrolls vertically: its main axis is vertical, so the gap
+        // between rows is the VERTICAL space. These were crossed, and each
+        // parameter spaced the other direction.
+        mainAxisSpace: widget.verticalSpace,
+        crossAxisSpace: widget.horizontalSpace);
 
     if (_layoutController._isAttached &&
         (_layoutController.slotCount != widget.slotCount ||

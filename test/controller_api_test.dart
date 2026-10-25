@@ -168,6 +168,45 @@ void main() {
     expect(tester.getSize(find.byKey(const Key('tile_a'))).width,
         reported!.slotWidth - 4);
   });
+
+  testWidgets(
+      'T-C-06 · horizontalSpace rozsuwa kafelki w poziomie, verticalSpace w '
+      'pionie', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(400, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Dashboard<DashboardItem>(
+          dashboardItemController:
+              DashboardItemController<DashboardItem>(items: [
+            DashboardItem(
+                identifier: 'a', width: 1, height: 1, startX: 1, startY: 1),
+            DashboardItem(
+                identifier: 'right', width: 1, height: 1, startX: 2, startY: 1),
+            DashboardItem(
+                identifier: 'below', width: 1, height: 1, startX: 1, startY: 2),
+          ]),
+          slotCount: 4,
+          slotHeight: 100,
+          slideToTop: false,
+          horizontalSpace: 2,
+          verticalSpace: 20,
+          itemBuilder: (item) => ColoredBox(
+              key: Key('tile_${item.identifier}'), color: Colors.red),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final a = tester.getRect(find.byKey(const Key('tile_a')));
+    final right = tester.getRect(find.byKey(const Key('tile_right')));
+    final below = tester.getRect(find.byKey(const Key('tile_below')));
+    expect(right.left - a.right, 2);
+    expect(below.top - a.bottom, 20);
+    expect(a.size, const Size(98, 80));
+  });
 }
 
 class _FailingDelegate extends DashboardItemStorageDelegate<DashboardItem> {
