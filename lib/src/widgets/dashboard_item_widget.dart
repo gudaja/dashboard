@@ -430,8 +430,11 @@ class _DashboardItemWidgetState<T extends DashboardItem>
             );
           }
 
+          // `expand`: the item keeps the tight size of its slot, as it has
+          // outside edit mode; a loose Stack shrank it to its own content.
           finalChild = Stack(
             clipBehavior: Clip.none,
+            fit: StackFit.expand,
             children: stackChildren,
           );
         }
