@@ -13,6 +13,8 @@ import 'package:flutter/services.dart';
 
 part 'widgets/dashboard.dart';
 
+part 'widgets/dashboard_host.dart';
+
 part 'widgets/dashboard_stack.dart';
 
 part 'widgets/edit_drag_recognizer.dart';

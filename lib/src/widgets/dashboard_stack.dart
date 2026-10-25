@@ -13,7 +13,13 @@ class _DashboardStack<T extends DashboardItem> extends StatefulWidget {
       required this.shouldCalculateNewDimensions,
       required this.itemStyle,
       required this.emptyPlaceholder,
-      required this.slotBackground});
+      required this.slotBackground,
+      this.sliver = false});
+
+  /// Whether the grid is a [SliverDashboard]: it scrolls with the enclosing
+  /// `CustomScrollView`, whose drag would win over the edit pan, so the edit
+  /// gestures are always the ones of [EditModeSettings.scrollWhileEditing].
+  final bool sliver;
 
   final Widget? emptyPlaceholder;
   final ViewportOffset offset;
