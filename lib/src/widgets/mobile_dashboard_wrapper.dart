@@ -58,6 +58,15 @@ class MobileCarouselConfig {
   final double activeDotSize;
   final double dotsSpacing;
   final double arrowSize;
+
+  /// Whether a swipe ends on a page.
+  ///
+  /// `true` (the default): on release the grid animates to a page — the next
+  /// or previous one after a fast swipe or a drag past 30% of the width,
+  /// otherwise back to the current one. `false`: the grid stays where it was
+  /// released and the next drag continues from there; the header and the dots
+  /// follow the nearest page. The arrows and the dots still move to a whole
+  /// page.
   final bool pageSnapping;
   final bool swipeEnabled;
 
@@ -131,11 +140,17 @@ class MobilePageBreaks {
 
   int get pageCount => breakColumns.length;
 
+  /// First column of section [pageIndex]. A break that is a disabled virtual
+  /// column of [config] is a separator and belongs to no section, so the
+  /// section starts after it; any other break (every `columnsPerPage` columns)
+  /// is the first column of the next section.
   int getPageStartColumn(int pageIndex, VirtualColumnsConfig? config) {
     if (pageIndex == 0) return 0;
     if (pageIndex >= breakColumns.length) return breakColumns.last;
     final prevBreak = breakColumns[pageIndex - 1];
-    return prevBreak + 1;
+    return (config?.isColumnDisabled(prevBreak) ?? false)
+        ? prevBreak + 1
+        : prevBreak;
   }
 
   int getPageEndColumn(int pageIndex) {
@@ -197,6 +212,12 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
   // Drag: progress as fraction of page width (can be negative or > 1)
   double _dragProgress = 0.0;
   bool _isDragging = false;
+
+  /// Where the grid was released when [MobileCarouselConfig.pageSnapping] is
+  /// off and it stopped between pages; `null` when it stands on
+  /// [_currentPage]. A free drag moves from here by its own pixels.
+  double? _freeOffset;
+  double _freeDragStart = 0.0;
 
   double _lastSlotWidth = 0.0;
   double _lastResolvedWidth = 0.0;
@@ -329,9 +350,44 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     return offset.clamp(0.0, maxOffset);
   }
 
+  /// Where the grid stands during a drag with
+  /// [MobileCarouselConfig.pageSnapping] off: the drag's own pixels from where
+  /// it started, within the carousel.
+  double _freeDragOffset(double pageWidth) {
+    final maxOffset = _getOffsetForPage(_getTotalPages(_currentDeviceType) - 1,
+        _lastSlotWidth, _lastResolvedWidth);
+    return (_freeDragStart + _dragProgress * pageWidth).clamp(0.0, maxOffset);
+  }
+
+  /// Release without snapping: the grid stays, the header and the dots move
+  /// to the nearest page.
+  void _endFreeDrag(int totalPages, double slotWidth, double resolvedWidth) {
+    final at = _pageOffset.value;
+    var nearest = 0;
+    for (var page = 1; page < totalPages; page++) {
+      if ((_getOffsetForPage(page, slotWidth, resolvedWidth) - at).abs() <
+          (_getOffsetForPage(nearest, slotWidth, resolvedWidth) - at).abs()) {
+        nearest = page;
+      }
+    }
+    _isDragging = false;
+    _dragProgress = 0.0;
+    _freeOffset =
+        at == _getOffsetForPage(nearest, slotWidth, resolvedWidth) ? null : at;
+    if (nearest != _currentPage) {
+      _currentPage = nearest;
+      setState(() {});
+      widget.onPageChanged?.call(nearest);
+    }
+  }
+
   @override
   void didUpdateWidget(MobileDashboardWrapper<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.mobileConfig.pageSnapping) {
+      // Snapping (back) on: the next rebuild stands the grid on its page.
+      _freeOffset = null;
+    }
     if (!identical(
         oldWidget.dashboardItemController, widget.dashboardItemController)) {
       oldWidget.dashboardItemController.removeListener(_dropGridCache);
@@ -419,10 +475,11 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
 
   void _animateToPage(int page, int totalPages) {
     page = page.clamp(0, totalPages - 1);
-    if (page == _currentPage && !_isDragging) return;
+    if (page == _currentPage && !_isDragging && _freeOffset == null) return;
 
-    _animationStartOffset =
-        _getOffsetForPage(_currentPage, _lastSlotWidth, _lastResolvedWidth);
+    // From where the grid stands: a page, or a free position.
+    _animationStartOffset = _pageOffset.value;
+    _freeOffset = null;
     _animationEndOffset =
         _getOffsetForPage(page, _lastSlotWidth, _lastResolvedWidth);
     _isDragging = false;
@@ -460,6 +517,7 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
           _animationEndOffset = 0.0;
           _dragProgress = 0.0;
           _isDragging = false;
+          _freeOffset = null;
         }
 
         switch (deviceType) {
@@ -530,7 +588,9 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
     // item controller), never once per frame. It writes a notifier that only a
     // DESCENDANT listens to, which is why it is allowed during a build.
     if (!_isDragging && !_animationController.isAnimating) {
-      _pageOffset.value =
+      final maxOffset =
+          _getOffsetForPage(totalPages - 1, slotWidth, resolvedWidth);
+      _pageOffset.value = _freeOffset?.clamp(0.0, maxOffset) ??
           _getOffsetForPage(_currentPage, slotWidth, resolvedWidth);
     }
 
@@ -586,12 +646,17 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
               final isEditMode = widget.dashboardItemController.isEditing;
 
               return GestureDetector(
+                // The grid follows the finger from where it went down; with
+                // the default `start` the first 18 px (touch slop) were lost
+                // and the grid trailed the finger by that much.
+                dragStartBehavior: DragStartBehavior.down,
                 onHorizontalDragStart:
                     (widget.mobileConfig.swipeEnabled && !isEditMode)
                         ? (details) {
                             _animationController.stop();
                             _isDragging = true;
                             _dragProgress = 0.0;
+                            _freeDragStart = _pageOffset.value;
                           }
                         : null,
                 onHorizontalDragUpdate:
@@ -603,56 +668,62 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                             // notifier, not rebuilt.
                             _dragProgress -=
                                 details.delta.dx / constraints.maxWidth;
-                            _pageOffset.value = _dragOffset();
+                            _pageOffset.value = widget.mobileConfig.pageSnapping
+                                ? _dragOffset()
+                                : _freeDragOffset(constraints.maxWidth);
                           }
                         : null,
-                onHorizontalDragEnd:
-                    (widget.mobileConfig.swipeEnabled && !isEditMode)
-                        ? (details) {
-                            final velocity = details.primaryVelocity ?? 0;
-                            int targetPage;
+                onHorizontalDragEnd: (widget.mobileConfig.swipeEnabled &&
+                        !isEditMode)
+                    ? (details) {
+                        if (!widget.mobileConfig.pageSnapping) {
+                          _endFreeDrag(totalPages, slotWidth, resolvedWidth);
+                          return;
+                        }
+                        final velocity = details.primaryVelocity ?? 0;
+                        int targetPage;
 
-                            if (velocity.abs() > 500) {
-                              // Fast swipe
-                              targetPage = velocity < 0
-                                  ? _currentPage + 1
-                                  : _currentPage - 1;
-                            } else {
-                              // Slow drag - snap based on progress
-                              if (_dragProgress > 0.3) {
-                                targetPage = _currentPage + 1;
-                              } else if (_dragProgress < -0.3) {
-                                targetPage = _currentPage - 1;
-                              } else {
-                                targetPage = _currentPage;
-                              }
-                            }
-
-                            // Where the finger left the grid — the same arithmetic
-                            // the drag itself uses, so there is ONE copy of it.
-                            final visualOffset = _dragOffset();
-
-                            final clampedTarget =
-                                targetPage.clamp(0, totalPages - 1);
-                            _animationStartOffset = visualOffset;
-                            _animationEndOffset = _getOffsetForPage(
-                                clampedTarget, slotWidth, resolvedWidth);
-                            final pageChanged = _currentPage != clampedTarget;
-                            _currentPage = clampedTarget;
-                            _isDragging = false;
-                            _dragProgress = 0.0;
-
-                            // The dots follow the new page; the grid does NOT get
-                            // rebuilt by this (it comes from the cache).
-                            if (pageChanged) {
-                              setState(() {});
-                            }
-
-                            _animationController.forward(from: 0).then((_) {
-                              widget.onPageChanged?.call(_currentPage);
-                            });
+                        if (velocity.abs() > 500) {
+                          // Fast swipe
+                          targetPage = velocity < 0
+                              ? _currentPage + 1
+                              : _currentPage - 1;
+                        } else {
+                          // Slow drag - snap based on progress
+                          if (_dragProgress > 0.3) {
+                            targetPage = _currentPage + 1;
+                          } else if (_dragProgress < -0.3) {
+                            targetPage = _currentPage - 1;
+                          } else {
+                            targetPage = _currentPage;
                           }
-                        : null,
+                        }
+
+                        // Where the finger left the grid — the same arithmetic
+                        // the drag itself uses, so there is ONE copy of it.
+                        final visualOffset = _dragOffset();
+
+                        final clampedTarget =
+                            targetPage.clamp(0, totalPages - 1);
+                        _animationStartOffset = visualOffset;
+                        _animationEndOffset = _getOffsetForPage(
+                            clampedTarget, slotWidth, resolvedWidth);
+                        final pageChanged = _currentPage != clampedTarget;
+                        _currentPage = clampedTarget;
+                        _isDragging = false;
+                        _dragProgress = 0.0;
+
+                        // The dots follow the new page; the grid does NOT get
+                        // rebuilt by this (it comes from the cache).
+                        if (pageChanged) {
+                          setState(() {});
+                        }
+
+                        _animationController.forward(from: 0).then((_) {
+                          widget.onPageChanged?.call(_currentPage);
+                        });
+                      }
+                    : null,
                 child: ClipRect(
                   child: OverflowBox(
                     alignment: Alignment.topLeft,

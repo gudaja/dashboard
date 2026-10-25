@@ -124,6 +124,7 @@ are reported through `onPageChanged`. `MobileCarouselConfig`:
 | `sectionStepOnTablet` | `null` (one section) | how far one tablet page moves |
 | `showHeader`, `showDots`, `showArrows` | `true` | section header, page dots, arrows |
 | `swipeEnabled` | `true` | paging by swipe (always off in edit mode) |
+| `pageSnapping` | `true` | a swipe ends on a page; `false` leaves the grid where it was released (the dots follow the nearest page) |
 | `dotColor`, `activeDotColor`, `arrowColor`, `dotSize`, `activeDotSize`, `dotsSpacing`, `arrowSize` | | looks of the dots and arrows |
 
 With two sections visible and the default step, tablet pages overlap: page 0

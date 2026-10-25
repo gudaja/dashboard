@@ -54,6 +54,17 @@ tests.**
   disabled columns in (85.7 px reported for 95 px columns). `slotHeight` from
   `slotAspectRatio` is still `totalWidth / slotCount / ratio`; every field is
   now documented.
+* **`MobileCarouselConfig.pageSnapping` works.** It was declared and never
+  read. `false` now leaves the grid where a swipe released it, the next drag
+  continues from there and the header and dots follow the nearest page; the
+  arrows and dots still move to a whole page. `true` stays the default.
+* **Carousel pages without virtual columns start on their first column.**
+  `MobilePageBreaks.getPageStartColumn` skipped the column after every break,
+  right for a disabled separator column but not for a `columnsPerPage` break:
+  page 2 of a 24-column grid cut every 6 started at column 7, cutting off
+  section 2 and showing part of section 3.
+* The carousel follows the finger from touch-down (`DragStartBehavior.down`);
+  it trailed it by the 18 px touch slop.
 * `super.initState()` is called first in every `State` (upstream
   Mehmetyaz/dashboard#54).
 * Tests: `resize_test.dart` replaces the placeholders (gestures with no
