@@ -1091,9 +1091,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   }
 
   void _ensureColumnCache() {
+    // The padding-free width, the same one `_setSizes` derives `slotEdge`
+    // from: a disabled column's percentage of the padded width made it wider
+    // than `_setSizes` budgeted for, pushing the last column into the padding.
     final totalWidth = _axis == Axis.vertical
-        ? _viewportDelegate.constraints.maxWidth
-        : _viewportDelegate.constraints.maxHeight;
+        ? _viewportDelegate.resolvedConstrains.maxWidth
+        : _viewportDelegate.resolvedConstrains.maxHeight;
 
     // Check if cache is valid
     if (_columnPositions != null && _lastTotalWidthForCache == totalWidth) {

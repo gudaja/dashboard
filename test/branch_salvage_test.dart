@@ -34,6 +34,9 @@ void main() {
     // nim po jednym kafelku w każdej z tych kolumn. Lewa krawędź `wide` musi
     // się zgadzać z pierwszym, a prawa z ostatnim — także gdy siatka ma
     // padding, bo pozycja „za ostatnią kolumną” nie jest szerokością siatki.
+    // Ta zgodność nie wystarcza: liczone z pozycji kolumn OBA kafelki wchodziły
+    // w prawy padding o tyle samo, więc prawa krawędź ostatniej kolumny jest
+    // też sprawdzana wprost względem siatki.
     // Kafelek nie może przechodzić przez kolumnę wyłączoną, więc przy
     // kolumnach wirtualnych wyłączona jest tylko kolumna 0, przed `from`.
     // Wolnych kolumn nie ma, bo siatka dosuwa do nich kafelki.
@@ -74,9 +77,11 @@ void main() {
         final wide = tester.getRect(find.byKey(const Key('tile_wide')));
         final first = tester.getRect(find.byKey(Key('tile_c$from')));
         final last = tester.getRect(find.byKey(Key('tile_c${slotCount - 1}')));
+        final grid = tester.getRect(find.byType(Dashboard<DashboardItem>));
 
         expect(wide.left, moreOrLessEquals(first.left));
         expect(wide.right, moreOrLessEquals(last.right));
+        expect(last.right, moreOrLessEquals(grid.right - 20));
       });
     }
   });
