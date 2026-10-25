@@ -757,7 +757,8 @@ class _DashboardStackState<T extends DashboardItem>
             differences.add(s);
           },
           start: _moveStartOffset!,
-          scrollDifference: scrollDifference);
+          scrollDifference: scrollDifference,
+          hysteresis: widget.editModeSettings.resizeHysteresis);
 
       if (resizeMoveResult.isChanged) {
         _moveStartOffset = _moveStartOffset! + resizeMoveResult.startDifference;

@@ -22,6 +22,7 @@ class EditModeSettings {
   /// [kThemeAnimationDuration]
   EditModeSettings({
     this.resizeCursorSide = 10,
+    this.resizeHysteresis = 0.1,
     this.paintBackgroundLines = true,
     this.fillEditingBackground = true,
     this.longPressEnabled = true,
@@ -34,7 +35,9 @@ class EditModeSettings {
     this.autoScroll = true,
     this.resizeHandleBuilder,
     this.deleteHandleBuilder,
-  }) : duration = duration ?? kThemeAnimationDuration;
+  })  : assert(resizeHysteresis >= 0 && resizeHysteresis < 0.5,
+            'resizeHysteresis is a fraction of a slot, from 0 to under 0.5'),
+        duration = duration ?? kThemeAnimationDuration;
 
   /// If [draggableOutside] is true, items can be dragged outside the viewport.
   /// Else items can't be dragged outside the viewport.
@@ -64,6 +67,15 @@ class EditModeSettings {
 
   /// Resize side width. If pan/longPress start in side editing is resizing.
   final double resizeCursorSide;
+
+  /// Hysteresis of a resize, as a fraction of a slot.
+  ///
+  /// An edge changes the size by one slot once it is past the middle of the
+  /// slot by this much: with the default 0.1 an item grows when its edge is
+  /// 60% into the next slot, and shrinks when it is 60% back into its own
+  /// last one. After a step, going back by less than twice this much does not
+  /// undo it, so an edge held near the middle does not flicker.
+  final double resizeHysteresis;
 
   /// Paint background lines.
   final bool paintBackgroundLines;

@@ -1,5 +1,6 @@
 import 'package:dashboard/dashboard.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/edit_grid.dart';
@@ -148,4 +149,111 @@ void main() {
     expect(tester.getRect(tile('a')), before);
     expect(delegate.updated, isEmpty);
   });
+
+  // With the default resizeHysteresis of 0.1 a step is taken once an edge is
+  // more than 60% of a slot past its grid line, in either direction.
+  group('T-R-09 · próg w połowie slotu z histerezą', () {
+    for (final (edge, axis) in [
+      ('right', const Offset(1, 0)),
+      ('left', const Offset(-1, 0)),
+      ('bottom', const Offset(0, 1)),
+      ('top', const Offset(0, -1)),
+    ]) {
+      for (final (pull, expected) in [
+        (55.0, 2), // grow: not yet
+        (65.0, 3), // grow
+        (-55.0, 2), // shrink: not yet
+        (-65.0, 1), // shrink
+      ]) {
+        testWidgets('$edge o ${pull.round()}% slotu → $expected',
+            (WidgetTester tester) async {
+          final (controller, _) = await pumpEditGrid(tester, [
+            DashboardItem(
+                identifier: 'a', width: 2, height: 2, startX: 2, startY: 2),
+          ]);
+
+          await dragInSteps(
+              tester, _grab(tester.getRect(tile('a')), edge), axis * pull,
+              steps: 10, kind: PointerDeviceKind.mouse);
+
+          final l = controller.allItems.single.layoutData;
+          expect(axis.dx != 0 ? l.width : l.height, expected);
+        });
+      }
+    }
+  });
+
+  // Grown at +70; the step back is only taken below +40 (60% back into the
+  // new last slot).
+  for (final (back, expected) in [(-20.0, '2,2 3x2'), (-40.0, '2,2 2x2')]) {
+    testWidgets(
+        'T-R-10 · histereza: urośnij przy +70, puść przy '
+        '+${70 + back.round()} → $expected', (WidgetTester tester) async {
+      final (controller, _) = await pumpEditGrid(tester, [
+        DashboardItem(
+            identifier: 'a', width: 2, height: 2, startX: 2, startY: 2),
+      ]);
+      final gesture = await tester.startGesture(
+          _grab(tester.getRect(tile('a')), 'right'),
+          kind: PointerDeviceKind.mouse);
+      await tester.pump();
+
+      await moveInSteps(tester, gesture, const Offset(70, 0), steps: 7);
+      await moveInSteps(tester, gesture, Offset(back, 0), steps: 4);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(layoutOf(controller, 'a'), expected);
+    });
+  }
+
+  testWidgets('T-R-11 · resizeHysteresis: 0 przełącza dokładnie w połowie',
+      (WidgetTester tester) async {
+    final (controller, _) = await pumpEditGrid(
+      tester,
+      [
+        DashboardItem(
+            identifier: 'a', width: 2, height: 2, startX: 2, startY: 2),
+      ],
+      editModeSettings:
+          EditModeSettings(resizeCursorSide: 20, resizeHysteresis: 0),
+    );
+
+    await dragInSteps(
+        tester, _grab(tester.getRect(tile('a')), 'right'), const Offset(55, 0),
+        steps: 11, kind: PointerDeviceKind.mouse);
+
+    expect(layoutOf(controller, 'a'), '2,2 3x2');
+  });
+
+  testWidgets(
+      'T-R-12 · w trakcie przeciągania kafelek idzie za kursorem także '
+      'przed krokiem', (WidgetTester tester) async {
+    await pumpEditGrid(tester, [
+      DashboardItem(identifier: 'a', width: 2, height: 2, startX: 2, startY: 2),
+    ]);
+    final before = tester.getRect(tile('a'));
+    final gesture = await tester.startGesture(_grab(before, 'right'),
+        kind: PointerDeviceKind.mouse);
+    await tester.pump();
+
+    await moveInSteps(tester, gesture, const Offset(40, 0), steps: 4);
+    expect(tester.getRect(tile('a')).width, before.width + 40,
+        reason: 'drawn 40 px wider before the 60% step');
+
+    await moveInSteps(tester, gesture, const Offset(-80, 0), steps: 4);
+    expect(tester.getRect(tile('a')).width, before.width - 40,
+        reason: 'and 40 px narrower before the step back');
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 }
+
+/// A point 5 px inside [edge] of [rect], halfway along it.
+Offset _grab(Rect rect, String edge) => switch (edge) {
+      'right' => Offset(rect.right - 5, rect.center.dy),
+      'left' => Offset(rect.left + 5, rect.center.dy),
+      'bottom' => Offset(rect.center.dx, rect.bottom - 5),
+      _ => Offset(rect.center.dx, rect.top + 5),
+    };

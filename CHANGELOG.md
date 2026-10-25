@@ -54,6 +54,16 @@ tests.**
   disabled columns in (85.7 px reported for 95 px columns). `slotHeight` from
   `slotAspectRatio` is still `totalWidth / slotCount / ratio`; every field is
   now documented.
+* **Resizing steps at the middle of a slot, with hysteresis.** An edge grew
+  the item as soon as it crossed a grid line (1 px past it) and shrank it only
+  past the whole previous slot, so shrinking meant dragging back to the
+  previous line. Now both directions, all four edges, step once the edge is
+  `0.5 + resizeHysteresis` of a slot past its line (new
+  `EditModeSettings.resizeHysteresis`, default 0.1: 60% in, back below 40%).
+  While dragging, the item follows the pointer up to that threshold, also
+  beyond its current size where it can grow (it may overlap a neighbour until
+  the step pushes it away). Slot widths are read before the step, which also
+  fixes the offset a left-edge grow took next to a virtual column.
 * **`MobileCarouselConfig.pageSnapping` works.** It was declared and never
   read. `false` now leaves the grid where a swipe released it, the next drag
   continues from there and the header and dots follow the nearest page; the

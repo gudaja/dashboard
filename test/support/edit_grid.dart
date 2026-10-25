@@ -26,14 +26,25 @@ Future<void> dragInSteps(
 }) async {
   final gesture = await tester.startGesture(from, kind: kind);
   await tester.pump();
+  await moveInSteps(tester, gesture, by, steps: steps);
+  await _wallClockFrame(tester);
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
+/// Moves a [gesture] that is already down by [by] in [steps] moves, with the
+/// same real-time wait as [dragInSteps]; the pointer stays down.
+Future<void> moveInSteps(
+  WidgetTester tester,
+  TestGesture gesture,
+  Offset by, {
+  int steps = 5,
+}) async {
   for (var i = 0; i < steps; i++) {
     await _wallClockFrame(tester);
     await gesture.moveBy(by / steps.toDouble());
     await tester.pump();
   }
-  await _wallClockFrame(tester);
-  await gesture.up();
-  await tester.pumpAndSettle();
 }
 
 Future<void> _wallClockFrame(WidgetTester tester) => tester

@@ -142,60 +142,6 @@ class _Resize {
   _Resizing resize;
 
   Map<String, _Change>? indirectResizes;
-
-  late Offset offsetDifference;
-  late _ItemCurrentPosition positionDifference;
-
-  void adjustResizeOffset(double slotEdge, double verticalSlotEdge,
-      _ItemCurrentPosition difPos, _ItemCurrentLayout itemLayout) {
-    Offset? difOffset;
-    if (resize.increment) {
-      if (resize.direction == AxisDirection.left) {
-        // Use actual column width for left resize instead of average slotEdge
-        final actualSlotWidth =
-            itemLayout._layoutController.getColumnWidth(itemLayout.startX - 1);
-        difPos
-          ..x += actualSlotWidth
-          ..width -= actualSlotWidth;
-        difOffset = Offset(-actualSlotWidth, 0);
-      } else if (resize.direction == AxisDirection.up) {
-        difPos
-          ..y += verticalSlotEdge
-          ..height -= verticalSlotEdge;
-        difOffset = Offset(0, -verticalSlotEdge);
-      } else if (resize.direction == AxisDirection.right) {
-        // Use actual column width for right resize instead of average slotEdge
-        final actualSlotWidth = itemLayout._layoutController
-            .getColumnWidth(itemLayout.startX + itemLayout.width);
-        difPos.width -= actualSlotWidth;
-        difOffset = Offset(actualSlotWidth, 0);
-      } else {
-        difPos.height -= verticalSlotEdge;
-        difOffset = Offset(0, verticalSlotEdge);
-      }
-    } else {
-      if (resize.direction == AxisDirection.left) {
-        // Use actual column width for left resize instead of average slotEdge
-        final actualSlotWidth =
-            itemLayout._layoutController.getColumnWidth(itemLayout.startX);
-        difPos.x += 0;
-        difOffset = Offset(actualSlotWidth, 0);
-      } else if (resize.direction == AxisDirection.up) {
-        difPos.y += 0;
-        difOffset = Offset(0, verticalSlotEdge);
-      } else if (resize.direction == AxisDirection.right) {
-        // Use actual column width for right resize instead of average slotEdge
-        final actualSlotWidth = itemLayout._layoutController
-            .getColumnWidth(itemLayout.startX + itemLayout.width - 1);
-        difOffset = Offset(-actualSlotWidth, 0);
-      } else {
-        difOffset = Offset(0, -verticalSlotEdge);
-      }
-    }
-
-    offsetDifference = difOffset;
-    positionDifference = difPos;
-  }
 }
 
 class _ResizeMoveResult {
@@ -312,53 +258,49 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     return _layoutController.verticalSlotEdge;
   }
 
-  double _clampDifLeft(double x) {
-    // Calculate actual width of widget considering virtual columns
-    double actualWidth = 0.0;
-    for (int i = startX; i < startX + width; i++) {
-      actualWidth += _layoutController.getColumnWidth(i);
-    }
-    double minActualWidth = 0.0;
-    for (int i = startX; i < startX + minWidth; i++) {
-      minActualWidth += _layoutController.getColumnWidth(i);
-    }
-    return x.clamp(0, actualWidth - minActualWidth);
+  /// Width of [column], or `null` when this item cannot grow into it: off the
+  /// grid, a disabled virtual column, or [maxWidth] reached.
+  double? _growColumnWidth(int column) {
+    if (column < 0 || column >= _layoutController.slotCount) return null;
+    if (_layoutController.isColumnDisabled(column)) return null;
+    if (maxWidth != null && width >= maxWidth!) return null;
+    return _layoutController.getColumnWidth(column);
   }
 
-  double _clampDifRight(double x) {
-    // Calculate actual width of widget considering virtual columns
-    double actualWidth = 0.0;
-    for (int i = startX; i < startX + width; i++) {
-      actualWidth += _layoutController.getColumnWidth(i);
+  /// Row height, or `null` when this item cannot grow upwards / downwards.
+  double? _growRowHeight({required bool up}) {
+    if (up && startY == 0) return null;
+    if (maxHeight != null && height >= maxHeight!) return null;
+    return _verticalSlotEdge;
+  }
+
+  /// Width of the columns this item may give up before reaching [minWidth].
+  double _shrinkableWidth() {
+    var total = 0.0;
+    for (var i = minWidth; i < width; i++) {
+      total += _layoutController.getColumnWidth(startX + i);
     }
-    double minActualWidth = 0.0;
-    for (int i = startX; i < startX + minWidth; i++) {
-      minActualWidth += _layoutController.getColumnWidth(i);
-    }
-    return x.clamp(
-      (actualWidth - minActualWidth) * -1,
-      0,
-    );
+    return total;
   }
 
-  double _clampDifTop(double y) {
-    var slot = _verticalSlotEdge;
-    return y.clamp(0, (height - minHeight) * slot);
-  }
-
-  double _clampDifBottom(double y) {
-    var slot = _verticalSlotEdge;
-    return y.clamp(
-      (height - minHeight) * -slot,
-      0,
-    );
-  }
-
+  /// Resizes by the edges in [holdDirections] while the pointer is at [local].
+  ///
+  /// [start] is where the current size's edges were under the pointer: every
+  /// step taken moves it by the slot it took or gave up, so `local - start` is
+  /// always measured from the current grid line. A step is taken when an edge
+  /// is past the middle of the next slot (or of its own last slot) by
+  /// [hysteresis] of that slot — grow at `0.5 + hysteresis`, and once grown,
+  /// shrink back only past `0.5 - hysteresis` of it.
+  ///
+  /// The item is drawn under the pointer: it may be up to the threshold larger
+  /// than its size where it can grow (it can overlap a neighbour until the
+  /// step pushes that away), and never smaller than its minimum.
   _ResizeMoveResult _resizeMove({
     required List<AxisDirection> holdDirections,
     required Offset local,
     required Offset start,
     required double scrollDifference,
+    required double hysteresis,
     required void Function(String id) onChange,
   }) {
     var difference = local - start;
@@ -368,99 +310,86 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     }
 
     var result = _ResizeMoveResult();
+    var drawn = _ItemCurrentPosition(height: 0, width: 0, y: 0, x: 0);
+    double threshold(double slot) => slot * (0.5 + hysteresis);
 
-    var itemPositionDifference =
-        _ItemCurrentPosition(height: 0, width: 0, y: 0, x: 0);
+    /// Tries [resizing]; on success moves the reference point by [shift] and
+    /// returns it, otherwise returns zero.
+    Offset step(_Resizing resizing, Offset shift) {
+      final res = tryResize(resizing, onChange);
+      if (res == null) return Offset.zero;
+      save();
+      onChange(id);
+      result.startDifference += shift;
+      result.isChanged = true;
+      return shift;
+    }
 
     if (holdDirections.contains(AxisDirection.left)) {
-      _Resizing? resizing;
-
-      if (difference.dx < 0) {
-        resizing = (_Resizing(AxisDirection.left, true));
-      } else if (difference.dx > _layoutController.getColumnWidth(startX)) {
-        resizing = (_Resizing(AxisDirection.left, false));
+      final grow = _growColumnWidth(startX - 1);
+      final shrink = _layoutController.getColumnWidth(startX);
+      var dx = difference.dx;
+      if (grow != null && dx < -threshold(grow)) {
+        dx -= step(_Resizing(AxisDirection.left, true), Offset(-grow, 0)).dx;
+      } else if (dx > threshold(shrink)) {
+        dx -= step(_Resizing(AxisDirection.left, false), Offset(shrink, 0)).dx;
       }
-
-      var res = tryResize(resizing, onChange);
-      if (res != null) {
-        itemPositionDifference =
-            _saveResizeResult(res, itemPositionDifference, result);
-        onChange(id);
-      } else {
-        var dx = _clampDifLeft(difference.dx);
-        itemPositionDifference.x += dx;
-        itemPositionDifference.width -= dx;
-      }
+      final growNow = _growColumnWidth(startX - 1);
+      dx = dx.clamp(
+          growNow == null ? 0.0 : -threshold(growNow), _shrinkableWidth());
+      drawn.x += dx;
+      drawn.width -= dx;
     }
-    if (holdDirections.contains(AxisDirection.up)) {
-      _Resizing? resizing;
 
-      if (difference.dy < 0) {
-        resizing = (_Resizing(AxisDirection.up, true));
-      } else if (difference.dy > _verticalSlotEdge) {
-        resizing = (_Resizing(AxisDirection.up, false));
+    if (holdDirections.contains(AxisDirection.up)) {
+      final grow = _growRowHeight(up: true);
+      final shrink = _verticalSlotEdge;
+      var dy = difference.dy;
+      if (grow != null && dy < -threshold(grow)) {
+        dy -= step(_Resizing(AxisDirection.up, true), Offset(0, -grow)).dy;
+      } else if (dy > threshold(shrink)) {
+        dy -= step(_Resizing(AxisDirection.up, false), Offset(0, shrink)).dy;
       }
-      var res = tryResize(resizing, onChange);
-      if (res != null) {
-        itemPositionDifference =
-            _saveResizeResult(res, itemPositionDifference, result);
-        onChange(id);
-      } else {
-        var dy = _clampDifTop(difference.dy);
-        itemPositionDifference.y += dy;
-        itemPositionDifference.height -= dy;
-      }
+      final growNow = _growRowHeight(up: true);
+      dy = dy.clamp(growNow == null ? 0.0 : -threshold(growNow),
+          (height - minHeight) * _verticalSlotEdge);
+      drawn.y += dy;
+      drawn.height -= dy;
     }
 
     if (holdDirections.contains(AxisDirection.right)) {
-      _Resizing? resizing;
-
-      if (difference.dx <
-          -_layoutController.getColumnWidth(startX + width - 1)) {
-        resizing = (_Resizing(AxisDirection.right, false));
-      } else if (difference.dx > 0) {
-        resizing = (_Resizing(AxisDirection.right, true));
+      final grow = _growColumnWidth(startX + width);
+      final shrink = _layoutController.getColumnWidth(startX + width - 1);
+      var dx = difference.dx;
+      if (grow != null && dx > threshold(grow)) {
+        dx -= step(_Resizing(AxisDirection.right, true), Offset(grow, 0)).dx;
+      } else if (dx < -threshold(shrink)) {
+        dx -=
+            step(_Resizing(AxisDirection.right, false), Offset(-shrink, 0)).dx;
       }
-      var res = tryResize(resizing, onChange);
-      if (res != null) {
-        _saveResizeResult(res, itemPositionDifference, result);
-        onChange(id);
-      } else {
-        var dx = _clampDifRight(difference.dx);
-        itemPositionDifference.width += dx;
-      }
+      final growNow = _growColumnWidth(startX + width);
+      dx = dx.clamp(
+          -_shrinkableWidth(), growNow == null ? 0.0 : threshold(growNow));
+      drawn.width += dx;
     }
 
     if (holdDirections.contains(AxisDirection.down)) {
-      _Resizing? resizing;
-      //BOTTOM
-      if (difference.dy < -_verticalSlotEdge) {
-        resizing = (_Resizing(AxisDirection.down, false));
-      } else if (difference.dy > 0) {
-        resizing = (_Resizing(AxisDirection.down, true));
+      final grow = _growRowHeight(up: false);
+      final shrink = _verticalSlotEdge;
+      var dy = difference.dy;
+      if (grow != null && dy > threshold(grow)) {
+        dy -= step(_Resizing(AxisDirection.down, true), Offset(0, grow)).dy;
+      } else if (dy < -threshold(shrink)) {
+        dy -= step(_Resizing(AxisDirection.down, false), Offset(0, -shrink)).dy;
       }
-      var res = tryResize(resizing, onChange);
-      if (res != null) {
-        _saveResizeResult(res, itemPositionDifference, result);
-        onChange(id);
-      } else {
-        var dy = _clampDifBottom(difference.dy);
-        itemPositionDifference.height += dy;
-      }
+      final growNow = _growRowHeight(up: false);
+      dy = dy.clamp(-(height - minHeight) * _verticalSlotEdge,
+          growNow == null ? 0.0 : threshold(growNow));
+      drawn.height += dy;
     }
-    _resizePosition.value = itemPositionDifference;
+    _resizePosition.value = drawn;
 
     return result;
-  }
-
-  _ItemCurrentPosition _saveResizeResult(_Resize res,
-      _ItemCurrentPosition itemPositionDifference, _ResizeMoveResult result) {
-    save();
-    res.adjustResizeOffset(
-        _slotEdge, _verticalSlotEdge, itemPositionDifference, this);
-    result.startDifference += res.offsetDifference;
-    result.isChanged = true;
-    return res.positionDifference;
   }
 
   /// If side is layout bound returns null
