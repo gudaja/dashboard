@@ -225,9 +225,7 @@ If `resizeHandleBuilder` is null, no custom resize handle is displayed, and resi
 
 [See example](https://pub.dev/packages/dashboard/example)
 
-## Additional
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/mehmetyaz)
 
 TODO  
  - [ ] Define and fix animation bugs.

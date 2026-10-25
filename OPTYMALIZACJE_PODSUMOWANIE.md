@@ -157,7 +157,7 @@ print() w build() = synchroniczne I/O
 ### Opcja 2: Flutter DevTools (Dokładny)
 
 ```bash
-cd /home/lukasz/flutter_workspace/dashboard_fork
+cd /home/lukasz/flutter_workspace/dashboard
 flutter run --profile  # NIE --debug!
 
 # W przeglądarce otwórz DevTools
