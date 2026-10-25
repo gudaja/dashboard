@@ -21,8 +21,14 @@ void main() {
     ('cockpit, phone, 30 items', const Size(390, 700), 6, 30),
     ('desktop, 600 items', const Size(1400, 900), 24, 600),
   ]) {
-    for (final editing in [false, true]) {
-      testWidgets('$name${editing ? ', edit mode' : ''}', (tester) async {
+    for (final (editing, sliver) in [
+      (false, false),
+      (true, false),
+      (false, true),
+    ]) {
+      final label = '$name${editing ? ', edit mode' : ''}'
+          '${sliver ? ', SliverDashboard' : ''}';
+      testWidgets(label, (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
@@ -37,15 +43,28 @@ void main() {
                 startX: (i * 2) % slotCount,
                 startY: (i * 2) ~/ slotCount),
         ]);
+        Widget itemBuilder(DashboardItem item) =>
+            const ColoredBox(color: Colors.teal);
         await tester.pumpWidget(MaterialApp(
           home: Scaffold(
-            body: Dashboard<DashboardItem>(
-              dashboardItemController: controller,
-              slotCount: slotCount,
-              slideToTop: false,
-              editModeSettings: EditModeSettings(scrollWhileEditing: true),
-              itemBuilder: (item) => const ColoredBox(color: Colors.teal),
-            ),
+            body: sliver
+                ? CustomScrollView(slivers: [
+                    const SliverAppBar(pinned: true, title: Text('band')),
+                    SliverDashboard<DashboardItem>(
+                      dashboardItemController: controller,
+                      slotCount: slotCount,
+                      slideToTop: false,
+                      itemBuilder: itemBuilder,
+                    ),
+                  ])
+                : Dashboard<DashboardItem>(
+                    dashboardItemController: controller,
+                    slotCount: slotCount,
+                    slideToTop: false,
+                    editModeSettings:
+                        EditModeSettings(scrollWhileEditing: true),
+                    itemBuilder: itemBuilder,
+                  ),
           ),
         ));
         await tester.pumpAndSettle();
@@ -82,10 +101,9 @@ void main() {
         final top = (counts.entries.toList()
               ..sort((a, b) => b.value.compareTo(a.value)))
             .take(4)
-            .map((e) =>
-                '${e.key} ${(e.value / _frames).toStringAsFixed(1)}')
+            .map((e) => '${e.key} ${(e.value / _frames).toStringAsFixed(1)}')
             .join(', ');
-        print('$name${editing ? ', edit mode' : ''}: '
+        print('$label: '
             '${(watch.elapsedMicroseconds / _frames).toStringAsFixed(0)} µs/frame, '
             '${(rebuilds / _frames).toStringAsFixed(1)} rebuilds/frame ($top)');
       });

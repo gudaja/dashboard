@@ -481,7 +481,7 @@ class _DashboardStackState<T extends DashboardItem>
     );
 
     if (widget.dashboardController.isEditing &&
-        widget.editModeSettings.scrollWhileEditing) {
+        (widget.editModeSettings.scrollWhileEditing || widget.sliver)) {
       result = _buildEditGestures(result);
     } else if (widget.dashboardController.isEditing) {
       result = GestureDetector(
@@ -710,17 +710,22 @@ class _DashboardStackState<T extends DashboardItem>
     if (originDy == null) {
       return (top, bottom);
     }
-    // The nearest one is the grid's own `Scrollable`, whose viewport is this
-    // stack; the search starts above it.
+    // The nearest one is the grid's own `Scrollable` (its viewport is this
+    // stack, so it clips nothing) or, for a sliver, the scroll view it is in.
     var scrollable = Scrollable.maybeOf(context, axis: Axis.vertical);
     while (scrollable != null) {
-      scrollable = Scrollable.maybeOf(scrollable.context, axis: Axis.vertical);
-      final box = scrollable?.context.findRenderObject();
+      final box = scrollable.context.findRenderObject();
       if (box is RenderBox && box.hasSize) {
         final dy = box.localToGlobal(Offset.zero).dy - originDy;
         top = max(top, dy);
         bottom = min(bottom, dy + box.size.height);
       }
+      scrollable = Scrollable.maybeOf(scrollable.context, axis: Axis.vertical);
+    }
+    // A sliver's top may lie under a pinned app bar.
+    final offset = viewportOffset;
+    if (offset is _SliverDashboardOffset) {
+      top = max(top, offset._overlap);
     }
     return (top, bottom);
   }
@@ -762,6 +767,8 @@ class _DashboardStackState<T extends DashboardItem>
     final position = viewportOffset;
     if (position is ScrollPosition) {
       position.pointerScroll(delta);
+    } else if (position is _SliverDashboardOffset) {
+      position.scrollBy(delta);
     } else {
       position.jumpTo(max(0.0, pixels + delta));
     }

@@ -186,6 +186,7 @@ class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
     this.virtualColumnsConfig,
     this.mobileConfig = const MobileCarouselConfig(),
     this.onPageChanged,
+    this.scrollViewBuilder,
   });
 
   final Widget Function(
@@ -201,6 +202,22 @@ class MobileDashboardWrapper<T extends DashboardItem> extends StatefulWidget {
   final VirtualColumnsConfig? virtualColumnsConfig;
   final MobileCarouselConfig mobileConfig;
   final void Function(int page)? onPageChanged;
+
+  /// Builds the scroll view the grid scrolls in, for a [SliverDashboard].
+  ///
+  /// `null` (the default): [dashboardBuilder] returns a box grid, a
+  /// [Dashboard] with a `Scrollable` of its own, and the carousel moves that
+  /// box sideways.
+  ///
+  /// Set: [dashboardBuilder] returns a [SliverDashboard], and this gets it as
+  /// `grid` and returns the scroll view around it — typically a
+  /// `CustomScrollView` with a band or an app bar above the grid. The carousel
+  /// moves only the grid sideways, inside its sliver; the other slivers stay
+  /// in place, and the page dots and arrows stay outside the scroll view, as
+  /// with a box grid. A swipe anywhere in the scroll view changes the section.
+  /// Above the tablet breakpoint the grid is handed over as well, without a
+  /// carousel.
+  final Widget Function(BuildContext context, Widget grid)? scrollViewBuilder;
 
   @override
   State<MobileDashboardWrapper<T>> createState() =>
@@ -615,12 +632,13 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
           case DeviceType.tablet:
             return _buildSlidingDashboard(constraints, deviceType);
           case DeviceType.desktop:
-            return widget.dashboardBuilder(
+            final grid = widget.dashboardBuilder(
               widget.dashboardItemController,
               widget.slotCount,
               0,
               false,
             );
+            return widget.scrollViewBuilder?.call(context, grid) ?? grid;
         }
       },
     );
@@ -813,26 +831,40 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
                         });
                       }
                     : null,
-                child: ClipRect(
-                  key: _viewportKey,
-                  child: OverflowBox(
-                    alignment: Alignment.topLeft,
-                    maxWidth: fullDashboardWidth,
-                    minWidth: fullDashboardWidth,
-                    // The page offset arrives through a notifier, so a swipe and
-                    // the page animation MOVE the grid instead of rebuilding it.
-                    child: ValueListenableBuilder<double>(
-                      valueListenable: _pageOffset,
-                      child: _gridSubtree(isMobile: true),
-                      builder: (context, offset, child) {
-                        return Transform.translate(
-                          offset: Offset(-offset, 0),
-                          child: child,
-                        );
-                      },
-                    ),
-                  ),
-                ),
+                child: widget.scrollViewBuilder != null
+                    ? KeyedSubtree(
+                        key: _viewportKey,
+                        // The grid's sliver lays the grid out at its full
+                        // width and moves it by the page offset itself.
+                        child: _SliverCarouselScope(
+                          gridWidth: fullDashboardWidth,
+                          offset: _pageOffset,
+                          child: Builder(
+                            builder: (context) => widget.scrollViewBuilder!(
+                                context, _gridSubtree(isMobile: true)),
+                          ),
+                        ),
+                      )
+                    : ClipRect(
+                        key: _viewportKey,
+                        child: OverflowBox(
+                          alignment: Alignment.topLeft,
+                          maxWidth: fullDashboardWidth,
+                          minWidth: fullDashboardWidth,
+                          // The page offset arrives through a notifier, so a swipe and
+                          // the page animation MOVE the grid instead of rebuilding it.
+                          child: ValueListenableBuilder<double>(
+                            valueListenable: _pageOffset,
+                            child: _gridSubtree(isMobile: true),
+                            builder: (context, offset, child) {
+                              return Transform.translate(
+                                offset: Offset(-offset, 0),
+                                child: child,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
               );
             },
           ),
@@ -870,4 +902,24 @@ class _MobileDashboardWrapperState<T extends DashboardItem>
       ],
     );
   }
+}
+
+/// What a [SliverDashboard] in a sliver carousel needs from the carousel: the
+/// full width to lay the grid out at, and the offset to move it by.
+class _SliverCarouselScope extends InheritedWidget {
+  const _SliverCarouselScope({
+    required this.gridWidth,
+    required this.offset,
+    required super.child,
+  });
+
+  final double gridWidth;
+  final ValueListenable<double> offset;
+
+  static _SliverCarouselScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SliverCarouselScope>();
+
+  @override
+  bool updateShouldNotify(_SliverCarouselScope oldWidget) =>
+      gridWidth != oldWidget.gridWidth || !identical(offset, oldWidget.offset);
 }
