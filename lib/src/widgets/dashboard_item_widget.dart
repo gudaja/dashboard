@@ -71,13 +71,13 @@ class _DashboardItemWidgetState<T extends DashboardItem>
 
   @override
   void initState() {
+    super.initState();
     cursor = MouseCursor.defer;
     _animationController = AnimationController(
         vsync: this, duration: widget.editModeSettings.duration);
     _multiplierAnimationController = AnimationController(
         vsync: this, value: 0, duration: widget.editModeSettings.duration);
     widget.itemCurrentLayout.addListener(_listen);
-    super.initState();
   }
 
   _ItemCurrentPosition? get _resizePosition =>

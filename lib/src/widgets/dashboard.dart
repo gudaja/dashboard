@@ -245,6 +245,7 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
   ///
   @override
   void initState() {
+    super.initState();
     _layoutController = _DashboardLayoutController<T>();
     _layoutListener = () {
       if (mounted) {
@@ -281,7 +282,6 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
       widget.dashboardItemController._asyncSnap!
           .addListener(_asyncSnapListener!);
     }
-    super.initState();
   }
 
   @override

@@ -30,10 +30,10 @@ class _AnimatedBackgroundPainterState extends State<_AnimatedBackgroundPainter>
 
   @override
   void initState() {
+    super.initState();
     offset = widget.offset.pixels;
     _animationController = AnimationController(
         vsync: this, duration: widget.editModeSettings.duration);
-    super.initState();
   }
 
   @override

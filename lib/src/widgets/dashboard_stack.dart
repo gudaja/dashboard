@@ -94,6 +94,7 @@ class _DashboardStackState<T extends DashboardItem>
 
   @override
   void initState() {
+    super.initState();
     _clearWidgets();
     // The slot geometry is already known when this stack is first built:
     // `Dashboard._setNewOffset` attaches the layout controller and calls
@@ -109,7 +110,6 @@ class _DashboardStackState<T extends DashboardItem>
       slotEdge = widget.dashboardController.slotEdge;
       verticalSlotEdge = widget.dashboardController.verticalSlotEdge;
     }
-    super.initState();
   }
 
   @override
