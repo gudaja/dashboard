@@ -32,9 +32,9 @@ With dynamic slot count, you can re-layout window size changes.
 
 ## Added in this fork
 
-The screenshots below are rendered from the package itself by
-`tool/doc_screenshots_test.dart`; regenerate them after a visual change with
-`flutter test tool/doc_screenshots_test.dart`.
+The animations below are recorded from the package itself, with real gestures,
+by `tool/doc_screenshots_test.dart`; regenerate them after a visual change with
+`flutter test tool/doc_screenshots_test.dart` (needs `ffmpeg`).
 
 ### Column sections (virtual columns)
 
@@ -42,7 +42,7 @@ Disabled columns split the grid into sections. Items cannot be placed in or
 across them, and they take a fixed share of the grid width (or none at all
 with `VirtualColumnsConfig.hidden`).
 
-<img src="documentation/virtual_columns.png" width="600"/>
+<img src="documentation/virtual_columns.gif" width="600"/>
 
 ```dart
 Dashboard(
@@ -61,7 +61,7 @@ Dashboard(
 section below the breakpoints: one section on a phone, two on a tablet, with a
 header, page dots and arrows. Changing pages does not rebuild the grid.
 
-<img src="documentation/mobile_carousel.png" width="300"/> <img src="documentation/tablet_carousel.png" width="500"/>
+<img src="documentation/mobile_carousel.gif" width="300"/> <img src="documentation/tablet_carousel.gif" width="500"/>
 
 ```dart
 MobileDashboardWrapper(
@@ -83,7 +83,7 @@ MobileDashboardWrapper(
 In edit mode every item can carry a resize handle (bottom right) and a delete
 button (top right), both built by you.
 
-<img src="documentation/edit_handles.png" width="400"/>
+<img src="documentation/edit_handles.gif" width="400"/>
 
 ```dart
 EditModeSettings(
@@ -98,7 +98,7 @@ EditModeSettings(
 `DashboardItemController.compactToTop()` closes the vertical gaps left after
 moving or deleting items, and returns the identifiers it moved.
 
-<img src="documentation/compact_before.png" width="300"/> <img src="documentation/compact_after.png" width="300"/>
+<img src="documentation/compact_to_top.gif" width="400"/>
 
 ### Storage Delegate
 
