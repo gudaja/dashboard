@@ -1054,7 +1054,6 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     return null;
   }
 
-  int? _lastResizeUpdate;
   int? _lastTransformUpdate;
 
   late String id;

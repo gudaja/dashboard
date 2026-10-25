@@ -415,7 +415,7 @@ class _DashboardStackState<T extends DashboardItem>
     if (edit != null && !_widgetsMap.containsKey(edit.id)) {
       _removeWidget(edit.id);
       _keys.remove(edit.id);
-      addWidget(edit.id!);
+      addWidget(edit.id);
     }
 
     Widget result = Stack(
