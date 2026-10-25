@@ -171,6 +171,43 @@ void main() {
     await r.wait(const Duration(milliseconds: 1800));
     await r.finish();
   });
+
+  testWidgets('sections_relayout.gif', (tester) async {
+    // The window narrows across both breakpoints of MobileCarouselConfig
+    // (900 and 600): three sections side by side, then two, then one.
+    const desktop = 960.0, tablet = 780.0, phone = 390.0;
+    final controller = DashboardItemController<DashboardItem>(items: _layout());
+    final width = ValueNotifier<double>(desktop);
+    final r = await _Recorder.start(
+      tester,
+      'sections_relayout',
+      const Size(desktop, 470),
+      ColoredBox(
+        color: const Color(0xFF3C4043),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ValueListenableBuilder<double>(
+            valueListenable: width,
+            builder: (context, w, child) => SizedBox(width: w, child: child),
+            child: _app(
+              title: 'MobileDashboardWrapper',
+              body: _wrapper(controller),
+            ),
+          ),
+        ),
+      ),
+      pixelRatio: 1,
+    );
+
+    await r.wait(const Duration(milliseconds: 1500));
+    await r.tween(width, tablet);
+    await r.wait(const Duration(milliseconds: 1500));
+    await r.tween(width, phone);
+    await r.wait(const Duration(milliseconds: 1500));
+    await r.tween(width, desktop, duration: const Duration(milliseconds: 900));
+    await r.wait(const Duration(milliseconds: 600));
+    await r.finish();
+  });
 }
 
 /// Left through every page, then back to the first.
@@ -357,16 +394,18 @@ final _boundary = GlobalKey();
 /// Pumps the app frame by frame, drives gestures and writes every frame to
 /// `build/doc_frames/<name>/`, then encodes them into `documentation/<name>.gif`.
 class _Recorder {
-  _Recorder._(this.tester, this.name, this.frames);
+  _Recorder._(this.tester, this.name, this.frames, this.pixelRatio);
 
   final WidgetTester tester;
   final String name;
   final Directory frames;
+  final double pixelRatio;
   final ValueNotifier<Offset?> _finger = ValueNotifier(null);
   int _count = 0;
 
   static Future<_Recorder> start(
-      WidgetTester tester, String name, Size size, Widget app) async {
+      WidgetTester tester, String name, Size size, Widget app,
+      {double pixelRatio = _pixelRatio}) async {
     // flutter_test replaces elevation shadows with a black outline by default;
     // the flag is put back in `finish`, before the test body ends.
     debugDisableShadows = false;
@@ -378,7 +417,7 @@ class _Recorder {
     if (frames.existsSync()) frames.deleteSync(recursive: true);
     frames.createSync(recursive: true);
 
-    final r = _Recorder._(tester, name, frames);
+    final r = _Recorder._(tester, name, frames, pixelRatio);
     await tester.pumpWidget(RepaintBoundary(
       key: _boundary,
       child: Directionality(
@@ -417,7 +456,7 @@ class _Recorder {
     final boundary =
         _boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
-      final image = await boundary.toImage(pixelRatio: _pixelRatio);
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       File('${frames.path}/${(_count++).toString().padLeft(4, '0')}.png')
@@ -432,6 +471,18 @@ class _Recorder {
 
   Future<void> wait(Duration duration) async {
     for (var t = Duration.zero; t < duration; t += _frame) {
+      await _step();
+    }
+  }
+
+  /// Moves [value] to [to] over [duration], one step per recorded frame.
+  Future<void> tween(ValueNotifier<double> value, double to,
+      {Duration duration = const Duration(milliseconds: 1200)}) async {
+    final from = value.value;
+    final steps = duration.inMilliseconds ~/ _frame.inMilliseconds;
+    for (var i = 1; i <= steps; i++) {
+      value.value =
+          ui.lerpDouble(from, to, Curves.easeInOut.transform(i / steps))!;
       await _step();
     }
   }

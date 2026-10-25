@@ -61,6 +61,11 @@ Dashboard(
 section below the breakpoints: one section on a phone, two on a tablet, with a
 header, page dots and arrows. Changing pages does not rebuild the grid.
 
+The mode follows the width the wrapper gets, so a window crossing the
+breakpoints (900 and 600 by default) goes from three sections to two to one:
+
+<img src="documentation/sections_relayout.gif" width="600"/>
+
 <img src="documentation/mobile_carousel.gif" width="300"/> <img src="documentation/tablet_carousel.gif" width="500"/>
 
 ```dart
