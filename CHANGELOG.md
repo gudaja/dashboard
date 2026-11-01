@@ -1,16 +1,4 @@
-> **Fork.** Ten CHANGELOG opisuje `github.com/gudaja/dashboard`, forka
-> `Mehmetyaz/dashboard`. Wpisy do `0.0.3+1` włącznie pochodzą z upstreamu.
-> Wpisy `0.0.4`–`0.0.5` zostały **odtworzone z historii commitów** przy okazji
-> wydania `0.0.6` — plik nie był prowadzony na bieżąco, a `pubspec.yaml`
-> deklarował `0.0.5` bez ani jednego wpisu za `0.0.3+1`.
->
-> **`0.0.8` and `0.0.9` are the same kind of catch-up.** Both tags already exist
-> and both point at the commit that carries the work — but those commits still
-> declared `version: 0.0.7`, because the consumer resolves this package by `ref:`
-> and the tag was what it needed. The entries below were written afterwards,
-> together with the version bump, in a commit that touches no `lib/` file and
-> therefore gets NO tag of its own: `v0.0.8` and `v0.0.9` keep pointing where
-> they pointed.
+
 
 ## 1.2.0
 
