@@ -29,6 +29,10 @@
   `SliverDashboard`. The builder gets the grid's sliver and returns the scroll
   view around it; the carousel moves only the grid sideways, inside its
   sliver, so the slivers around it stay in place and the dots stay below.
+* **Example: band mode.** An app-bar toggle puts the grid in a
+  `SliverDashboard` under a collapsing `SliverAppBar`, in one
+  `CustomScrollView`, through `scrollViewBuilder`. The README has a section
+  "As a sliver".
 
 * **Auto-scroll under a `NestedScrollView` band.** With `primary: true` the
   grid's position is the inner one of the band's coordinator, and the
