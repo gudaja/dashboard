@@ -440,8 +440,25 @@ void main() {
         }),
       );
 
+      expect(rows, {0, 1, 2});
+    });
+
+    testWidgets('T-BG-20 · z sufitem tło slotów nigdy dla wierszy < 0 '
+        '(bez sufitu wiersz -1 zostaje, T-PV2-11)', (WidgetTester tester) async {
+      final rows = <int>{};
+      await pumpEditGrid(
+        tester,
+        [],
+        maxRows: 8,
+        slotBackgroundBuilder:
+            SlotBackgroundBuilder.withFunction((context, item, x, y, editing) {
+          rows.add(y);
+          return const SizedBox();
+        }),
+      );
+
       expect(rows, isNotEmpty);
-      expect(rows.where((y) => y >= 0).reduce((a, b) => a > b ? a : b), 2);
+      expect(rows.where((y) => y < 0), isEmpty);
     });
   });
 }

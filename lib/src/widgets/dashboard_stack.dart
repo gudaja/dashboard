@@ -308,8 +308,13 @@ class _DashboardStackState<T extends DashboardItem>
       return _cachedBackgroundWidgets!;
     }
 
+    // The band starts above the viewport, so an unbounded grid builds rows
+    // -1, -2, … too — on purpose: row -1 peeks 6 px into the padding
+    // (T-PV2-11). A bounded grid ([Dashboard.maxRows]) is a fixed board and
+    // has no slot outside rows 0 … maxRows - 1, above it neither.
+    final firstY = ((pixels - widget.cacheExtend) / verticalSlotEdge).floor();
     _backgroundStartY =
-        ((pixels - widget.cacheExtend) / verticalSlotEdge).floor();
+        widget.dashboardController.maxRows == null ? firstY : max(0, firstY);
     _backgroundEndY =
         ((pixels + height + widget.cacheExtend) / verticalSlotEdge).ceil();
 
