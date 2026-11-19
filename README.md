@@ -279,13 +279,45 @@ NestedScrollView(
 )
 ```
 
+### Fixed board (wall panels)
+
+A grid that is a fixed board — say 10 x 6 square slots of a wall panel's
+screen, where only some tile sizes exist — is four opt-in parameters:
+
+```dart
+Dashboard(
+  dashboardItemController: controller,
+  slotCount: 10,
+  maxRows: 6,                        // no item below row 5, no scroll past it
+  isSizeAllowed: (w, h) => allowed.contains((w, h)),
+  onEmptySlotTap: (x, y) => _addTileAt(x, y),
+  swapOnDrop: true,                  // drop on a same-size tile = swap
+  slideToTop: false,
+  shrinkToPlace: false,
+  ...
+)
+```
+
+- `maxRows` is a row ceiling: moves, resizes, shrinking to place and added
+  items stay above it; the edit-mode background paints exactly `maxRows`
+  rows. `add`/`addAll` throw `DashboardNoSpaceException` when there is no
+  room (`addAll` adds nothing then).
+- `isSizeAllowed` limits sizes: a resize drag skips refused sizes (the item
+  keeps the last allowed one until the pointer reaches the next), and
+  shrinking never picks a refused size. An item's own size is never refused.
+- `DashboardItemController.canPlace(layout, ignoreId: id)` tells whether a
+  layout fits the columns, the ceiling, the allowed sizes and the free slots.
+- `onEmptySlotTap` reports a tap on an empty slot, in and out of edit mode.
+- With `slideToTop: false` and `shrinkToPlace: false` a valid stored layout
+  loads exactly as stored, without an `onItemsUpdated` call.
+
 ## Getting started
 
 ### Install
 
 ```yaml
 dependencies:
-  flutter_dashboard_grid: ^1.2.0
+  flutter_dashboard_grid: ^1.3.0
 ```
 
 ```dart

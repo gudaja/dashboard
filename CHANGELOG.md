@@ -1,5 +1,41 @@
 
 
+## 1.3.0 (unreleased)
+
+A fixed board — a wall panel's screen — as opt-in parameters of `Dashboard`
+and `SliverDashboard`. With the defaults nothing changes.
+
+* **`maxRows`: a row ceiling.** No item ever occupies a row `>= maxRows`:
+  a drag past the last row ends on the lowest row the item fits on, a resize
+  stops at the ceiling (and does not push a neighbour across it), shrinking
+  to place and the placement of added items stay above it. `add`/`addAll`
+  throw the new **`DashboardNoSpaceException`** when an item has no room and
+  leave the grid as it was (`addAll` adds none of its items); an item of the
+  initial load with no room is left out of the grid. The scroll extent (also
+  while dragging), the edit-mode background lines and the slot background end
+  at the last row.
+* **`isSizeAllowed(width, height)`: allowed sizes.** A resize only commits
+  allowed sizes: a drag skips a refused size, several slots at once when the
+  pointer is far enough, and takes nothing when a neighbour blocks a step on
+  the way; a pushed neighbour is never shrunk to a refused size; shrinking to
+  place (`shrinkToPlace`, `EditModeSettings.shrinkOnMove`) picks the largest
+  allowed size that fits, or refuses the spot. An item's own size is never
+  refused. A size reachable only by a corner step on both axes at once is not
+  reached.
+* **`DashboardItemController.canPlace(layout, {ignoreId})`**: whether a layout
+  fits the columns, the ceiling, the enabled virtual columns, the allowed sizes
+  and the free slots. Throws `StateError` without a laid-out grid.
+* **`onEmptySlotTap(x, y)`**: a tap on a slot no item occupies, in and out of
+  edit mode; not a drag, a scroll, or a hold past `kLongPressTimeout`; never
+  on a row at or past `maxRows`.
+* **`swapOnDrop`**: an item dropped with its top-left on the top-left slot of
+  one other item of the same size exchanges places with it; both are reported
+  in one `onItemsUpdated` call.
+* **Exact mounting is pinned by tests**: with `slideToTop: false` and
+  `shrinkToPlace: false` a valid stored layout (delegate load, sync or async,
+  and `add`/`addAll` with `mountToTop: false`) is placed exactly as stored and
+  reports no update.
+
 ## 1.2.0
 
 * **`SliverDashboard`: the grid as a sliver** of a `CustomScrollView`, to put
