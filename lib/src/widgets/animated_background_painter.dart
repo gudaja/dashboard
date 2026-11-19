@@ -115,7 +115,8 @@ class _AnimatedBackgroundPainterState extends State<_AnimatedBackgroundPainter>
                   slotEdge: widget.layoutController.slotEdge,
                   lines: widget.editModeSettings.paintBackgroundLines,
                   offset: widget.offset.pixels,
-                  viewportDelegate: widget.layoutController._viewportDelegate),
+                  viewportDelegate: widget.layoutController._viewportDelegate,
+                  maxRows: widget.layoutController.maxRows),
               isComplex: true,
             );
           });
@@ -134,7 +135,8 @@ class _AnimatedBackgroundPainterState extends State<_AnimatedBackgroundPainter>
             style: widget.editModeSettings.backgroundStyle,
             slotEdge: widget.layoutController.slotEdge,
             offset: widget.offset.pixels,
-            viewportDelegate: widget.layoutController._viewportDelegate),
+            viewportDelegate: widget.layoutController._viewportDelegate,
+            maxRows: widget.layoutController.maxRows),
         isComplex: false,
       );
     }

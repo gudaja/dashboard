@@ -44,6 +44,7 @@ part 'edit_mode/edit_mode_painter.dart';
 part 'edit_mode/edit_mode_settings.dart';
 
 part 'exceptions/unbounded.dart';
+part 'exceptions/no_space.dart';
 
 part 'controller/dashboard_controller.dart';
 part 'controller/dashboard_item_storage.dart';

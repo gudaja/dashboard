@@ -84,6 +84,10 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   /// [Dashboard.shrinkToPlace] is true, it is tried to be placed by shrinking.
   /// In this case, if there is more than one possibility, it is placed in
   /// the largest form.
+  ///
+  /// With [Dashboard.maxRows] set, an item that has no free place within the
+  /// ceiling throws [DashboardNoSpaceException] and the grid stays as it was;
+  /// check with [canPlace] first.
   void add(T item,
       {bool mountToTop = true,
       Duration duration = const Duration(milliseconds: 200),
@@ -91,13 +95,23 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
       int? minColumn,
       int? maxColumn}) {
     if (_isAttached) {
+      final previous = _items[item.identifier];
       _items[item.identifier] = item;
-      _layoutController!.add(item,
-          mountToTop: mountToTop,
-          duration: duration,
-          curve: curve,
-          minColumn: minColumn,
-          maxColumn: maxColumn);
+      try {
+        _layoutController!.add(item,
+            mountToTop: mountToTop,
+            duration: duration,
+            curve: curve,
+            minColumn: minColumn,
+            maxColumn: maxColumn);
+      } on DashboardNoSpaceException {
+        if (previous == null) {
+          _items.remove(item.identifier);
+        } else {
+          _items[item.identifier] = previous;
+        }
+        rethrow;
+      }
       itemStorageDelegate?._onItemsAdded(
           [_getItemWithLayout(item.identifier)], _layoutController!.slotCount);
     } else {
@@ -118,17 +132,56 @@ class DashboardItemController<T extends DashboardItem> with ChangeNotifier {
   /// [Dashboard.shrinkToPlace] is true, it is tried to be placed by shrinking.
   /// In this case, if there is more than one possibility, it is placed in
   /// the largest form.
+  ///
+  /// With `mountToTop: false`, `slideToTop: false` and `shrinkToPlace: false`
+  /// every item whose stored place is free and inside the grid is placed at
+  /// exactly its stored `startX`, `startY`, `width` and `height`.
+  ///
+  /// With [Dashboard.maxRows] set, when one of the items has no free place
+  /// within the ceiling, [DashboardNoSpaceException] is thrown and none of
+  /// [items] is added.
   void addAll(List<T> items, {bool mountToTop = true}) {
     if (_isAttached) {
+      final before = Map<String, T>.of(_items);
       _items.addAll(
           items.asMap().map((key, value) => MapEntry(value.identifier, value)));
-      _layoutController!.addAll(items, mountToTop: mountToTop);
+      try {
+        _layoutController!.addAll(items, mountToTop: mountToTop);
+      } on DashboardNoSpaceException {
+        _items
+          ..clear()
+          ..addAll(before);
+        rethrow;
+      }
       itemStorageDelegate?._onItemsAdded(
           items.map((e) => _getItemWithLayout(e.identifier)).toList(),
           _layoutController!.slotCount);
     } else {
       throw Exception("Not Attached");
     }
+  }
+
+  /// Whether an item with [layout] could stand on the grid as it is now.
+  ///
+  /// `true` when [layout] lies inside the [Dashboard.slotCount] columns and,
+  /// if set, inside [Dashboard.maxRows] rows; covers no disabled virtual
+  /// column ([Dashboard.virtualColumnsConfig]); has a size
+  /// [Dashboard.isSizeAllowed] accepts (if set); and overlaps no item except
+  /// the one with identifier [ignoreId] — pass the item's own identifier to
+  /// ask whether it could move or resize to [layout]. The item's min/max
+  /// sizes in [layout] are not checked.
+  ///
+  /// Reflects the layout of the moment, including an item being dragged.
+  ///
+  /// Throws a [StateError] when no [Dashboard] is mounted with this
+  /// controller (or it has not laid itself out yet): the grid's columns and
+  /// items are only known to a mounted grid.
+  bool canPlace(ItemLayout layout, {String? ignoreId}) {
+    final layoutController = _layoutController;
+    if (layoutController == null || !layoutController._isAttached) {
+      throw StateError('canPlace needs a mounted, laid out Dashboard');
+    }
+    return layoutController.canPlace(layout, ignoreId: ignoreId);
   }
 
   /// Delete an item from Dashboard.
@@ -354,6 +407,56 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
 
   late bool absorbPointer;
 
+  /// [Dashboard.maxRows].
+  int? maxRows;
+
+  /// [Dashboard.isSizeAllowed].
+  bool Function(int width, int height)? isSizeAllowed;
+
+  /// [Dashboard.onEmptySlotTap].
+  void Function(int x, int y)? onEmptySlotTap;
+
+  /// [Dashboard.swapOnDrop].
+  bool swapOnDrop = false;
+
+  /// Whether [layout] ends at or above the row ceiling ([maxRows]).
+  bool _fitsRows(ItemLayout layout) =>
+      maxRows == null || layout.startY + layout.height <= maxRows!;
+
+  /// Whether [isSizeAllowed] accepts a [width] x [height] item.
+  bool _sizeAllowed(int width, int height) =>
+      isSizeAllowed == null || isSizeAllowed!(width, height);
+
+  /// The largest scroll offset the row ceiling leaves, or `null` without
+  /// one: [maxRows] rows and the padding, minus the viewport.
+  double? get _ceilingScrollExtent {
+    if (maxRows == null) return null;
+    return max(
+        0.0,
+        maxRows! * verticalSlotEdge +
+            _viewportDelegate.padding.vertical -
+            _viewportDelegate.constraints.maxHeight);
+  }
+
+  /// See [DashboardItemController.canPlace].
+  bool canPlace(ItemLayout layout, {String? ignoreId}) {
+    if (layout.startX < 0 ||
+        layout.startY < 0 ||
+        layout.width < 1 ||
+        layout.height < 1 ||
+        layout.startX + layout.width > slotCount ||
+        !_fitsRows(layout) ||
+        !canPlaceAt(layout) ||
+        !_sizeAllowed(layout.width, layout.height)) {
+      return false;
+    }
+    for (final index in getItemIndexes(layout)) {
+      final id = _slotIndex[index];
+      if (id != null && id != ignoreId) return false;
+    }
+    return true;
+  }
+
   ///
   late double slotEdge, verticalSlotEdge;
 
@@ -477,15 +580,21 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     int? minColumn,
     int? maxColumn,
   }) {
+    final previous = _layouts![item.identifier];
     _layouts![item.identifier] = _ItemCurrentLayout(item.layoutData);
-    mountToTopInRange(
-        item.identifier,
-        mountToTop
-            ? 0
-            : getIndex(
-                [_adjustToPosition(item.layoutData), item.layoutData.startY]),
-        minColumn: minColumn,
-        maxColumn: maxColumn);
+    try {
+      mountToTopInRange(
+          item.identifier,
+          mountToTop
+              ? 0
+              : getIndex(
+                  [_adjustToPosition(item.layoutData), item.layoutData.startY]),
+          minColumn: minColumn,
+          maxColumn: maxColumn);
+    } on DashboardNoSpaceException {
+      _restoreLayout(item.identifier, previous);
+      rethrow;
+    }
     notifyListeners();
 
     // TODO: scroll to item
@@ -502,8 +611,38 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     return start;
   }
 
+  /// Puts back the layout [id] had before an [add] or [addAll] that failed
+  /// ([previous]; `null` when the item was new).
+  void _restoreLayout(String id, _ItemCurrentLayout? previous) {
+    final failed = _layouts![id];
+    if (failed != null) _removeFromIndexes(failed, id);
+    if (previous == null) {
+      _layouts!.remove(id);
+    } else {
+      _layouts![id] = previous;
+      _indexItem(previous.origin, id);
+    }
+  }
+
   void addAll(List<DashboardItem> items, {bool mountToTop = true}) {
+    final previous = <String, _ItemCurrentLayout?>{};
+    try {
+      _addAll(items, mountToTop: mountToTop, previous: previous);
+    } on DashboardNoSpaceException {
+      for (final id in previous.keys.toList().reversed) {
+        _restoreLayout(id, previous[id]);
+      }
+      rethrow;
+    }
+  }
+
+  void _addAll(List<DashboardItem> items,
+      {required bool mountToTop,
+      required Map<String, _ItemCurrentLayout?> previous}) {
     for (var item in items) {
+      if (!previous.containsKey(item.identifier)) {
+        previous[item.identifier] = _layouts![item.identifier];
+      }
       _layouts![item.identifier] = _ItemCurrentLayout(item.layoutData);
 
       int startX;
@@ -714,6 +853,7 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     var shrinkToPlaceL = shrinkOnMove ?? shrinkToPlace;
 
     var r = getIndexCoordinate(value);
+    if (maxRows != null && r[1] >= maxRows!) return null;
     var n = itemLayout.copyWithStarts(startX: r[0], startY: r[1]);
     var i = 0;
     while (true) {
@@ -752,17 +892,18 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         var overflows = getOverflowsAlt(n);
         if (overflows.where((element) => element != null).isEmpty) {
           // both null
-          return n;
+          return _fitConstraints(n, itemLayout,
+              shrink: shrinkToPlaceL, width: n.width, height: n.height);
         } else {
           if (shrinkToPlaceL) {
             var eX = overflows[0] ?? (n.startX + n.width);
             var eY = overflows[1] ?? (n.startY + n.height);
 
             if (eX - n.startX >= n.minWidth && eY - n.startY >= n.minHeight) {
-              var shrunkLayout = n.copyWithDimension(
-                  width: eX - n.startX, height: eY - n.startY);
+              var shrunkLayout = _fitConstraints(n, itemLayout,
+                  shrink: true, width: eX - n.startX, height: eY - n.startY);
               // Check if shrunk layout still respects virtual columns
-              if (canPlaceAt(shrunkLayout)) {
+              if (shrunkLayout != null && canPlaceAt(shrunkLayout)) {
                 return shrunkLayout;
               } else {
                 return null;
@@ -776,6 +917,41 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
         }
       }
     }
+  }
+
+  /// [n] at [width] x [height] — a size whose slots from [n]'s start are
+  /// free — when that fits the row ceiling and the allowed sizes; otherwise,
+  /// when [shrink] allows it, the largest smaller size anchored at the same
+  /// start that does (the widest of equal areas), or `null`.
+  ///
+  /// The size [asked] for is never refused by [isSizeAllowed]: an item keeps
+  /// its own size, only a size the grid chooses for it is checked. Without a
+  /// ceiling and allowed sizes this is [n] at [width] x [height], always.
+  ItemLayout? _fitConstraints(ItemLayout n, ItemLayout asked,
+      {required bool shrink, required int width, required int height}) {
+    bool fits(int w, int h) =>
+        (maxRows == null || n.startY + h <= maxRows!) &&
+        ((w == asked.width && h == asked.height) || _sizeAllowed(w, h));
+
+    ItemLayout sized(int w, int h) => w == n.width && h == n.height
+        ? n
+        : n.copyWithDimension(width: w, height: h);
+
+    if (fits(width, height)) return sized(width, height);
+    if (!shrink) return null;
+
+    int? bestW, bestH;
+    var bestArea = 0;
+    for (var w = width; w >= n.minWidth; w--) {
+      for (var h = height; h >= n.minHeight; h--) {
+        if (w * h > bestArea && fits(w, h)) {
+          bestW = w;
+          bestH = h;
+          bestArea = w * h;
+        }
+      }
+    }
+    return bestW == null ? null : sized(bestW, bestH!);
   }
 
   ///
@@ -795,6 +971,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       while (true) {
         var coords = getIndexCoordinate(i);
         var currentColumn = coords[0];
+
+        // Every slot from here on is past the ceiling.
+        if (maxRows != null && coords[1] >= maxRows!) {
+          throw DashboardNoSpaceException(
+              identifier: id, layout: itemCurrent.origin, maxRows: maxRows!);
+        }
 
         // Skip if outside column range
         if (minColumn != null && currentColumn < minColumn) {
@@ -887,7 +1069,20 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
     _endsTree.clear();
     _slotIndex.clear();
     for (var e in l) {
-      mountToTop(e);
+      _mountOrDrop(e);
+    }
+  }
+
+  /// [mountToTop], or — when [id] has no place within [maxRows] — takes the
+  /// item out of the grid. Only on a (re)load, where there is nobody to throw
+  /// at: see [Dashboard.maxRows]. Returns whether the item was mounted.
+  bool _mountOrDrop(String id) {
+    try {
+      return mountToTop(id);
+    } on DashboardNoSpaceException {
+      _layouts!.remove(id);
+      itemController._items.remove(id);
+      return false;
     }
   }
 
@@ -962,10 +1157,8 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
       }
 
       for (var n in not) {
-        mountToTop(n);
+        if (_mountOrDrop(n)) changes.add(n);
       }
-
-      changes.addAll(not);
 
       if (changes.isNotEmpty) {
         itemController.itemStorageDelegate?._onItemsUpdated(

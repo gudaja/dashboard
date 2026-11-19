@@ -50,7 +50,12 @@ Future<void> moveInSteps(
 Future<void> _wallClockFrame(WidgetTester tester) => tester
     .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
 
-/// Mounts a 600x600 grid over a [RecordingDelegate] and switches edit mode on.
+/// Mounts a 600x600 grid over a [RecordingDelegate] and switches edit mode on
+/// (unless [editing] is false).
+///
+/// [maxRows], [isSizeAllowed], [onEmptySlotTap], [swapOnDrop],
+/// [shrinkToPlace] and [slotBackgroundBuilder] go to the [Dashboard] as they
+/// are; their defaults are the grid every older test was written against.
 Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
     pumpEditGrid(
   WidgetTester tester,
@@ -58,6 +63,13 @@ Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
   int slotCount = 6,
   VirtualColumnsConfig? virtualColumnsConfig,
   EditModeSettings? editModeSettings,
+  int? maxRows,
+  bool Function(int width, int height)? isSizeAllowed,
+  void Function(int x, int y)? onEmptySlotTap,
+  bool swapOnDrop = false,
+  bool shrinkToPlace = false,
+  SlotBackgroundBuilder<DashboardItem>? slotBackgroundBuilder,
+  bool editing = true,
 }) async {
   tester.view.physicalSize = const Size(600, 600);
   tester.view.devicePixelRatio = 1;
@@ -74,8 +86,13 @@ Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
         slotCount: slotCount,
         slotHeight: slot,
         slideToTop: false,
-        shrinkToPlace: false,
+        shrinkToPlace: shrinkToPlace,
         virtualColumnsConfig: virtualColumnsConfig,
+        maxRows: maxRows,
+        isSizeAllowed: isSizeAllowed,
+        onEmptySlotTap: onEmptySlotTap,
+        swapOnDrop: swapOnDrop,
+        slotBackgroundBuilder: slotBackgroundBuilder,
         editModeSettings:
             editModeSettings ?? EditModeSettings(resizeCursorSide: 20),
         itemBuilder: (item) => ColoredBox(
@@ -85,8 +102,10 @@ Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
   ));
   await tester.pumpAndSettle();
 
-  controller.isEditing = true;
-  await tester.pumpAndSettle();
+  if (editing) {
+    controller.isEditing = true;
+    await tester.pumpAndSettle();
+  }
   return (controller, delegate);
 }
 

@@ -8,12 +8,16 @@ class _EditModeBackgroundPainter extends CustomPainter {
       required this.slotCount,
       required this.viewportDelegate,
       this.fillPosition,
+      this.maxRows,
       required this.lines,
       this.style = const EditModeBackgroundStyle()});
 
   _ViewportDelegate viewportDelegate;
 
   final bool lines;
+
+  /// [Dashboard.maxRows]: no line below the last row.
+  final int? maxRows;
 
   Rect? fillPosition;
 
@@ -44,6 +48,9 @@ class _EditModeBackgroundPainter extends CustomPainter {
         (offset.clamp(0, 100)) -
         (style.dualLineHorizontal ? mainAxisSpace / 2 : 0);
     var eY = constraints.maxHeight + 100;
+    if (maxRows != null) {
+      eY = min(eY, maxRows! * verticalSlotEdge - offset);
+    }
     for (var i in List.generate(slotCount + 1, (index) => index)) {
       if (i == 0) {
         canvas.drawLine(Offset(0, sY), Offset(0, eY), horizontalLinePaint);
@@ -76,9 +83,14 @@ class _EditModeBackgroundPainter extends CustomPainter {
     var max = constraints.maxHeight;
     var i = 0;
     var s = offset % verticalSlotEdge;
+    // The content row of the first line: lines go from row 0 to [maxRows].
+    final firstRow = (offset / verticalSlotEdge).floor();
     while (true) {
       var y = (i * verticalSlotEdge) - s;
       if (y > max) {
+        break;
+      }
+      if (maxRows != null && firstRow + i > maxRows!) {
         break;
       }
 
@@ -138,6 +150,7 @@ class _EditModeBackgroundPainter extends CustomPainter {
   bool shouldRepaint(_EditModeBackgroundPainter oldDelegate) {
     return fillPosition != oldDelegate.fillPosition ||
         offset != oldDelegate.offset ||
+        maxRows != oldDelegate.maxRows ||
         slotEdge != oldDelegate.slotEdge ||
         slotCount != oldDelegate.slotCount ||
         style != oldDelegate.style ||

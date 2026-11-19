@@ -54,8 +54,13 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget
       this.scrollToAdded = true,
       this.slotBackgroundBuilder,
       this.onGridDimensionsChanged,
-      this.virtualColumnsConfig})
-      : assert((slotHeight == null && slotAspectRatio == null) ||
+      this.virtualColumnsConfig,
+      this.maxRows,
+      this.isSizeAllowed,
+      this.onEmptySlotTap,
+      this.swapOnDrop = false})
+      : assert(maxRows == null || maxRows > 0),
+        assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
         editModeSettings = editModeSettings ?? EditModeSettings();
 
@@ -256,6 +261,74 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget
   @override
   final VirtualColumnsConfig? virtualColumnsConfig;
 
+  /// The row ceiling: no item ever occupies a row `>= maxRows`.
+  ///
+  /// `null` (the default) is the usual grid that grows downwards. When set,
+  /// the grid is a fixed board of [slotCount] x [maxRows] slots, as a wall
+  /// panel's screen: moving and resizing never take an item past the last
+  /// row (a drag below it ends on the last row the item fits in), shrinking
+  /// on a move and the placement of added items stay above it, the edit-mode
+  /// background paints exactly [maxRows] rows and the grid never scrolls
+  /// past them.
+  ///
+  /// [DashboardItemController.add] and [DashboardItemController.addAll] throw
+  /// [DashboardNoSpaceException] when an item has no free place within the
+  /// ceiling; [DashboardItemController.canPlace] checks a layout first. An
+  /// item of the initial load that has no place within the ceiling is left
+  /// out of the grid (and out of [DashboardItemController.items]); the
+  /// storage delegate is not told.
+  ///
+  /// Read on every build, without re-laying the grid out: items already past
+  /// a lowered ceiling keep their place until they are moved.
+  @override
+  final int? maxRows;
+
+  /// Which item sizes are allowed, as `width x height` in slots.
+  ///
+  /// `null` (the default) allows every size within an item's min/max. When
+  /// set:
+  ///
+  /// * a resize only ever takes an item to a size this returns `true` for.
+  ///   While a handle is dragged, a refused size is skipped: the item keeps
+  ///   the last allowed size until the pointer reaches the next allowed one,
+  ///   and an edge whose next allowed size is out of reach does not move;
+  /// * a neighbour pushed by a resize is never shrunk to a refused size (the
+  ///   resize does not happen instead);
+  /// * shrinking to fit ([shrinkToPlace], [EditModeSettings.shrinkOnMove])
+  ///   picks the largest allowed size that fits; when none fits, the item is
+  ///   not placed there;
+  /// * an item keeps its OWN size even if it is refused: added, loaded or
+  ///   moved at the size it has, it is not checked (only
+  ///   [DashboardItemController.canPlace] checks it).
+  ///
+  /// A drag of a corner handle takes the horizontal step first, then the
+  /// vertical one, each to an allowed size; a size reachable only by both at
+  /// once (1x1 to 2x2 when neither 2x1 nor 1x2 is allowed) is not reached.
+  @override
+  final bool Function(int width, int height)? isSizeAllowed;
+
+  /// Called with the column and row of an empty slot the user tapped.
+  ///
+  /// A tap — not a drag, a long press or a scroll — on a slot no item
+  /// occupies, in and out of edit mode. A tap on an item, in the gap of an
+  /// occupied slot, on a disabled virtual column, in the padding, or on a row
+  /// at or past [maxRows] does not call it. `null` (the default) adds no
+  /// gesture recognizer at all.
+  @override
+  final void Function(int x, int y)? onEmptySlotTap;
+
+  /// Whether dropping an item exactly onto another item of the same size
+  /// swaps the two.
+  ///
+  /// When the slot the dragged item is dropped on (where its top-left corner
+  /// is under the pointer) is the top-left slot of ONE other item with the
+  /// dragged item's width and height, that item moves to where the dragged
+  /// one was picked up and the dragged one takes its place. Both are reported
+  /// to [DashboardItemStorageDelegate.onItemsUpdated] in one call. Default
+  /// `false`.
+  @override
+  final bool swapOnDrop;
+
   @override
   State<Dashboard<T>> createState() => _DashboardState<T>();
 }
@@ -303,7 +376,8 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     }
 
     if (!i) {
-      offset.applyContentDimensions(0, double.maxFinite);
+      offset.applyContentDimensions(
+          0, _layoutController._ceilingScrollExtent ?? double.maxFinite);
       return;
     }
 
@@ -330,6 +404,13 @@ class _DashboardState<T extends DashboardItem> extends State<Dashboard<T>>
     // `pixels` back out of it below. The drop rebuilds without the row.
     if (_moving && widget.editModeSettings.scrollWhileEditing) {
       maxExtent += _layoutController.verticalSlotEdge;
+    }
+
+    // A row ceiling ends the content at its last row, the drag row included.
+    final ceiling = _layoutController._ceilingScrollExtent;
+    if (ceiling != null) {
+      maxExtent = min(maxExtent, ceiling);
+      _maxExtend = min(_maxExtend, ceiling);
     }
 
     // Layout-time correction: `jumpTo` here re-entered the scroll machinery

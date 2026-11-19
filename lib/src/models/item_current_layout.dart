@@ -258,20 +258,93 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     return _layoutController.verticalSlotEdge;
   }
 
-  /// Width of [column], or `null` when this item cannot grow into it: off the
-  /// grid, a disabled virtual column, or [maxWidth] reached.
-  double? _growColumnWidth(int column) {
-    if (column < 0 || column >= _layoutController.slotCount) return null;
-    if (_layoutController.isColumnDisabled(column)) return null;
-    if (maxWidth != null && width >= maxWidth!) return null;
-    return _layoutController.getColumnWidth(column);
+  /// Whether the bottom edge stands on the row ceiling ([Dashboard.maxRows]).
+  bool get _atCeiling {
+    final maxRows = _layoutController.maxRows;
+    return maxRows != null && startY + height >= maxRows;
   }
 
-  /// Row height, or `null` when this item cannot grow upwards / downwards.
-  double? _growRowHeight({required bool up}) {
-    if (up && startY == 0) return null;
-    if (maxHeight != null && height >= maxHeight!) return null;
-    return _verticalSlotEdge;
+  /// The steps the edge [direction] has to take — growing when [grow], else
+  /// shrinking — to reach the next size [Dashboard.isSizeAllowed] accepts,
+  /// and how far past its grid line the pointer has to be for the last of
+  /// them ([trigger]); `null` when no allowed size is within reach (the grid's
+  /// edge, a disabled column, the ceiling, the item's min/max).
+  ///
+  /// Neighbours are not looked at: pushing them is up to the steps. Without
+  /// [Dashboard.isSizeAllowed] this is always one step, at [hysteresis] past
+  /// the middle of the next slot, the threshold `_resizeMove` used before
+  /// allowed sizes existed.
+  ({int steps, double trigger, List<double> slots})? _nextAllowedStep(
+      AxisDirection direction, bool grow, double hysteresis) {
+    var x = startX, y = startY, w = width, h = height;
+    var before = 0.0;
+    final slots = <double>[];
+    final maxRows = _layoutController.maxRows;
+    // Every branch below ends at an edge, a min/max or the ceiling, except
+    // growing down an unbounded grid: there the search gives up after this
+    // many rows.
+    const limit = 256;
+    for (var step = 1; step <= limit; step++) {
+      double? slot;
+      switch ((direction, grow)) {
+        case (AxisDirection.left, true):
+          if (maxWidth != null && w >= maxWidth!) return null;
+          final column = x - 1;
+          if (column < 0 || _layoutController.isColumnDisabled(column)) {
+            return null;
+          }
+          slot = _layoutController.getColumnWidth(column);
+          x--;
+          w++;
+        case (AxisDirection.right, true):
+          if (maxWidth != null && w >= maxWidth!) return null;
+          final column = x + w;
+          if (column >= _layoutController.slotCount ||
+              _layoutController.isColumnDisabled(column)) {
+            return null;
+          }
+          slot = _layoutController.getColumnWidth(column);
+          w++;
+        case (AxisDirection.up, true):
+          if (y == 0 || (maxHeight != null && h >= maxHeight!)) return null;
+          slot = _verticalSlotEdge;
+          y--;
+          h++;
+        case (AxisDirection.down, true):
+          if (maxHeight != null && h >= maxHeight!) return null;
+          if (maxRows != null && y + h >= maxRows) return null;
+          slot = _verticalSlotEdge;
+          h++;
+        case (AxisDirection.left, false):
+          if (w <= minWidth) return null;
+          slot = _layoutController.getColumnWidth(x);
+          x++;
+          w--;
+        case (AxisDirection.right, false):
+          if (w <= minWidth) return null;
+          slot = _layoutController.getColumnWidth(x + w - 1);
+          w--;
+        case (AxisDirection.up, false):
+          if (h <= minHeight) return null;
+          slot = _verticalSlotEdge;
+          y++;
+          h--;
+        case (AxisDirection.down, false):
+          if (h <= minHeight) return null;
+          slot = _verticalSlotEdge;
+          h--;
+      }
+      slots.add(slot);
+      if (_layoutController._sizeAllowed(w, h)) {
+        return (
+          steps: step,
+          trigger: before + slot * (0.5 + hysteresis),
+          slots: slots
+        );
+      }
+      before += slot;
+    }
+    return null;
   }
 
   /// Width of the columns this item may give up before reaching [minWidth].
@@ -311,80 +384,112 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
     var result = _ResizeMoveResult();
     var drawn = _ItemCurrentPosition(height: 0, width: 0, y: 0, x: 0);
-    double threshold(double slot) => slot * (0.5 + hysteresis);
 
-    /// Tries [resizing]; on success moves the reference point by [shift] and
-    /// returns it, otherwise returns zero.
-    Offset step(_Resizing resizing, Offset shift) {
-      final res = tryResize(resizing, onChange);
-      if (res == null) return Offset.zero;
-      save();
-      onChange(id);
-      result.startDifference += shift;
-      result.isChanged = true;
-      return shift;
+    /// Takes all the steps of [plan] for the edge [direction] — or none: a
+    /// step a neighbour blocks takes back the ones before it, so the item
+    /// never stops at a size between two allowed ones. Returns how far the
+    /// reference point moved.
+    Offset steps(AxisDirection direction, bool grow,
+        ({int steps, double trigger, List<double> slots}) plan) {
+      // Where a step of one slot moves the reference point: outwards for a
+      // grown edge, inwards for a shrunk one.
+      Offset shift(double slot) {
+        final sign = (direction == AxisDirection.left ||
+                    direction == AxisDirection.up) ==
+                grow
+            ? -1.0
+            : 1.0;
+        return direction == AxisDirection.left ||
+                direction == AxisDirection.right
+            ? Offset(sign * slot, 0)
+            : Offset(0, sign * slot);
+      }
+
+      var taken = 0;
+      var total = Offset.zero;
+      for (final slot in plan.slots) {
+        if (tryResize(_Resizing(direction, grow), onChange) == null) break;
+        save();
+        onChange(id);
+        taken++;
+        total += shift(slot);
+      }
+      if (taken == plan.steps) {
+        result.startDifference += total;
+        result.isChanged = true;
+        return total;
+      }
+      for (var i = 0; i < taken; i++) {
+        tryResize(_Resizing(direction, !grow), onChange);
+        save();
+        onChange(id);
+      }
+      return Offset.zero;
     }
 
+    ({int steps, double trigger, List<double> slots})? next(
+            AxisDirection direction, bool grow) =>
+        _nextAllowedStep(direction, grow, hysteresis);
+
     if (holdDirections.contains(AxisDirection.left)) {
-      final grow = _growColumnWidth(startX - 1);
-      final shrink = _layoutController.getColumnWidth(startX);
+      final grow = next(AxisDirection.left, true);
+      final shrink = next(AxisDirection.left, false);
       var dx = difference.dx;
-      if (grow != null && dx < -threshold(grow)) {
-        dx -= step(_Resizing(AxisDirection.left, true), Offset(-grow, 0)).dx;
-      } else if (dx > threshold(shrink)) {
-        dx -= step(_Resizing(AxisDirection.left, false), Offset(shrink, 0)).dx;
+      if (grow != null && dx < -grow.trigger) {
+        dx -= steps(AxisDirection.left, true, grow).dx;
+      } else if (shrink != null && dx > shrink.trigger) {
+        dx -= steps(AxisDirection.left, false, shrink).dx;
       }
-      final growNow = _growColumnWidth(startX - 1);
+      final growNow = next(AxisDirection.left, true);
       dx = dx.clamp(
-          growNow == null ? 0.0 : -threshold(growNow), _shrinkableWidth());
+          growNow == null ? 0.0 : -growNow.trigger, _shrinkableWidth());
       drawn.x += dx;
       drawn.width -= dx;
     }
 
     if (holdDirections.contains(AxisDirection.up)) {
-      final grow = _growRowHeight(up: true);
-      final shrink = _verticalSlotEdge;
+      final grow = next(AxisDirection.up, true);
+      final shrink = next(AxisDirection.up, false);
       var dy = difference.dy;
-      if (grow != null && dy < -threshold(grow)) {
-        dy -= step(_Resizing(AxisDirection.up, true), Offset(0, -grow)).dy;
-      } else if (dy > threshold(shrink)) {
-        dy -= step(_Resizing(AxisDirection.up, false), Offset(0, shrink)).dy;
+      if (grow != null && dy < -grow.trigger) {
+        dy -= steps(AxisDirection.up, true, grow).dy;
+      } else if (shrink != null && dy > shrink.trigger) {
+        dy -= steps(AxisDirection.up, false, shrink).dy;
       }
-      final growNow = _growRowHeight(up: true);
-      dy = dy.clamp(growNow == null ? 0.0 : -threshold(growNow),
+      final growNow = next(AxisDirection.up, true);
+      dy = dy.clamp(growNow == null ? 0.0 : -growNow.trigger,
           (height - minHeight) * _verticalSlotEdge);
       drawn.y += dy;
       drawn.height -= dy;
     }
 
     if (holdDirections.contains(AxisDirection.right)) {
-      final grow = _growColumnWidth(startX + width);
-      final shrink = _layoutController.getColumnWidth(startX + width - 1);
+      final grow = next(AxisDirection.right, true);
+      final shrink = next(AxisDirection.right, false);
       var dx = difference.dx;
-      if (grow != null && dx > threshold(grow)) {
-        dx -= step(_Resizing(AxisDirection.right, true), Offset(grow, 0)).dx;
-      } else if (dx < -threshold(shrink)) {
-        dx -=
-            step(_Resizing(AxisDirection.right, false), Offset(-shrink, 0)).dx;
+      if (grow != null && dx > grow.trigger) {
+        dx -= steps(AxisDirection.right, true, grow).dx;
+      } else if (shrink != null && dx < -shrink.trigger) {
+        dx -= steps(AxisDirection.right, false, shrink).dx;
       }
-      final growNow = _growColumnWidth(startX + width);
+      final growNow = next(AxisDirection.right, true);
       dx = dx.clamp(
-          -_shrinkableWidth(), growNow == null ? 0.0 : threshold(growNow));
+          -_shrinkableWidth(), growNow == null ? 0.0 : growNow.trigger);
       drawn.width += dx;
     }
 
     if (holdDirections.contains(AxisDirection.down)) {
-      final grow = _growRowHeight(up: false);
-      final shrink = _verticalSlotEdge;
+      final grow = next(AxisDirection.down, true);
+      final shrink = next(AxisDirection.down, false);
       var dy = difference.dy;
-      if (grow != null && dy > threshold(grow)) {
-        dy -= step(_Resizing(AxisDirection.down, true), Offset(0, grow)).dy;
-      } else if (dy < -threshold(shrink)) {
-        dy -= step(_Resizing(AxisDirection.down, false), Offset(0, -shrink)).dy;
+      if (grow != null && dy > grow.trigger) {
+        dy -= steps(AxisDirection.down, true, grow).dy;
+      } else if (shrink != null && dy < -shrink.trigger) {
+        dy -= steps(AxisDirection.down, false, shrink).dy;
       }
-      final growNow = _growRowHeight(up: false);
+      final growNow = next(AxisDirection.down, true);
       dy = dy.clamp(-(height - minHeight) * _verticalSlotEdge,
-          growNow == null ? 0.0 : threshold(growNow));
+          growNow == null ? 0.0 : growNow.trigger);
       drawn.height += dy;
     }
     _resizePosition.value = drawn;
@@ -417,6 +522,10 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
       sideIndexes = _layoutController.getItemIndexes(ItemLayout(
           startX: startX, startY: startY - 1, width: width, height: 1));
     } else {
+      // The row ceiling bounds the grid like its other edges.
+      if (_atCeiling) {
+        return null;
+      }
       sideIndexes = _layoutController.getItemIndexes(ItemLayout(
           startX: startX, startY: startY + height, width: width, height: 1));
     }
@@ -482,6 +591,13 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
     // Próba zmniejszenia widgeta (gdy przesunięcie niemożliwe lub są sąsiedzi)
     var resize = _Resizing(reverseDir, false);
+    // A pushed neighbour is never shrunk to a size the grid refuses.
+    final horizontal =
+        reverseDir == AxisDirection.left || reverseDir == AxisDirection.right;
+    if (!_layoutController._sizeAllowed(
+        horizontal ? width - 1 : width, horizontal ? height : height - 1)) {
+      return null;
+    }
     if (reverseDir == AxisDirection.up) {
       if (minHeight < height) {
         _height = height - 1;
@@ -871,6 +987,13 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     var newStartY =
         ((newTransform.dy / _verticalSlotEdge).round() + origin.startY)
             .clamp(0, 4294967296);
+
+    // Under a row ceiling a drag past the last row aims at the lowest row the
+    // item fits on, so it ends there instead of where it was last placed.
+    final maxRows = _layoutController.maxRows;
+    if (maxRows != null) {
+      newStartY = min(newStartY, max(0, maxRows - _originSize![1]));
+    }
 
     // Jeśli newStartX wskazuje na wyłączoną kolumnę, zostań przy poprzedniej pozycji
     if (_layoutController.isColumnDisabled(newStartX)) {

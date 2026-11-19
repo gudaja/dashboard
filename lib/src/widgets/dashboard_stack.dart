@@ -122,6 +122,7 @@ class _DashboardStackState<T extends DashboardItem>
   void dispose() {
     viewportOffset.removeListener(_listen);
     _autoScrollTicker?.dispose();
+    _emptyTapHold?.cancel();
     _listenedCarousel?.removeListener(_onCarouselMoved);
     if (_editing != null) {
       // Disposed under a dragging pointer. The listeners of these notifiers
@@ -327,7 +328,12 @@ class _DashboardStackState<T extends DashboardItem>
 
     var bottom = 0.0;
 
-    for (var y = _backgroundStartY; y <= _backgroundEndY; y++) {
+    // No slot past the row ceiling.
+    final maxRows = widget.dashboardController.maxRows;
+    final lastY =
+        maxRows == null ? _backgroundEndY : min(_backgroundEndY, maxRows - 1);
+
+    for (var y = _backgroundStartY; y <= lastY; y++) {
       for (var x = 0; x < slotCount; x++) {
         // The user's builder decides whether the slot draws at all, and it is now
         // asked ONCE per band — it used to sit inside a `Builder`, i.e. be asked
@@ -480,6 +486,36 @@ class _DashboardStackState<T extends DashboardItem>
       ],
     );
 
+    final onEmptySlotTap = widget.dashboardController.onEmptySlotTap;
+    if (onEmptySlotTap != null) {
+      // A tap recognizer joins the arena, and loses it to anything that
+      // claims the pointer: the drag of the `Scrollable`, the edit pan, a long
+      // press, and — deeper in the hit test — a tap of an item's own content.
+      //
+      // Nothing claims a pointer that is merely HELD on an empty slot outside
+      // edit mode, so the tap would win a long press too: a hold past
+      // `kLongPressTimeout` is not a tap. `onTapDown` comes `kPressTimeout`
+      // after the down (or with the up, for a quick tap).
+      result = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) {
+          _emptyTapHold?.cancel();
+          _emptyTapHeld = false;
+          _emptyTapHold = Timer(kLongPressTimeout - kPressTimeout, () {
+            _emptyTapHeld = true;
+          });
+        },
+        onTapCancel: () => _emptyTapHold?.cancel(),
+        onTapUp: (details) {
+          _emptyTapHold?.cancel();
+          if (_emptyTapHeld) return;
+          final slot = _emptySlotAt(details.localPosition);
+          if (slot != null) onEmptySlotTap(slot.$1, slot.$2);
+        },
+        child: result,
+      );
+    }
+
     if (widget.dashboardController.isEditing &&
         (widget.editModeSettings.scrollWhileEditing || widget.sliver)) {
       result = _buildEditGestures(result);
@@ -532,6 +568,30 @@ class _DashboardStackState<T extends DashboardItem>
       );
     }
     return result;
+  }
+
+  /// Runs from the `onTapDown` of an empty-slot tap until a hold becomes a
+  /// long press; [_emptyTapHeld] once it has.
+  Timer? _emptyTapHold;
+  bool _emptyTapHeld = false;
+
+  /// The column and row of the empty slot under [local], or `null`: over an
+  /// item, a disabled virtual column, the padding, or a row at or past the
+  /// row ceiling.
+  (int, int)? _emptySlotAt(Offset local) {
+    final controller = widget.dashboardController;
+    final dx = local.dx - viewportDelegate.padding.left;
+    final dy = local.dy + pixels - viewportDelegate.padding.top;
+    if (dx < 0 || dx >= width || dy < 0) return null;
+    final x = controller.getColumnFromPositionExact(dx);
+    final y = dy ~/ verticalSlotEdge;
+    final maxRows = controller.maxRows;
+    if (maxRows != null && y >= maxRows) return null;
+    if (controller.isColumnDisabled(x)) return null;
+    if (controller._slotIndex.containsKey(controller.getIndex([x, y]))) {
+      return null;
+    }
+    return (x, y);
   }
 
   /// The edit-mode gestures of `scrollWhileEditing`: see
@@ -934,7 +994,10 @@ class _DashboardStackState<T extends DashboardItem>
         if (speed != 0) {
           var n = pixels + speed;
 
-          viewportOffset.jumpTo(n.clamp(0.0, (1 << 31).toDouble()));
+          viewportOffset.jumpTo(n.clamp(
+              0.0,
+              widget.dashboardController._ceilingScrollExtent ??
+                  (1 << 31).toDouble()));
 
           scroll();
         }

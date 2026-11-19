@@ -29,6 +29,10 @@ abstract interface class _DashboardConfig<T extends DashboardItem> {
   SlotBackgroundBuilder<T>? get slotBackgroundBuilder;
   void Function(GridDimensions dimensions)? get onGridDimensionsChanged;
   VirtualColumnsConfig? get virtualColumnsConfig;
+  int? get maxRows;
+  bool Function(int width, int height)? get isSizeAllowed;
+  void Function(int x, int y)? get onEmptySlotTap;
+  bool get swapOnDrop;
 }
 
 /// The state both grids share: the layout controller and its listeners, the
@@ -143,6 +147,12 @@ mixin _DashboardHost<T extends DashboardItem, W extends StatefulWidget>
     /// check slot count
     /// check new constrains equal exists
     _layoutController.absorbPointer = config.absorbPointer;
+    // Plain policy, read on every edit: no re-attach when they change. Items
+    // already standing past a lowered ceiling keep their place until moved.
+    _layoutController.maxRows = config.maxRows;
+    _layoutController.isSizeAllowed = config.isSizeAllowed;
+    _layoutController.onEmptySlotTap = config.onEmptySlotTap;
+    _layoutController.swapOnDrop = config.swapOnDrop;
     _layoutController._viewportDelegate = _ViewportDelegate(
         constraints: constraints,
         padding: config.padding.resolve(config.textDirection),

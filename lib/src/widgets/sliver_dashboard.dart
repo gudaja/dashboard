@@ -50,8 +50,13 @@ class SliverDashboard<T extends DashboardItem> extends StatefulWidget
       this.scrollToAdded = true,
       this.slotBackgroundBuilder,
       this.onGridDimensionsChanged,
-      this.virtualColumnsConfig})
-      : assert((slotHeight == null && slotAspectRatio == null) ||
+      this.virtualColumnsConfig,
+      this.maxRows,
+      this.isSizeAllowed,
+      this.onEmptySlotTap,
+      this.swapOnDrop = false})
+      : assert(maxRows == null || maxRows > 0),
+        assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
         editModeSettings = editModeSettings ?? EditModeSettings();
 
@@ -148,6 +153,22 @@ class SliverDashboard<T extends DashboardItem> extends StatefulWidget
   @override
   final VirtualColumnsConfig? virtualColumnsConfig;
 
+  /// See [Dashboard.maxRows].
+  @override
+  final int? maxRows;
+
+  /// See [Dashboard.isSizeAllowed].
+  @override
+  final bool Function(int width, int height)? isSizeAllowed;
+
+  /// See [Dashboard.onEmptySlotTap].
+  @override
+  final void Function(int x, int y)? onEmptySlotTap;
+
+  /// See [Dashboard.swapOnDrop].
+  @override
+  final bool swapOnDrop;
+
   @override
   State<SliverDashboard<T>> createState() => _SliverDashboardState<T>();
 }
@@ -198,6 +219,14 @@ class _SliverDashboardState<T extends DashboardItem>
           _layoutController.verticalSlotEdge;
     } else {
       _contentAtMoveStart = null;
+    }
+    // A row ceiling ends the content at its last row, the drag row included.
+    final maxRows = config.maxRows;
+    if (maxRows != null) {
+      content = min(
+          content,
+          maxRows * _layoutController.verticalSlotEdge +
+              config.padding.resolve(config.textDirection).vertical);
     }
     return max(content, window);
   }
