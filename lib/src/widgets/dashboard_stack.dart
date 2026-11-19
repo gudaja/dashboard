@@ -1169,6 +1169,10 @@ class _DashboardStackState<T extends DashboardItem>
 
   int? _lastMoveUpdate;
 
+  /// The pointer position of the last [_onMoveUpdate] call, throttled or
+  /// not: where a drop aims for [Dashboard.swapOnDrop].
+  Offset? _lastMoveLocal;
+
   /// [force] skips the throttling: the auto-scroll and the carousel call this
   /// once per frame when the content moves, and dropping such a call leaves
   /// the item behind until the pointer moves again.
@@ -1176,6 +1180,7 @@ class _DashboardStackState<T extends DashboardItem>
     if (_editing == null) {
       return;
     }
+    _lastMoveLocal = local;
 
     // Throttling - ogranicz częstotliwość aktualizacji do 60 FPS
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1252,6 +1257,23 @@ class _DashboardStackState<T extends DashboardItem>
       _editing!._lastTransformUpdate = null;
       _onMoveUpdate(_lastLocal! + _dragShift, force: true);
     }
+    if (widget.dashboardController.swapOnDrop &&
+        _editing != null &&
+        !_editingResize &&
+        _lastMoveLocal != null &&
+        _moveStartOffset != null &&
+        _startScrollPixels != null) {
+      final swapped = _editing!._trySwapOnDrop(
+          _lastMoveLocal! - _moveStartOffset!, pixels - _startScrollPixels!);
+      if (swapped != null) {
+        setState(() {
+          _removeWidget(_editing!.id);
+          _removeWidget(swapped);
+          _invalidateStaticCache();
+        });
+      }
+    }
+    _lastMoveLocal = null;
     _lastMoveUpdate = null; // Reset on move end
     _stopAutoScroll();
     _listenedCarousel?.removeListener(_onCarouselMoved);

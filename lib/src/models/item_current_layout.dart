@@ -1108,6 +1108,60 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
 
   int? _lastTransformUpdate;
 
+  /// [Dashboard.swapOnDrop]: when this item, dragged by [offsetDifference]
+  /// (and [scrollDifference] of scroll) from its current place, is dropped
+  /// with its top-left corner on the top-left slot of ONE other item of its
+  /// own size — the size it had when picked up — the two exchange places:
+  /// the other item goes where this one was picked up. Returns the other
+  /// item's id, or `null` when there is no swap.
+  String? _trySwapOnDrop(Offset offsetDifference, double scrollDifference) {
+    final session = _layoutController.editSession;
+    final size = _originSize;
+    if (session == null || size == null) return null;
+    final lc = _layoutController;
+
+    // The slot the drop aims at, as `_transformUpdate` computes it.
+    final t = offsetDifference + Offset(0, scrollDifference);
+    final tx = lc
+        .getColumnFromPosition(t.dx + lc.getColumnPosition(startX))
+        .clamp(0, lc.slotCount - 1);
+    final ty = max(0, (t.dy / _verticalSlotEdge).round() + startY);
+
+    final from = session.editingOrigin;
+    if (tx == from.startX && ty == from.startY) return null;
+
+    final otherId = lc._slotIndex[lc.getIndex([tx, ty])];
+    if (otherId == null || otherId == id) return null;
+    final other = lc._layouts![otherId]!;
+    if (other.startX != tx ||
+        other.startY != ty ||
+        other.width != size[0] ||
+        other.height != size[1]) {
+      return null;
+    }
+
+    // Where this item was picked up; only this item may stand there now
+    // (nothing else moves while an item is dragged).
+    final back =
+        other.origin.copyWithStarts(startX: from.startX, startY: from.startY);
+    for (final index in lc.getItemIndexes(back)) {
+      final there = lc._slotIndex[index];
+      if (there != null && there != id) return null;
+    }
+
+    final xDif = tx - startX;
+    final yDif = ty - startY;
+    lc._reIndexItem(back, otherId);
+    lc._reIndexItem(
+        origin
+            .copyWithStarts(startX: tx, startY: ty)
+            .copyWithDimension(width: size[0], height: size[1]),
+        id);
+    session._swapped.add(otherId);
+    _transform.value = t - Offset(xDif * _slotEdge, yDif * _verticalSlotEdge);
+    return otherId;
+  }
+
   late String id;
 
   void _mount(_DashboardLayoutController layoutController, String id) {

@@ -1447,11 +1447,16 @@ class _EditSession {
           }
         }
       }
+      changes.addAll(_swapped);
       changes.add(editing.id);
     }
 
     return changes;
   }
+
+  /// Items that swapped places with the edited one on drop
+  /// ([Dashboard.swapOnDrop]).
+  final Set<String> _swapped = <String>{};
 
   // final Map<AxisDirection, List<Resizing>> _resizes = {};
 
