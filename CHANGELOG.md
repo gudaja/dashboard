@@ -1,6 +1,6 @@
 
 
-## 1.3.0 (unreleased)
+## 1.3.0
 
 A fixed board — a wall panel's screen — as opt-in parameters of `Dashboard`
 and `SliverDashboard`. With the defaults nothing changes.
