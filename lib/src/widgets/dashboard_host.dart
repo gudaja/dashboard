@@ -33,6 +33,8 @@ abstract interface class _DashboardConfig<T extends DashboardItem> {
   bool Function(int width, int height)? get isSizeAllowed;
   void Function(int x, int y)? get onEmptySlotTap;
   bool get swapOnDrop;
+  void Function(String id, Offset? globalPosition)? get onItemMoveUpdate;
+  bool Function(String id, Offset globalPosition)? get onItemDropOutside;
 }
 
 /// The state both grids share: the layout controller and its listeners, the
@@ -153,6 +155,8 @@ mixin _DashboardHost<T extends DashboardItem, W extends StatefulWidget>
     _layoutController.isSizeAllowed = config.isSizeAllowed;
     _layoutController.onEmptySlotTap = config.onEmptySlotTap;
     _layoutController.swapOnDrop = config.swapOnDrop;
+    _layoutController.onItemMoveUpdate = config.onItemMoveUpdate;
+    _layoutController.onItemDropOutside = config.onItemDropOutside;
     _layoutController._viewportDelegate = _ViewportDelegate(
         constraints: constraints,
         padding: config.padding.resolve(config.textDirection),

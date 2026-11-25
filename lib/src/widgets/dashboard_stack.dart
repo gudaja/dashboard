@@ -536,6 +536,7 @@ class _DashboardStackState<T extends DashboardItem>
         onPanStart: widget.editModeSettings.panEnabled
             ? (panStart) {
                 _onMoveStart(panStart.localPosition);
+                _onMovePointer(panStart.globalPosition);
               }
             : null,
         onPanUpdate: widget.editModeSettings.panEnabled
@@ -543,6 +544,7 @@ class _DashboardStackState<T extends DashboardItem>
                 if (widget.dashboardController.editSession != null) {
                   setSpeed(u.localPosition);
                   _onMoveUpdate(u.localPosition);
+                  _onMovePointer(u.globalPosition);
                 }
               }
             : null,
@@ -554,6 +556,7 @@ class _DashboardStackState<T extends DashboardItem>
         onLongPressStart: widget.editModeSettings.longPressEnabled
             ? (longPressStart) {
                 _onMoveStart(longPressStart.localPosition);
+                _onMovePointer(longPressStart.globalPosition);
               }
             : null,
         onLongPressMoveUpdate: widget.editModeSettings.longPressEnabled
@@ -561,6 +564,7 @@ class _DashboardStackState<T extends DashboardItem>
                 if (widget.dashboardController.editSession != null) {
                   setSpeed(u.localPosition);
                   _onMoveUpdate(u.localPosition);
+                  _onMovePointer(u.globalPosition);
                 }
               }
             : null,
@@ -643,6 +647,7 @@ class _DashboardStackState<T extends DashboardItem>
     _listenedCarousel = carousel?..addListener(_onCarouselMoved);
     _startOriginDy = _originDy();
     _publishPointer(global);
+    _onMovePointer(global);
   }
 
   void _onEditDragUpdate(Offset local, Offset global) {
@@ -653,6 +658,39 @@ class _DashboardStackState<T extends DashboardItem>
     _publishPointer(global);
     _updateAutoScroll(local + _dragShift);
     _onMoveUpdate(local + _dragShift);
+    _onMovePointer(global);
+  }
+
+  /// Where the pointer moving an item last was, in global coordinates
+  /// ([Dashboard.onItemMoveUpdate], [Dashboard.onItemDropOutside]).
+  Offset? _lastGlobal;
+
+  void _onMovePointer(Offset global) {
+    final editing = _editing;
+    if (editing == null || _editingResize) return;
+    _lastGlobal = global;
+    widget.dashboardController.onItemMoveUpdate?.call(editing.id, global);
+  }
+
+  /// [Dashboard.onItemDropOutside]: whether the host took the drop of
+  /// [editing], released outside this grid's box. When it did, the item is
+  /// back on the slot it was picked up from.
+  bool _takenOutside(_ItemCurrentLayout editing) {
+    final onDrop = widget.dashboardController.onItemDropOutside;
+    final global = _lastGlobal;
+    if (onDrop == null || global == null || _editingResize) return false;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return false;
+    if ((Offset.zero & box.size).contains(box.globalToLocal(global))) {
+      return false;
+    }
+    if (!onDrop(editing.id, global)) return false;
+    editing._undoMove();
+    setState(() {
+      _removeWidget(editing.id);
+      _invalidateStaticCache();
+    });
+    return true;
   }
 
   void _publishPointer(Offset global) {
@@ -1255,14 +1293,21 @@ class _DashboardStackState<T extends DashboardItem>
   }
 
   void _onMoveEnd() {
-    if (_editing != null && _lastLocal != null && !_editingResize) {
+    final moved = _editing != null && !_editingResize ? _editing : null;
+    final taken = moved != null && _takenOutside(moved);
+    _lastGlobal = null;
+    if (moved != null) {
+      widget.dashboardController.onItemMoveUpdate?.call(moved.id, null);
+    }
+    if (!taken && _editing != null && _lastLocal != null && !_editingResize) {
       // The drop lands where the pointer is NOW. Both throttles run on the
       // wall clock, so after the auto-scroll or a section change the last
       // slot check may be up to a frame old; this one is not skipped.
       _editing!._lastTransformUpdate = null;
       _onMoveUpdate(_lastLocal! + _dragShift, force: true);
     }
-    if (widget.dashboardController.swapOnDrop &&
+    if (!taken &&
+        widget.dashboardController.swapOnDrop &&
         _editing != null &&
         !_editingResize &&
         _lastMoveLocal != null &&

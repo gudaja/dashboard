@@ -54,8 +54,8 @@ Future<void> _wallClockFrame(WidgetTester tester) => tester
 /// (unless [editing] is false).
 ///
 /// [maxRows], [isSizeAllowed], [onEmptySlotTap], [swapOnDrop],
-/// [shrinkToPlace] and [slotBackgroundBuilder] go to the [Dashboard] as they
-/// are; their defaults are the grid every older test was written against.
+/// [shrinkToPlace], [slotBackgroundBuilder], [onItemMoveUpdate] and
+/// [onItemDropOutside] go to the [Dashboard] as they are; their defaults are the grid every older test was written against.
 Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
     pumpEditGrid(
   WidgetTester tester,
@@ -70,6 +70,9 @@ Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
   bool shrinkToPlace = false,
   SlotBackgroundBuilder<DashboardItem>? slotBackgroundBuilder,
   bool editing = true,
+  void Function(String id, Offset? globalPosition)? onItemMoveUpdate,
+  bool Function(String id, Offset globalPosition)? onItemDropOutside,
+  double? gridHeight,
 }) async {
   tester.view.physicalSize = const Size(600, 600);
   tester.view.devicePixelRatio = 1;
@@ -79,25 +82,35 @@ Future<(DashboardItemController<DashboardItem>, RecordingDelegate)>
   final controller = DashboardItemController<DashboardItem>.withDelegate(
       itemStorageDelegate: delegate);
 
+  final Widget grid = Dashboard<DashboardItem>(
+    dashboardItemController: controller,
+    slotCount: slotCount,
+    slotHeight: slot,
+    slideToTop: false,
+    shrinkToPlace: shrinkToPlace,
+    virtualColumnsConfig: virtualColumnsConfig,
+    maxRows: maxRows,
+    isSizeAllowed: isSizeAllowed,
+    onEmptySlotTap: onEmptySlotTap,
+    swapOnDrop: swapOnDrop,
+    onItemMoveUpdate: onItemMoveUpdate,
+    onItemDropOutside: onItemDropOutside,
+    slotBackgroundBuilder: slotBackgroundBuilder,
+    editModeSettings:
+        editModeSettings ?? EditModeSettings(resizeCursorSide: 20),
+    itemBuilder: (item) =>
+        ColoredBox(key: ValueKey('tile_${item.identifier}'), color: Colors.red),
+  );
   await tester.pumpWidget(MaterialApp(
     home: Scaffold(
-      body: Dashboard<DashboardItem>(
-        dashboardItemController: controller,
-        slotCount: slotCount,
-        slotHeight: slot,
-        slideToTop: false,
-        shrinkToPlace: shrinkToPlace,
-        virtualColumnsConfig: virtualColumnsConfig,
-        maxRows: maxRows,
-        isSizeAllowed: isSizeAllowed,
-        onEmptySlotTap: onEmptySlotTap,
-        swapOnDrop: swapOnDrop,
-        slotBackgroundBuilder: slotBackgroundBuilder,
-        editModeSettings:
-            editModeSettings ?? EditModeSettings(resizeCursorSide: 20),
-        itemBuilder: (item) => ColoredBox(
-            key: ValueKey('tile_${item.identifier}'), color: Colors.red),
-      ),
+      // [gridHeight]: the grid takes only the top of the view, so a pointer
+      // can leave it downwards.
+      body: gridHeight == null
+          ? grid
+          : Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: 600, height: gridHeight, child: grid),
+            ),
     ),
   ));
   await tester.pumpAndSettle();

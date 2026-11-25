@@ -1162,6 +1162,22 @@ class _ItemCurrentLayout extends ChangeNotifier implements ItemLayout {
     return otherId;
   }
 
+  /// [Dashboard.onItemDropOutside]: puts this item back on the slot it was
+  /// picked up from, which is free — nothing else moves while an item is
+  /// dragged. The item is drawn where it is now and animates back.
+  void _undoMove() {
+    final session = _layoutController.editSession;
+    if (session == null) return;
+    final from = session.editingOrigin;
+    if (from.startX == startX && from.startY == startY) return;
+    final xDif = from.startX - startX;
+    final yDif = from.startY - startY;
+    _layoutController._reIndexItem(
+        origin.copyWithStarts(startX: from.startX, startY: from.startY), id);
+    _transform.value =
+        _transform.value - Offset(xDif * _slotEdge, yDif * _verticalSlotEdge);
+  }
+
   late String id;
 
   void _mount(_DashboardLayoutController layoutController, String id) {

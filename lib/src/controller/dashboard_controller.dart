@@ -419,6 +419,12 @@ class _DashboardLayoutController<T extends DashboardItem> with ChangeNotifier {
   /// [Dashboard.swapOnDrop].
   bool swapOnDrop = false;
 
+  /// [Dashboard.onItemMoveUpdate].
+  void Function(String id, Offset? globalPosition)? onItemMoveUpdate;
+
+  /// [Dashboard.onItemDropOutside].
+  bool Function(String id, Offset globalPosition)? onItemDropOutside;
+
   /// Whether [layout] ends at or above the row ceiling ([maxRows]).
   bool _fitsRows(ItemLayout layout) =>
       maxRows == null || layout.startY + layout.height <= maxRows!;

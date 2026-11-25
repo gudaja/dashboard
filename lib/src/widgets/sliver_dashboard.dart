@@ -54,7 +54,9 @@ class SliverDashboard<T extends DashboardItem> extends StatefulWidget
       this.maxRows,
       this.isSizeAllowed,
       this.onEmptySlotTap,
-      this.swapOnDrop = false})
+      this.swapOnDrop = false,
+      this.onItemMoveUpdate,
+      this.onItemDropOutside})
       : assert(maxRows == null || maxRows > 0),
         assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
@@ -168,6 +170,14 @@ class SliverDashboard<T extends DashboardItem> extends StatefulWidget
   /// See [Dashboard.swapOnDrop].
   @override
   final bool swapOnDrop;
+
+  /// See [Dashboard.onItemMoveUpdate].
+  @override
+  final void Function(String id, Offset? globalPosition)? onItemMoveUpdate;
+
+  /// See [Dashboard.onItemDropOutside].
+  @override
+  final bool Function(String id, Offset globalPosition)? onItemDropOutside;
 
   @override
   State<SliverDashboard<T>> createState() => _SliverDashboardState<T>();

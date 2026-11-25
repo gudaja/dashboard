@@ -58,7 +58,9 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget
       this.maxRows,
       this.isSizeAllowed,
       this.onEmptySlotTap,
-      this.swapOnDrop = false})
+      this.swapOnDrop = false,
+      this.onItemMoveUpdate,
+      this.onItemDropOutside})
       : assert(maxRows == null || maxRows > 0),
         assert((slotHeight == null && slotAspectRatio == null) ||
             !(slotHeight != null && slotAspectRatio != null)),
@@ -328,6 +330,27 @@ class Dashboard<T extends DashboardItem> extends StatefulWidget
   /// `false`.
   @override
   final bool swapOnDrop;
+
+  /// Called while an item is MOVED in edit mode (not resized) with the
+  /// identifier of the item and the pointer's position in GLOBAL coordinates,
+  /// on every pointer update, also while the pointer is outside the grid; and
+  /// once with `null` when the move ends (dropped or cancelled).
+  ///
+  /// Lets a host show its own drop targets around the grid (the tabs of other
+  /// boards, a bin). `null` (the default) changes nothing.
+  @override
+  final void Function(String id, Offset? globalPosition)? onItemMoveUpdate;
+
+  /// Called when a moved item is released with the pointer OUTSIDE the grid's
+  /// box, with the item's identifier and the pointer's global position.
+  ///
+  /// Returning `true` means the host took the drop: the item goes back to the
+  /// slot it was picked up from, no swap is made ([swapOnDrop]) and nothing is
+  /// reported to [DashboardItemStorageDelegate.onItemsUpdated] — the host
+  /// moves the item elsewhere itself. Returning `false`, or `null` (the
+  /// default), drops it as usual, where it stands. A resize never calls it.
+  @override
+  final bool Function(String id, Offset globalPosition)? onItemDropOutside;
 
   @override
   State<Dashboard<T>> createState() => _DashboardState<T>();
