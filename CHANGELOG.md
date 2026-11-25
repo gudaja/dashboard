@@ -1,4 +1,4 @@
-## 1.4.0 (unreleased)
+## 1.4.0
 
 * **`onItemMoveUpdate(id, globalPosition)`**: the pointer of an item being
   MOVED (not resized), in global coordinates, on every update — also outside
