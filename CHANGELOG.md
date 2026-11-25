@@ -1,3 +1,15 @@
+## 1.4.0 (unreleased)
+
+* **`onItemMoveUpdate(id, globalPosition)`**: the pointer of an item being
+  MOVED (not resized), in global coordinates, on every update — also outside
+  the grid — and `null` once when the move ends.
+* **`onItemDropOutside(id, globalPosition)`**: asked when a moved item is
+  released with the pointer outside the grid's box. `true` means the host
+  took the drop: the item goes back to the slot it was picked up from, no
+  swap (`swapOnDrop`) and no `onItemsUpdated` call. `false` or `null` drops
+  it as before. On `Dashboard` and `SliverDashboard`; nothing changes without
+  them.
+
 
 
 ## 1.3.0

@@ -311,6 +311,26 @@ Dashboard(
 - With `slideToTop: false` and `shrinkToPlace: false` a valid stored layout
   loads exactly as stored, without an `onItemsUpdated` call.
 
+#### Dragging an item out of the board
+
+A host can offer drop targets around the grid — the tabs of the other
+screens of a panel, a bin — with two more parameters:
+
+```dart
+Dashboard(
+  ...
+  onItemMoveUpdate: (id, global) => _hoverTargets(id, global), // null = ended
+  onItemDropOutside: (id, global) => _dropOnTarget(id, global),
+)
+```
+
+- `onItemMoveUpdate` gets the pointer's global position on every update of a
+  MOVE (not a resize), also outside the grid, and `null` once the move ends.
+- `onItemDropOutside` is asked when a moved item is released with the
+  pointer outside the grid's box. `true` means the host took the drop: the
+  item goes back to the slot it was picked up from, nothing is swapped and
+  nothing reaches `onItemsUpdated`. `false` drops it as usual.
+
 ## Getting started
 
 ### Install
