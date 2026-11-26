@@ -1,3 +1,31 @@
+## 1.5.0
+
+A carousel wider than the screen, scrolled freely. With the defaults nothing
+changes except the fix below.
+
+* **Fix: the last page leaves no empty columns.** Without virtual columns, the
+  last page of a grid whose column count is not a multiple of `columnsPerPage`
+  used to start at its first column and leave the rest of the view empty
+  (10 columns, 6 per page: columns 6–9 and two empty slots); a free swipe
+  (`pageSnapping: false`) could go just as far. The last page now ends at the
+  right edge of the view (columns 4–9), and so does a free swipe. Column counts
+  that are a multiple of `columnsPerPage` and grids with virtual columns keep
+  their offsets.
+* **`MobileCarouselConfig.freeScrollFling`** (default `false`, read with
+  `pageSnapping: false`): a release faster than `kMinFlingVelocity` carries the
+  grid on with a `ClampingScrollSimulation` and stops it at either end. A touch
+  while it moves only stops it — the grid takes no pointers until it stands, so
+  the touch does not reach an item. The fling moves the grid without
+  rebuilding it.
+* **`MobileCarouselConfig.indicatorBuilder`** (default `null`): a position
+  indicator laid over the bottom of the carousel, full width, without taking
+  room from the grid or pointers, built while the grid is wider than the view;
+  the page dots are not drawn then. It gets the new **`CarouselScrollMetrics`**
+  (`offset` as a `ValueListenable<double>`, `maxOffset`, `viewportWidth`,
+  `contentWidth`); the builder type is **`CarouselIndicatorBuilder`**.
+
+
+
 ## 1.4.0
 
 * **`onItemMoveUpdate(id, globalPosition)`**: the pointer of an item being

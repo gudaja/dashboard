@@ -129,12 +129,55 @@ are reported through `onPageChanged`. `MobileCarouselConfig`:
 | `swipeEnabled` | `true` | paging by swipe |
 | `swipeWhileEditing` | `false` | paging by swipe also in edit mode (see [Scrolling while editing](#scrolling-while-editing)) |
 | `pageSnapping` | `true` | a swipe ends on a page; `false` leaves the grid where it was released (the dots follow the nearest page) |
+| `freeScrollFling` | `false` | with `pageSnapping: false`: a fast release carries the grid on and stops it at the ends; a touch while it moves only stops it |
+| `indicatorBuilder` | `null` | a position indicator over the bottom of the carousel instead of the dots (see [Free scrolling wider than the screen](#free-scrolling-wider-than-the-screen)) |
 | `dotColor`, `activeDotColor`, `arrowColor`, `dotSize`, `activeDotSize`, `dotsSpacing`, `arrowSize` | | looks of the dots and arrows |
 
 With two sections visible and the default step, tablet pages overlap: page 0
 shows sections 1+2, page 1 sections 2+3. `sectionStepOnTablet: 2` pages block
 by block instead; the last page is clamped so it is never half empty (three
 sections: 1+2, then 2+3; four sections: 1+2, then 3+4).
+
+### Free scrolling wider than the screen
+
+A grid wider than the screen — say 12 columns on a phone that should show 6 —
+scrolls sideways like a list: `columnsPerPage` sets how many columns fill the
+view, `pageSnapping: false` lets the grid stand anywhere, and
+`freeScrollFling: true` carries it on after a fast release, with the
+deceleration of a clamping scroll view. The grid never moves past its last
+column: it ends at the right edge of the view, without empty slots (since
+1.5.0 this also holds for the last page of a snapping carousel whose column
+count is not a multiple of `columnsPerPage`). A touch while the grid moves
+stops it and does not reach the items.
+
+`indicatorBuilder` replaces the dots with an indicator laid over the bottom of
+the carousel; it takes no room from the grid and no pointers, and it is built
+only while the grid is wider than the view. It gets `CarouselScrollMetrics`:
+`offset` (a `ValueListenable<double>`, how far the grid is moved left),
+`maxOffset`, `viewportWidth` and `contentWidth` (the view without the grid's
+padding), so a scrollbar thumb is `viewportWidth / (contentWidth + maxOffset)`
+of the track wide.
+
+```dart
+MobileDashboardWrapper(
+  dashboardItemController: controller,
+  slotCount: 12,
+  columnsPerPage: 6,
+  mobileConfig: MobileCarouselConfig(
+    showHeader: false,
+    pageSnapping: false,
+    freeScrollFling: true,
+    indicatorBuilder: (context, metrics) => ValueListenableBuilder<double>(
+      valueListenable: metrics.offset,
+      builder: (context, offset, _) => LinearProgressIndicator(
+        value: metrics.maxOffset == 0 ? 0 : offset / metrics.maxOffset,
+      ),
+    ),
+  ),
+  dashboardBuilder: (controller, slotCount, startColumn, isMobile) =>
+      Dashboard(dashboardItemController: controller, slotCount: slotCount, ...),
+)
+```
 
 ### Resize and delete handles
 
